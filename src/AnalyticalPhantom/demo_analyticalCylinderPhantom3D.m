@@ -33,8 +33,8 @@ fprintf('Grid size : %d x %d x %d voxels\n', Nx, Ny, Nz);
 % BODY frame: cylinder axis along +z, radius R_mm, length L_mm
 % WORLD frame: specified by center + Euler angles
 
-R_mm = 70;      % radius [mm]
-L_mm = 290;     % length [mm]
+R_mm = 20;      % radius [mm]
+L_mm = 10;     % length [mm]
 
 center_cyl = [0 0 0];   % world center [mm]
 roll_deg   = 0;         % rotations (deg)
@@ -55,6 +55,7 @@ cyl = AnalyticalCylinder3D(center_cyl, ...
 %% 4) Compute analytic k-space for the cylinder
 fprintf('Evaluating analytic k-space...\n');
 K = cyl.kspace(kx, ky, kz);
+volV = cyl.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');

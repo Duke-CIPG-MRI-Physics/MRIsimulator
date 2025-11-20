@@ -25,7 +25,7 @@ fprintf('Grid size : %d x %d x %d\n', N(1), N(2), N(3));
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
 
 %% 3) Instantiate analytic sphere (WORLD coordinates)
-R_mm = 40;
+R_mm = 140;
 center_sph = [0 0 0];
 
 sph = AnalyticalSphere3D(center_sph, 0, 0, 0, R_mm);
