@@ -147,7 +147,7 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
             idx_r = (k_perp_prime ~= 0);
             if any(idx_r(:))
                 x_r = 2*pi * k_perp_prime(idx_r);    % R0=1
-                radial(idx_r) = besselj(1, x_r) ./ k_perp_prime(idx_r);
+                radial(idx_r) = (a * b) .* besselj(1, x_r) ./ k_perp_prime(idx_r);
             end
             % k_perp' -> 0 limit: area of ellipse = pi*a*b
             radial(~idx_r) = pi * a * b;
