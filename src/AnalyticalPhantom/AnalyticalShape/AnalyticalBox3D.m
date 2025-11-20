@@ -102,6 +102,10 @@ classdef AnalyticalBox3D < AnalyticalShape3D
                 obj.markShapeChanged();
             end
         end
+
+        function volume_mm3 = calculateVolume(obj)
+            volume_mm3 = obj.Lx_mm * obj.Ly_mm * obj.Lz_mm;
+        end
     end
 
     %% Analytic BODY-frame FT and inside-test
