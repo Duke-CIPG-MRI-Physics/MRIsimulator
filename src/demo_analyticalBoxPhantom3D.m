@@ -1,10 +1,10 @@
-%% DEMO: Analytic 3D MRI Simulation of a Finite Cylinder
+%% DEMO: Analytic 3D MRI Simulation of a Rectangular Box
 %  ------------------------------------------------------
 %  This demo mirrors demo_analyticalSpherePhantom3D to show how to:
 %    1) Build a 3D k-space grid (WORLD coords, cycles/mm)
-%    2) Evaluate the analytic Fourier transform of a finite cylinder
+%    2) Evaluate the analytic Fourier transform of a rectangular box
 %    3) Reconstruct the 3D image using inverse FFT
-%    4) Render the cylinder directly in IMAGE space using
+%    4) Render the box directly in IMAGE space using
 %          estimateImageShape(xMesh,yMesh,zMesh)
 %    5) Compare axial + coronal slices:
 %          (A) FFT–reconstructed
@@ -24,47 +24,44 @@ fprintf('Grid size : %d x %d x %d\n', N(1), N(2), N(3));
 %% 2) Build WORLD k-space grid
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
 
-%% 3) Define cylinder geometry (in WORLD coords)
-% BODY frame: cylinder axis along +z, radius R_mm, length L_mm
-% WORLD frame: specified by center + Euler angles
-R_mm = 70;      % radius [mm]
-L_mm = 120;     % length [mm]
+%% 3) Instantiate analytic box (WORLD coordinates)
+Lx_mm = 140;   % x-length [mm]
+Ly_mm = 90;    % y-length [mm]
+Lz_mm = 70;    % z-length [mm]
 
-center_cyl = [0 0 0];    % world center [mm]
-roll_deg   = 0;          % rotations (deg)
-pitch_deg  = 10;
-yaw_deg    = 20;
+center_box = [0 0 0];
+roll_deg   = 0;
+pitch_deg  = 15;
+yaw_deg    = 25;
 
-cyl = AnalyticalCylinder3D(center_cyl, roll_deg, pitch_deg, yaw_deg, R_mm, L_mm);
+box = AnalyticalBox3D(center_box, roll_deg, pitch_deg, yaw_deg, Lx_mm, Ly_mm, Lz_mm);
 
-%% 4) Compute analytic k-space for the cylinder
-fprintf('Evaluating analytic k-space...\n');
-K = cyl.kspace(kx, ky, kz);
+%% 4) Compute analytic k-space
+fprintf('Evaluating analytic k-space of box...\n');
+K = box.kspace(kx, ky, kz);
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing inverse FFT...\n');
 img_viaKspace = fftshift(ifftn(ifftshift(K)));
 
 %% 6) Build centered WORLD image-domain meshgrids
-[x_vec, y_vec, z_vec, xMesh, yMesh, zMesh] = computeCenteredImageGrid3D(FOV_mm, N);
+[x_vec, y_vec, z_vec, ~, ~, ~] = computeCenteredImageGrid3D(FOV_mm, N);
 midVol = round(N/2);
 
 %% 7) Compute geometry-based “exact” image using estimateImageShape()
 fprintf('Rasterizing shape using estimateImageShape()...\n');
 
-% Extract 2D axial and coronal slices in WORLD coordinates
 [x_ax, y_ax] = ndgrid(x_vec, y_vec);
 z_ax  = z_vec(midVol(3)) * ones(size(x_ax));
 
 [x_cor, z_cor] = ndgrid(x_vec, z_vec);
 y_cor = y_vec(midVol(2)) * ones(size(x_cor));
 
-% Get fractional volumes (0–1)
-frac_ax  = cyl.estimateImageShape(x_ax, y_ax, z_ax);
-frac_cor = cyl.estimateImageShape(x_cor, y_cor, z_cor);
+frac_ax  = box.estimateImageShape(x_ax, y_ax, z_ax);
+frac_cor = box.estimateImageShape(x_cor, y_cor, z_cor);
 
 %% 8) Visualization: *four* images
-figure('Name','Cylinder: FFT vs Image-Space Shape Rendering','Color','w');
+figure('Name','Box: FFT vs Image-Space Shape Rendering','Color','w');
 
 % --- Axial, FFT ---
 subplot(2,2,1);
@@ -98,4 +95,4 @@ set(gca,'YDir','normal');
 xlabel('y (mm)'); ylabel('z (mm)');
 title('Coronal (Direct Shape Rendering)');
 
-sgtitle('Analytic Cylinder: k-space FFT vs Geometry-based Rendering','FontSize',16);
+sgtitle('Analytic Box: k-space FFT vs Geometry-based Rendering','FontSize',16);

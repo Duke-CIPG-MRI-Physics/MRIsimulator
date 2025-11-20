@@ -26,7 +26,6 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
     %
     %   Image-domain helpers:
     %       estimateImageShape(xMesh,yMesh,zMesh)
-    %       calculateImageOutline(xMesh,yMesh,zMesh)
 
     %% Private geometry parameters
     properties (Access = private)
@@ -90,35 +89,6 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
                 obj.L_mm = newLength;
                 obj.markShapeChanged();
             end
-        end
-    end
-
-    %% Outline extraction (same design as sphere)
-    methods
-        function [xOut, yOut, zOut, insideMask] = calculateImageOutline(obj, xMesh, yMesh, zMesh)
-            arguments
-                obj
-                xMesh double
-                yMesh double
-                zMesh double
-            end
-
-            if ~isequal(size(xMesh), size(yMesh), size(zMesh))
-                error('AnalyticalCylinder3D:SizeMismatch', ...
-                    'xMesh, yMesh, zMesh must all have identical sizes.');
-            end
-
-            [frac, insideMask] = obj.estimateImageShape(xMesh, yMesh, zMesh);
-
-            perimMask = bwperim(insideMask);
-
-            xOut = xMesh(perimMask);
-            yOut = yMesh(perimMask);
-            zOut = zMesh(perimMask);
-
-            xOut = xOut(:);
-            yOut = yOut(:);
-            zOut = zOut(:);
         end
     end
 
