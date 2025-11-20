@@ -17,7 +17,6 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
     %
     %   Image-domain helper:
     %       estimateImageShape(xMesh,yMesh,zMesh)   → fraction map
-    %       calculateImageOutline(xMesh,yMesh,zMesh)→ perimeter coords
 
     %% Private geometry parameter
     properties (Access = private)
@@ -83,43 +82,6 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             end
         end
 
-        function [xOutline, yOutline, zOutline, insideMask] = calculateImageOutline(obj, xMesh, yMesh, zMesh)
-            % calculateImageOutline
-            %   Compute the outline of the sphere on an arbitrary slice plane.
-            %
-            %   [xOutline, yOutline, zOutline, insideMask] =
-            %       calculateImageOutline(obj, xMesh, yMesh, zMesh)
-            %
-            %   Uses estimateImageShape() to get per-pixel fraction, then
-            %   extracts the perimeter with bwperim.
-
-            arguments
-                obj
-                xMesh double
-                yMesh double
-                zMesh double
-            end
-
-            if ~isequal(size(xMesh), size(yMesh), size(zMesh))
-                error('AnalyticalSphere3D:calculateImageOutline:SizeMismatch', ...
-                    'xMesh, yMesh, zMesh must all have the same size.');
-            end
-
-            % Fraction map + inside mask (currently 0/1 for this shape)
-            [frac, insideMask] = obj.estimateImageShape(xMesh, yMesh, zMesh);
-
-            % Perimeter of the mask
-            perimMask = bwperim(insideMask);
-
-            % WORLD coordinates of perimeter pixels
-            xOutline = xMesh(perimMask);
-            yOutline = yMesh(perimMask);
-            zOutline = zMesh(perimMask);
-
-            xOutline = xOutline(:);
-            yOutline = yOutline(:);
-            zOutline = zOutline(:);
-        end
     end
 
     %% Analytic BODY-frame FT
