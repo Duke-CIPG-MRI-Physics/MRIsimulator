@@ -15,7 +15,7 @@ clear; clc;
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = 300;               % scalar → 300 mm in x,y,z
-N      = [150 150 50];      % [Nx Ny Nz]; implies anisotropic voxels
+N      = [150 150 150];      % [Nx Ny Nz]; implies anisotropic voxels
 
 Nx = N(1); Ny = N(2); Nz = N(3);
 
@@ -34,7 +34,7 @@ fprintf('Grid size : %d x %d x %d voxels\n', Nx, Ny, Nz);
 % WORLD frame: specified by center + Euler angles
 
 R_mm = 70;      % radius [mm]
-L_mm = 100;     % length [mm]
+L_mm = 290;     % length [mm]
 
 center_cyl = [0 0 0];   % world center [mm]
 roll_deg   = 0;         % rotations (deg)

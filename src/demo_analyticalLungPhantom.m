@@ -1,85 +1,71 @@
 %% 1) FOV and matrix size (scanner-style inputs)
-FOV_mm = [400 400 300];               
-N      = [150 150 80];                % [Nx Ny Nz]
-
+FOV_mm = [400 400 400];
+N      = [150 150 150]; % [Nx Ny Nz]
 resolution = FOV_mm./N;
-
 fprintf('Voxel size: [%.2f %.2f %.2f] mm\n', resolution(1), resolution(2), resolution(3));
 fprintf('Grid size : %d x %d x %d\n', N(1), N(2), N(3));
 
-
 %% Define starting parameters
 % Heart
-heart_center = [0 0 0];      % mm, anywhere you want in WORLD coords
+heart_center = [0 0 0]; % mm, anywhere you want in WORLD coords
 heart_a_mm = 50;
 heart_b_mm = 27;
 heart_c_mm = 30;
-
 heart_roll_deg  = 0;% does nothing
 heart_pitch_deg = -65;
-heart_yaw_deg   = 70; 
-
+heart_yaw_deg   = 70;
 heart = AnalyticalEllipsoid3D(heart_center, ...
-                              heart_roll_deg, heart_pitch_deg, heart_yaw_deg, ...
-                              heart_a_mm, heart_b_mm, heart_c_mm);
-
+heart_roll_deg, heart_pitch_deg, heart_yaw_deg, ...
+heart_a_mm, heart_b_mm, heart_c_mm);
 % Left lung
-lung_a_mm = 140; 
-lung_b_mm = 40; 
+lung_a_mm = 140;
+lung_b_mm = 40;
 lung_c_mm = 40;
-
 lung_roll_R  = 0;
 lung_pitch_R = 95;
 lung_yaw_R   = 0; % does nothing
 lungSeparation = max(lung_b_mm,lung_c_mm) + max(heart_b_mm,heart_c_mm) + 2;
 center_R_mm = [lungSeparation, 0, 0];
-
 rightLung = AnalyticalEllipsoid3D(center_R_mm, ...
-                                  lung_roll_R, lung_pitch_R, lung_yaw_R, ...
-                                  lung_a_mm, lung_b_mm, lung_c_mm);
-
+lung_roll_R, lung_pitch_R, lung_yaw_R, ...
+lung_a_mm, lung_b_mm, lung_c_mm);
 lung_roll_L  = 0;
 lung_pitch_L = 85;
 lung_yaw_L   = 0;
 center_L_mm = [-lungSeparation, 0, 0];
 leftLung = AnalyticalEllipsoid3D(center_L_mm, ...
-                                 lung_roll_L, lung_pitch_L, lung_yaw_L, ...
-                                 lung_a_mm, lung_b_mm, lung_c_mm);
+lung_roll_L, lung_pitch_L, lung_yaw_L, ...
+lung_a_mm, lung_b_mm, lung_c_mm);
 
 % Peripheral Fat
 bodyCenter = [0 0 0];
 fat_roll_deg = 0;
 fat_pitch_deg = 0;
 fat_yaw_deg = 0;
-fatThickness_mm = 1.5;
-patientThickness_outer_mm = (max(lung_b_mm, lung_c_mm)+fatThickness_mm); 
-patientWidth_outer_mm = (lungSeparation+max(lung_b_mm, lung_c_mm)+fatThickness_mm)+1;
+fatThickness_mm = 5;
+tissueThickness_mm = 5;
+patientThickness_outer_mm = (max(lung_b_mm, lung_c_mm)+fatThickness_mm);
+patientWidth_outer_mm = (lungSeparation+max(lung_b_mm, lung_c_mm)+fatThickness_mm+tissueThickness_mm )+2;
 fat_outer = AnalyticalEllipticalCylinder3D(bodyCenter, fat_roll_deg, fat_pitch_deg, fat_yaw_deg, ...
-    patientWidth_outer_mm, patientThickness_outer_mm, FOV_mm(3));
-
+patientWidth_outer_mm, patientThickness_outer_mm, 0.2*FOV_mm(3));
 patientThickness_inner_mm = patientThickness_outer_mm - 2*fatThickness_mm;
 patientWidth_inner_mm = patientWidth_outer_mm - 2*fatThickness_mm;
 fat_inner = AnalyticalEllipticalCylinder3D(bodyCenter, fat_roll_deg, fat_pitch_deg, fat_yaw_deg, ...
-    patientWidth_inner_mm, patientThickness_inner_mm, FOV_mm(3));
+patientWidth_inner_mm, patientThickness_inner_mm, 0.2*FOV_mm(3));
 
 %% 2) Build WORLD k-space grid
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
 
 %% 4) Compute analytic k-space for the cylinder
 fprintf('Evaluating analytic k-space...\n');
-% K = heart.kspace(kx, ky, kz) + ...
-%     rightLung.kspace(kx, ky, kz) + ...
-%     leftLung.kspace(kx, ky, kz) + ...
-%     fat_outer.kspace(kx, ky, kz);
-
-K =     fat_outer.kspace(kx, ky, kz);
+K = heart.kspace(kx, ky, kz)*heart.calculateVolume() + ...
+rightLung.kspace(kx, ky, kz)*rightLung.calculateVolume() + ...
+leftLung.kspace(kx, ky, kz)*leftLung.calculateVolume() + ...
+fat_outer.kspace(kx, ky, kz)*fat_outer.calculateVolume();
+% K =     fat_outer.kspace(kx, ky, kz);
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
 img_viaKspace = fftshift(ifftn(ifftshift(K)));
-
-
-
-
 %% display
 imslice(abs(img_viaKspace))
