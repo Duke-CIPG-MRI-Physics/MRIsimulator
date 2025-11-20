@@ -69,6 +69,28 @@ patientWidth_inner_mm = patientWidth_outer_mm - 2*fatThickness_mm;
 fat_inner = AnalyticalEllipticalCylinder3D(bodyCenter, fat_roll_deg, fat_pitch_deg, fat_yaw_deg, ...
     patientWidth_inner_mm, patientThickness_inner_mm, 0.9*FOV_mm(3));
 
+% right breast
+breast_gap_mm = 50;
+breast_roll_deg = 0;
+breast_pitch_deg = 90;
+breast_yaw_deg = 90;
+
+breast_radius_mm = 65;
+breast_depth_mm = 200;
+
+right_breast_center = [breast_radius_mm+0.5*breast_gap_mm, ...
+    bodyShift + 0.5*(breast_depth_mm) + patientThickness_outer_mm, ...
+    0];
+
+breast_right = AnalyticalCylinder3D(right_breast_center, breast_roll_deg, breast_pitch_deg, breast_yaw_deg, ...
+    breast_radius_mm, breast_depth_mm);
+
+% left breast
+left_breast_center = [-right_breast_center(1) right_breast_center(2:3)];
+breast_left = AnalyticalCylinder3D(left_breast_center, breast_roll_deg, breast_pitch_deg, breast_yaw_deg, ...
+    breast_radius_mm, breast_depth_mm);
+
+
 %% 2) Build WORLD k-space grid
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
 
@@ -78,12 +100,15 @@ fatIntensity = 2;
 tissueIntensity = 0.5;
 heartIntensity = 1;
 lungIntensity = 0.1;
+breast_intensity = 0.5;
 K = fatIntensity*(fat_outer.kspace(kx, ky, kz) - fat_inner.kspace(kx, ky, kz)) + ...
     tissueIntensity*(fat_inner.kspace(kx, ky, kz) - ...
     (heart.kspace(kx, ky, kz) + rightLung.kspace(kx, ky, kz) + leftLung.kspace(kx, ky, kz))) + ...
     heartIntensity*heart.kspace(kx, ky, kz) + ...
     lungIntensity*rightLung.kspace(kx, ky, kz) + ...
-    lungIntensity*leftLung.kspace(kx, ky, kz);
+    lungIntensity*leftLung.kspace(kx, ky, kz) + ...
+    breast_intensity*breast_left.kspace(kx, ky, kz) + ...
+    breast_intensity*breast_right.kspace(kx, ky, kz);
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
