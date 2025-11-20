@@ -13,6 +13,7 @@ classdef (Abstract) AnalyticalShape3D < handle
     %     • Require subclasses to implement:
     %           bodyKspace(kx_body, ky_body, kz_body)
     %           percentInsideShape(xb, yb, zb)
+    %           calculateVolume()
     %
     %   BODY frame:
     %       Shape is centered at (0,0,0), oriented with z-axis “up”.
@@ -357,5 +358,12 @@ classdef (Abstract) AnalyticalShape3D < handle
         %         fractions in [0,1], but estimateImageShape currently
         %         binarizes to inside/outside.
         imageShape = percentInsideShape(obj, xb, yb, zb);
+    end
+
+    %% Abstract geometry queries -------------------------------------------
+    methods (Abstract)
+        % calculateVolume
+        %   Return the shape volume in mm^3.
+        volume_mm3 = calculateVolume(obj);
     end
 end
