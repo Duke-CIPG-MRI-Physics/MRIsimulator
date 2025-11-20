@@ -45,17 +45,17 @@ fprintf('Performing inverse FFT...\n');
 img_viaKspace = fftshift(ifftn(ifftshift(K)));
 
 %% 6) Build centered WORLD image-domain meshgrids
-[x_vec, y_vec, z_vec, ~, ~, ~] = computeCenteredImageGrid3D(FOV_mm, N);
+[x_vec, y_vec, z_vec, xMesh, yMesh, zMesh] = computeCenteredImageGrid3D(FOV_mm, N);
 midVol = round(N/2);
 
 %% 7) Compute geometry-based “exact” image using estimateImageShape()
 fprintf('Rasterizing shape using estimateImageShape()...\n');
 
-[x_ax, y_ax] = ndgrid(x_vec, y_vec);
-z_ax  = z_vec(midVol(3)) * ones(size(x_ax));
+[x_ax, y_ax] = ndgrid(x_vec, y_vec); %#ok<NASGU>
+z_ax  = z_vec(midVol(3)) * ones(size(x_ax)); %#ok<NASGU>
 
-[x_cor, z_cor] = ndgrid(x_vec, z_vec);
-y_cor = y_vec(midVol(2)) * ones(size(x_cor));
+[x_cor, z_cor] = ndgrid(x_vec, z_vec); %#ok<NASGU>
+y_cor = y_vec(midVol(2)) * ones(size(x_cor)); %#ok<NASGU>
 
 frac_ax  = box.estimateImageShape(x_ax, y_ax, z_ax);
 frac_cor = box.estimateImageShape(x_cor, y_cor, z_cor);

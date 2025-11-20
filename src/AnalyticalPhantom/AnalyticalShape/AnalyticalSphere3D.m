@@ -82,6 +82,11 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             end
         end
 
+        function volume_mm3 = calculateVolume(obj)
+            R = obj.R_mm;
+            volume_mm3 = (4/3) * pi * R^3;
+        end
+
     end
 
     %% Analytic BODY-frame FT
