@@ -1,5 +1,5 @@
 %% 1) FOV and matrix size (scanner-style inputs)
-FOV_mm = [300 300 300];               % 300 mm cube
+FOV_mm = [400 400 300];               
 N      = [150 150 80];                % [Nx Ny Nz]
 
 resolution = FOV_mm./N;
@@ -46,14 +46,33 @@ leftLung = AnalyticalEllipsoid3D(center_L_mm, ...
                                  lung_roll_L, lung_pitch_L, lung_yaw_L, ...
                                  lung_a_mm, lung_b_mm, lung_c_mm);
 
+% Peripheral Fat
+bodyCenter = [0 0 0];
+fat_roll_deg = 0;
+fat_pitch_deg = 0;
+fat_yaw_deg = 0;
+fatThickness_mm = 1.5;
+patientThickness_outer_mm = (max(lung_b_mm, lung_c_mm)+fatThickness_mm); 
+patientWidth_outer_mm = (lungSeparation+max(lung_b_mm, lung_c_mm)+fatThickness_mm)+1;
+fat_outer = AnalyticalEllipticalCylinder3D(bodyCenter, fat_roll_deg, fat_pitch_deg, fat_yaw_deg, ...
+    patientWidth_outer_mm, patientThickness_outer_mm, FOV_mm(3));
+
+patientThickness_inner_mm = patientThickness_outer_mm - 2*fatThickness_mm;
+patientWidth_inner_mm = patientWidth_outer_mm - 2*fatThickness_mm;
+fat_inner = AnalyticalEllipticalCylinder3D(bodyCenter, fat_roll_deg, fat_pitch_deg, fat_yaw_deg, ...
+    patientWidth_inner_mm, patientThickness_inner_mm, FOV_mm(3));
+
 %% 2) Build WORLD k-space grid
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
 
 %% 4) Compute analytic k-space for the cylinder
 fprintf('Evaluating analytic k-space...\n');
-K = heart.kspace(kx, ky, kz) + ...
-    rightLung.kspace(kx, ky, kz) + ...
-    leftLung.kspace(kx, ky, kz);
+% K = heart.kspace(kx, ky, kz) + ...
+%     rightLung.kspace(kx, ky, kz) + ...
+%     leftLung.kspace(kx, ky, kz) + ...
+%     fat_outer.kspace(kx, ky, kz);
+
+K =     fat_outer.kspace(kx, ky, kz);
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');

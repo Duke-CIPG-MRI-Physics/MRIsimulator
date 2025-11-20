@@ -22,7 +22,9 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
 
     %% Constructor
     methods
-        function obj = AnalyticalEllipticalCylinder3D(center, roll_deg, pitch_deg, yaw_deg, a_mm, b_mm, L_mm)
+        function obj = AnalyticalEllipticalCylinder3D(center, ...
+                roll_deg, pitch_deg, yaw_deg, ...
+                a_mm, b_mm, L_mm)
             % Constructor
             %
             %   obj = AnalyticalEllipticalCylinder3D()
