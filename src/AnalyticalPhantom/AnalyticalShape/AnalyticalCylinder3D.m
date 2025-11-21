@@ -81,11 +81,6 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
             end
         end
 
-        function volume_mm3 = calculateVolume(obj)
-            R = obj.R_mm;
-            L = obj.L_mm;
-            volume_mm3 = pi * R^2 * L;
-        end
     end
 
     %% BODY-frame analytic FT and inside-test
