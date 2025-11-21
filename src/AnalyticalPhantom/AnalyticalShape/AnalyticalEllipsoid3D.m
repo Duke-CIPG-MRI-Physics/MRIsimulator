@@ -93,12 +93,6 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             end
         end
 
-        function volume_mm3 = calculateVolume(obj)
-            a = obj.a_mm;
-            b = obj.b_mm;
-            c = obj.c_mm;
-            volume_mm3 = (4/3) * pi * a * b * c;
-        end
     end
 
     %% Analytic BODY-frame FT and inside-test
