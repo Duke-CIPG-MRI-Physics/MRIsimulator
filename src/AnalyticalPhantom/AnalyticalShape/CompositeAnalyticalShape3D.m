@@ -19,7 +19,6 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     %   Methods:
     %       addComponent(shape)      % append to additiveComponents
     %       subtractComponent(shape) % append to subtractiveComponents
-    %       kspace_shapeOnly(kx, ky, kz) % sum additive minus subtractive FTs
 
     properties (Access = protected)
         additiveComponents (1,:) AnalyticalShape3D = AnalyticalShape3D.empty(1,0);
@@ -67,38 +66,78 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
         end
     end
 
-    methods
-        function S = kspace_shapeOnly(obj, kx, ky, kz)
-            arguments
-                obj
-                kx double
-                ky double
-                kz double
-            end
-
-            if ~isequal(size(kx), size(ky), size(kz))
-                error('CompositeAnalyticalShape3D:kspace_shapeOnly:SizeMismatch', ...
-                    'kx, ky, kz must have identical sizes.');
-            end
-
-            S = zeros(size(kx));
-
-            for idx = 1:numel(obj.additiveComponents)
-                S = S + obj.additiveComponents(idx).kspace_shapeOnly(kx, ky, kz);
-            end
-
-            for idx = 1:numel(obj.subtractiveComponents)
-                S = S - obj.subtractiveComponents(idx).kspace_shapeOnly(kx, ky, kz);
-            end
-        end
-    end
-
     methods (Access = private)
         function registerComponentListeners(obj, components)
             for idx = 1:numel(components)
                 comp = components(idx);
                 lh = comp.addShapeChangedListener(@(~,~) obj.markShapeChanged()); %#ok<AGROW>
                 obj.componentListeners(end+1) = lh;
+            end
+        end
+    end
+
+    methods (Access = protected)
+        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
+            arguments
+                obj
+                kx_body double
+                ky_body double
+                kz_body double
+            end
+
+            if ~isequal(size(kx_body), size(ky_body), size(kz_body))
+                error('CompositeAnalyticalShape3D:bodyKspace:SizeMismatch', ...
+                    'kx_body, ky_body, kz_body must have identical sizes.');
+            end
+
+            S = zeros(size(kx_body));
+
+            for idx = 1:numel(obj.additiveComponents)
+                S = S + obj.additiveComponents(idx).kspace_shapeOnly(kx_body, ky_body, kz_body);
+            end
+
+            for idx = 1:numel(obj.subtractiveComponents)
+                S = S - obj.subtractiveComponents(idx).kspace_shapeOnly(kx_body, ky_body, kz_body);
+            end
+        end
+
+        function mask = percentInsideShape(obj, xb, yb, zb)
+            additiveMask = false(size(xb));
+            for idx = 1:numel(obj.additiveComponents)
+                additiveMask = additiveMask | (obj.additiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
+            end
+
+            subtractiveMask = false(size(xb));
+            for idx = 1:numel(obj.subtractiveComponents)
+                subtractiveMask = subtractiveMask | (obj.subtractiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
+            end
+
+            mask = additiveMask & ~subtractiveMask;
+        end
+    end
+
+    methods
+        function image = estimateImage(obj, xMesh, yMesh, zMesh)
+            arguments
+                obj
+                xMesh double
+                yMesh double
+                zMesh double
+            end
+
+            if ~isequal(size(xMesh), size(yMesh), size(zMesh))
+                error('CompositeAnalyticalShape3D:estimateImage:SizeMismatch', ...
+                    'xMesh, yMesh, zMesh must have identical sizes.');
+            end
+
+            image = zeros(size(xMesh));
+
+            for idx = 1:numel(obj.additiveComponents)
+                image = image + obj.additiveComponents(idx).estimateImage(xMesh, yMesh, zMesh);
+            end
+
+            for idx = 1:numel(obj.subtractiveComponents)
+                image = image - obj.subtractiveComponents(idx).estimateImage(xMesh, yMesh, zMesh);
             end
         end
     end

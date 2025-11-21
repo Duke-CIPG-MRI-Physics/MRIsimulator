@@ -14,7 +14,6 @@ classdef (Abstract) AnalyticalShape3D < handle
     %     • Require subclasses to implement:
     %           bodyKspace(kx_body, ky_body, kz_body)
     %           percentInsideShape(xb, yb, zb)
-    %           calculateVolume()
     %
     %   BODY frame:
     %       Shape is centered at (0,0,0), oriented with z-axis “up”.
@@ -354,6 +353,14 @@ classdef (Abstract) AnalyticalShape3D < handle
             % Coerce to logical 0/1 mask
             imageShape = (mask ~= 0);
         end
+
+        function image = estimateImage(obj, xMesh, yMesh, zMesh)
+            % estimateImage
+            %   Estimate image intensity by masking the shape and scaling by
+            %   the shape's intensity.
+
+            image = obj.getIntensity() .* obj.estimateImageShape(xMesh, yMesh, zMesh);
+        end
     end
 
     %% Listener helpers -----------------------------------------------------
@@ -411,10 +418,4 @@ classdef (Abstract) AnalyticalShape3D < handle
         imageShape = percentInsideShape(obj, xb, yb, zb);
     end
 
-    %% Abstract geometry queries -------------------------------------------
-    methods (Abstract)
-        % calculateVolume
-        %   Return the shape volume in mm^3.
-        volume_mm3 = calculateVolume(obj);
-    end
 end
