@@ -36,9 +36,7 @@ pitch_deg = 0;
 yaw_deg   = 0;
 
 % Requires AnalyticalCylinder3D + AnalyticalShape3D on path
-cyl = AnalyticalCylinder3D(center_cyl, ...
-                                        roll_deg, pitch_deg, yaw_deg, ...
-                                        R_mm, L_mm);
+cyl = AnalyticalCylinder3D(R_mm, L_mm, [], center_cyl, [roll_deg, pitch_deg, yaw_deg]);
 
 %% Compute analytic k-space for cylinder
 fprintf('Evaluating analytic k-space (cylinder)...\n');

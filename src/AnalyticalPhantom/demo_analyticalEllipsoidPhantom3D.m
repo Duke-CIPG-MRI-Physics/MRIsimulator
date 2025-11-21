@@ -34,7 +34,7 @@ roll_deg     = 10;
 pitch_deg    = 20;
 yaw_deg      = 35;
 
-ellip = AnalyticalEllipsoid3D(center_ellip, roll_deg, pitch_deg, yaw_deg, a_mm, b_mm, c_mm);
+ellip = AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, [], center_ellip, [roll_deg, pitch_deg, yaw_deg]);
 
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of ellipsoid...\n');

@@ -42,9 +42,7 @@ pitch_deg  = 0;
 yaw_deg    = 0;
 
 % Create the analytic cylinder shape
-cyl = AnalyticalCylinder3D(center_cyl, ...
-                           roll_deg, pitch_deg, yaw_deg, ...
-                           R_mm, L_mm);
+cyl = AnalyticalCylinder3D(R_mm, L_mm, [], center_cyl, [roll_deg, pitch_deg, yaw_deg]);
 
 % (Optional) Example of updating geometry:
 % cyl.setRadius(30);

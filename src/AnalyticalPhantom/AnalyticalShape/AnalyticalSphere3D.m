@@ -25,29 +25,20 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
 
     %% Constructor
     methods
-        function obj = AnalyticalSphere3D(center, roll_deg, pitch_deg, yaw_deg, R_mm)
+        function obj = AnalyticalSphere3D(R_mm, intensity, center, rollPitchYaw)
             % Constructor
             %
             %   obj = AnalyticalSphere3D()
-            %   obj = AnalyticalSphere3D(center)
-            %   obj = AnalyticalSphere3D(center, roll, pitch, yaw)
-            %   obj = AnalyticalSphere3D(center, roll, pitch, yaw, R_mm)
+            %   obj = AnalyticalSphere3D(R_mm)
+            %   obj = AnalyticalSphere3D(R_mm, intensity)
+            %   obj = AnalyticalSphere3D(R_mm, intensity, center)
+            %   obj = AnalyticalSphere3D(R_mm, intensity, center, rollPitchYaw)
 
-            % Base construction (default pose)
-            obj@AnalyticalShape3D();
-
-            % Center (translation matters)
-            if nargin >= 1 && ~isempty(center)
-                obj.setCenter(center);
-            end
-
-            % Orientation is accepted for API symmetry but ignored (overridden).
-            if nargin >= 4
-                obj.setOrientation(roll_deg, pitch_deg, yaw_deg);
-            end
+            % Base construction (pose + intensity)
+            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
 
             % Radius (geometry matters)
-            if nargin >= 5 && ~isempty(R_mm)
+            if nargin >= 1 && ~isempty(R_mm)
                 obj.setRadius(R_mm);
             end
         end
@@ -57,9 +48,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
     methods
         function setOrientation(obj, ~, ~, ~)
             % For a sphere, orientation does not change the shape or its FT.
-            obj.roll_deg  = 0;
-            obj.pitch_deg = 0;
-            obj.yaw_deg   = 0;
+            obj.setRollPitchYaw([0 0 0]);
             % No markShapeChanged(): orientation irrelevant for sphere.
         end
     end
