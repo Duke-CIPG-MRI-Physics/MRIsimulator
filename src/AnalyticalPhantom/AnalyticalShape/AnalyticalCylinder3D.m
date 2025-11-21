@@ -35,25 +35,15 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
 
     %% Constructor
     methods
-        function obj = AnalyticalCylinder3D(center, roll_deg, pitch_deg, yaw_deg, R_mm, L_mm)
+        function obj = AnalyticalCylinder3D(R_mm, L_mm, intensity, center, rollPitchYaw)
             % Constructor follows the same pattern as AnalyticalSphere3D
-            obj@AnalyticalShape3D();  % must be first, unconditional
-
-            % Optional center
-            if nargin >= 1 && ~isempty(center)
-                obj.setCenter(center);
-            end
-
-            % Optional orientation
-            if nargin >= 4 && ~isempty(roll_deg)
-                obj.setOrientation(roll_deg, pitch_deg, yaw_deg);
-            end
+            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);  % must be first, unconditional
 
             % Optional geometry
-            if nargin >= 5 && ~isempty(R_mm)
+            if nargin >= 1 && ~isempty(R_mm)
                 obj.setRadius(R_mm);
             end
-            if nargin >= 6 && ~isempty(L_mm)
+            if nargin >= 2 && ~isempty(L_mm)
                 obj.setLength(L_mm);
             end
         end

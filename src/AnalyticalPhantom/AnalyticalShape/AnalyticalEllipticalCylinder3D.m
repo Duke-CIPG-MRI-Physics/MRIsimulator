@@ -9,7 +9,7 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
     %
     %   World-frame pose handled by AnalyticalShape3D:
     %     - center: [x0,y0,z0] in mm
-    %     - roll_deg, pitch_deg, yaw_deg: orientation (deg), body -> world
+    %     - rollPitchYaw: [roll pitch yaw] in degrees, body -> world
     %
     %   kx, ky, kz in cycles/mm; phase term exp(-i 2*pi * k · r)
 
@@ -22,33 +22,24 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
 
     %% Constructor
     methods
-        function obj = AnalyticalEllipticalCylinder3D(center, ...
-                roll_deg, pitch_deg, yaw_deg, ...
-                a_mm, b_mm, L_mm)
+        function obj = AnalyticalEllipticalCylinder3D(a_mm, b_mm, L_mm, intensity, center, rollPitchYaw)
             % Constructor
             %
             %   obj = AnalyticalEllipticalCylinder3D()
-            %   obj = AnalyticalEllipticalCylinder3D(center)
-            %   obj = AnalyticalEllipticalCylinder3D(center, roll, pitch, yaw)
-            %   obj = AnalyticalEllipticalCylinder3D(center, roll, pitch, yaw, a_mm, b_mm, L_mm)
+            %   obj = AnalyticalEllipticalCylinder3D(a_mm, b_mm, L_mm)
+            %   obj = AnalyticalEllipticalCylinder3D(a_mm, b_mm, L_mm, intensity)
+            %   obj = AnalyticalEllipticalCylinder3D(a_mm, b_mm, L_mm, intensity, center)
+            %   obj = AnalyticalEllipticalCylinder3D(a_mm, b_mm, L_mm, intensity, center, rollPitchYaw)
 
-            obj@AnalyticalShape3D();
+            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
 
-            if nargin >= 1 && ~isempty(center)
-                obj.setCenter(center);
-            end
-
-            if nargin >= 4 && ~isempty(roll_deg)
-                obj.setOrientation(roll_deg, pitch_deg, yaw_deg);
-            end
-
-            if nargin >= 5 && ~isempty(a_mm)
+            if nargin >= 1 && ~isempty(a_mm)
                 obj.setA(a_mm);
             end
-            if nargin >= 6 && ~isempty(b_mm)
+            if nargin >= 2 && ~isempty(b_mm)
                 obj.setB(b_mm);
             end
-            if nargin >= 7 && ~isempty(L_mm)
+            if nargin >= 3 && ~isempty(L_mm)
                 obj.setLength(L_mm);
             end
         end

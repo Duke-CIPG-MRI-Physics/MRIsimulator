@@ -10,7 +10,7 @@ classdef AnalyticalBox3D < AnalyticalShape3D
     %
     %   WORLD pose handled by AnalyticalShape3D:
     %     - center: [x0,y0,z0] in mm
-    %     - roll_deg, pitch_deg, yaw_deg: orientation (deg), body -> world
+    %     - rollPitchYaw: [roll pitch yaw] in degrees, body -> world
     %
     %   kx, ky, kz in cycles/mm; phase term exp(-i 2*pi * k · r)
 
@@ -23,31 +23,24 @@ classdef AnalyticalBox3D < AnalyticalShape3D
 
     %% Constructor
     methods
-        function obj = AnalyticalBox3D(center, roll_deg, pitch_deg, yaw_deg, Lx_mm, Ly_mm, Lz_mm)
+        function obj = AnalyticalBox3D(Lx_mm, Ly_mm, Lz_mm, intensity, center, rollPitchYaw)
             % Constructor
             %
             %   obj = AnalyticalBox3D()
-            %   obj = AnalyticalBox3D(center)
-            %   obj = AnalyticalBox3D(center, roll, pitch, yaw)
-            %   obj = AnalyticalBox3D(center, roll, pitch, yaw, Lx, Ly, Lz)
+            %   obj = AnalyticalBox3D(Lx, Ly, Lz)
+            %   obj = AnalyticalBox3D(Lx, Ly, Lz, intensity)
+            %   obj = AnalyticalBox3D(Lx, Ly, Lz, intensity, center)
+            %   obj = AnalyticalBox3D(Lx, Ly, Lz, intensity, center, rollPitchYaw)
 
-            obj@AnalyticalShape3D();
+            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
 
-            if nargin >= 1 && ~isempty(center)
-                obj.setCenter(center);
-            end
-
-            if nargin >= 4 && ~isempty(roll_deg)
-                obj.setOrientation(roll_deg, pitch_deg, yaw_deg);
-            end
-
-            if nargin >= 5 && ~isempty(Lx_mm)
+            if nargin >= 1 && ~isempty(Lx_mm)
                 obj.setLengthX(Lx_mm);
             end
-            if nargin >= 6 && ~isempty(Ly_mm)
+            if nargin >= 2 && ~isempty(Ly_mm)
                 obj.setLengthY(Ly_mm);
             end
-            if nargin >= 7 && ~isempty(Lz_mm)
+            if nargin >= 3 && ~isempty(Lz_mm)
                 obj.setLengthZ(Lz_mm);
             end
         end

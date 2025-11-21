@@ -7,7 +7,7 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
     %
     %   WORLD pose handled by AnalyticalShape3D:
     %     - center: [x0,y0,z0] in mm
-    %     - roll_deg, pitch_deg, yaw_deg: orientation (deg), body -> world
+    %     - rollPitchYaw: [roll pitch yaw] in degrees, body -> world
     %
     %   kx, ky, kz in cycles/mm; phase term exp(-i 2*pi * k · r)
 
@@ -20,31 +20,24 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
 
     %% Constructor
     methods
-        function obj = AnalyticalEllipsoid3D(center, roll_deg, pitch_deg, yaw_deg, a_mm, b_mm, c_mm)
+        function obj = AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, intensity, center, rollPitchYaw)
             % Constructor
             %
             %   obj = AnalyticalEllipsoid3D()
-            %   obj = AnalyticalEllipsoid3D(center)
-            %   obj = AnalyticalEllipsoid3D(center, roll, pitch, yaw)
-            %   obj = AnalyticalEllipsoid3D(center, roll, pitch, yaw, a_mm, b_mm, c_mm)
+            %   obj = AnalyticalEllipsoid3D(a_mm, b_mm, c_mm)
+            %   obj = AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, intensity)
+            %   obj = AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, intensity, center)
+            %   obj = AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, intensity, center, rollPitchYaw)
 
-            obj@AnalyticalShape3D();
+            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
 
-            if nargin >= 1 && ~isempty(center)
-                obj.setCenter(center);
-            end
-
-            if nargin >= 4 && ~isempty(roll_deg)
-                obj.setOrientation(roll_deg, pitch_deg, yaw_deg);
-            end
-
-            if nargin >= 5 && ~isempty(a_mm)
+            if nargin >= 1 && ~isempty(a_mm)
                 obj.setA(a_mm);
             end
-            if nargin >= 6 && ~isempty(b_mm)
+            if nargin >= 2 && ~isempty(b_mm)
                 obj.setB(b_mm);
             end
-            if nargin >= 7 && ~isempty(c_mm)
+            if nargin >= 3 && ~isempty(c_mm)
                 obj.setC(c_mm);
             end
         end

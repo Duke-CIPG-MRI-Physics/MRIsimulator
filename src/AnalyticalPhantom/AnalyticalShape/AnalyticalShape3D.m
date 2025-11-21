@@ -8,6 +8,7 @@ classdef (Abstract) AnalyticalShape3D < handle
     %     • Convert WORLD → BODY k-space coordinates
     %     • Convert WORLD → BODY spatial coordinates
     %     • Apply WORLD translation phase ramp
+    %     • Store an intensity multiplier for k-space scaling
     %     • Fire a unified shapeChanged event whenever geometry changes
     %     • Provide estimateImageShape() for slice-wise shape masks
     %     • Require subclasses to implement:
@@ -19,8 +20,8 @@ classdef (Abstract) AnalyticalShape3D < handle
     %       Shape is centered at (0,0,0), oriented with z-axis “up”.
     %
     %   WORLD frame:
-    %       • center     = [x0,y0,z0] (mm)
-    %       • Euler angles (deg): roll (x), pitch (y), yaw (z)
+    %       • center        = [x0,y0,z0] (mm)
+    %       • rollPitchYaw = [roll pitch yaw] (deg)
     %
     %   Fourier convention:
     %       S(k) = ∭ ρ(r) exp(-i 2π k·r) dV
@@ -37,36 +38,38 @@ classdef (Abstract) AnalyticalShape3D < handle
     end
 
     %% Properties -----------------------------------------------------------
-    properties
-        center   (1,3) double = [0 0 0];   % world center [mm]
-        roll_deg (1,1) double = 0;         % rotation about x (deg)
-        pitch_deg(1,1) double = 0;         % rotation about y (deg)
-        yaw_deg  (1,1) double = 0;         % rotation about z (deg)
+    properties (Access = private)
+        center (1,3) double = [0 0 0];          % world center [mm]
+        shapeIntensity (1,1) double = 1;        % dimensionless multiplier
+        rollPitchYaw (1,3) double = [0 0 0];    % [roll pitch yaw] in deg
     end
 
     %% Constructor ----------------------------------------------------------
     methods
-        function obj = AnalyticalShape3D(center, roll_deg, pitch_deg, yaw_deg)
+        function obj = AnalyticalShape3D(intensity, center, rollPitchYaw)
             % AnalyticalShape3D constructor.
             %
             %   obj = AnalyticalShape3D()
-            %   obj = AnalyticalShape3D(center)
-            %   obj = AnalyticalShape3D(center, roll, pitch, yaw)
+            %   obj = AnalyticalShape3D(intensity)
+            %   obj = AnalyticalShape3D(intensity, center)
+            %   obj = AnalyticalShape3D(intensity, center, rollPitchYaw)
             %
-            %   center   : [1x3] WORLD center [mm]
-            %   roll_deg : rotation about x (deg)
-            %   pitch_deg: rotation about y (deg)
-            %   yaw_deg  : rotation about z (deg)
+            %   intensity     : optional scaling factor (default: 1)
+            %   center        : [1x3] WORLD center [mm] (default: [0 0 0])
+            %   rollPitchYaw  : [1x3] Euler angles [deg] (default: [0 0 0])
 
-            if nargin >= 1 && ~isempty(center)
+            if nargin >= 1 && ~isempty(intensity)
+                obj.setIntensity(intensity);
+            else
+                obj.setIntensity(1);
+            end
+
+            if nargin >= 2 && ~isempty(center)
                 obj.setCenter(center);
             end
 
-            if nargin == 4
-                obj.setOrientation(roll_deg, pitch_deg, yaw_deg);
-            elseif nargin > 1 && nargin ~= 4
-                error('AnalyticalShape3D:Constructor', ...
-                    'Provide either no orientation or all three Euler angles.');
+            if nargin >= 3 && ~isempty(rollPitchYaw)
+                obj.setRollPitchYaw(rollPitchYaw);
             end
         end
     end
@@ -77,9 +80,10 @@ classdef (Abstract) AnalyticalShape3D < handle
             % calculateRotationMatrix
             %   BODY→WORLD rotation matrix from Euler angles (deg).
 
-            r = deg2rad(obj.roll_deg);
-            p = deg2rad(obj.pitch_deg);
-            y = deg2rad(obj.yaw_deg);
+            rpy = obj.getRollPitchYaw();
+            r = deg2rad(rpy(1));
+            p = deg2rad(rpy(2));
+            y = deg2rad(rpy(3));
 
             Rx = [1 0 0;
                   0 cos(r) -sin(r);
@@ -164,8 +168,23 @@ classdef (Abstract) AnalyticalShape3D < handle
             end
         end
 
+        function setRollPitchYaw(obj, newRollPitchYaw)
+            % setRollPitchYaw  Set BODY→WORLD Euler angles (deg) as a vector.
+            arguments
+                obj
+                newRollPitchYaw (1,3) double {mustBeFinite}
+            end
+
+            newRollPitchYaw = double(newRollPitchYaw(:)).';
+
+            if ~isequal(obj.rollPitchYaw, newRollPitchYaw)
+                obj.rollPitchYaw = newRollPitchYaw;
+                obj.markShapeChanged();
+            end
+        end
+
         function setOrientation(obj, roll_deg, pitch_deg, yaw_deg)
-            % setOrientation  Set BODY→WORLD Euler angles (deg).
+            % setOrientation  Set BODY→WORLD Euler angles (deg) using scalars.
             arguments
                 obj
                 roll_deg  (1,1) double {mustBeFinite}
@@ -173,15 +192,34 @@ classdef (Abstract) AnalyticalShape3D < handle
                 yaw_deg   (1,1) double {mustBeFinite}
             end
 
-            new = [roll_deg pitch_deg yaw_deg];
-            old = [obj.roll_deg obj.pitch_deg obj.yaw_deg];
+            obj.setRollPitchYaw([roll_deg pitch_deg yaw_deg]);
+        end
 
-            if ~isequal(old, new)
-                obj.roll_deg  = roll_deg;
-                obj.pitch_deg = pitch_deg;
-                obj.yaw_deg   = yaw_deg;
+        function center = getCenter(obj)
+            center = obj.center;
+        end
+
+        function rpy = getRollPitchYaw(obj)
+            rpy = obj.rollPitchYaw;
+        end
+    end
+
+    %% Intensity helpers ----------------------------------------------------
+    methods
+        function setIntensity(obj, newIntensity)
+            arguments
+                obj
+                newIntensity (1,1) double {mustBeFinite}
+            end
+
+            if obj.shapeIntensity ~= newIntensity
+                obj.shapeIntensity = newIntensity;
                 obj.markShapeChanged();
             end
+        end
+
+        function intensity = getIntensity(obj)
+            intensity = obj.shapeIntensity;
         end
     end
 
@@ -189,9 +227,20 @@ classdef (Abstract) AnalyticalShape3D < handle
     methods
         function S = kspace(obj, kx, ky, kz)
             % kspace
-            %   Evaluate WORLD-frame analytic 3D FT of the shape.
+            %   Evaluate WORLD-frame analytic 3D FT of the shape, including
+            %   the shapeIntensity scaling factor.
+
+            S = obj.getIntensity() .* obj.kspace_shapeOnly(kx, ky, kz);
+        end
+    end
+
+    methods
+        function S = kspace_shapeOnly(obj, kx, ky, kz)
+            % kspace_shapeOnly
+            %   Evaluate WORLD-frame analytic 3D FT of the shape geometry
+            %   (no intensity scaling).
             %
-            %   S = kspace(obj, kx, ky, kz)
+            %   S = kspace_shapeOnly(obj, kx, ky, kz)
             %
             %   Inputs:
             %       kx,ky,kz : WORLD freqs [cycles/mm], same size.
@@ -216,7 +265,8 @@ classdef (Abstract) AnalyticalShape3D < handle
                       'kx, ky, kz must have identical sizes.');
             end
 
-            noRotation = ~any([obj.roll_deg obj.pitch_deg obj.yaw_deg]);
+            rpy = obj.getRollPitchYaw();
+            noRotation = ~any(rpy);
 
             if noRotation
                 % Fast path: BODY and WORLD frames align
@@ -240,10 +290,11 @@ classdef (Abstract) AnalyticalShape3D < handle
 
             % WORLD translation phase
             if any(obj.center ~= 0)
+                c = obj.getCenter();
                 phase = exp(-1i * 2*pi * ( ...
-                        kx * obj.center(1) + ...
-                        ky * obj.center(2) + ...
-                        kz * obj.center(3)));
+                        kx * c(1) + ...
+                        ky * c(2) + ...
+                        kz * c(3)));
                 S = S_body .* phase;
             else
                 S = S_body;

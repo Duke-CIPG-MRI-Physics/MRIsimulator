@@ -28,7 +28,7 @@ fprintf('Grid size : %d x %d x %d\n', N(1), N(2), N(3));
 R_mm = 140;
 center_sph = [0 0 0];
 
-sph = AnalyticalSphere3D(center_sph, 0, 0, 0, R_mm);
+sph = AnalyticalSphere3D(R_mm, [], center_sph, [0 0 0]);
 
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of sphere...\n');
