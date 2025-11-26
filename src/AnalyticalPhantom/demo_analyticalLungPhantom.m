@@ -110,18 +110,18 @@ vessel_ap_unenhanced = AnalyticalCylinder3D(vessel_radius_mm, unenhancedLength, 
 vessel_ap_enhanced = AnalyticalCylinder3D(vessel_radius_mm, enhancedLength, 2.5, ...
     enhancedCenter, [ap_vessel_roll_deg, ap_vessel_pitch_deg, ap_vessel_yaw_deg]);
 
+% Build initial composite
+fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2, [], []);
+tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, rightLung, leftLung], 0.5, [], []);
+breastRightTissue = CompositeAnalyticalShape3D(breast_right, [vessel_ap_unenhanced, vessel_ap_enhanced], 0.5, [], []);
+
+
 
 %% 2) Build WORLD k-space grid
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
 
 %% 4) Compute analytic k-space for the cylinder
 fprintf('Evaluating analytic k-space...\n');
-fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2, [], []);
-
-tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, rightLung, leftLung], 0.5, [], []);
-
-breastRightTissue = CompositeAnalyticalShape3D(breast_right, [vessel_ap_unenhanced, vessel_ap_enhanced], 0.5, [], []);
-
 % Compute the composite k-space using intensity-aware kspace()
 K = fatComposite.kspace(kx, ky, kz) + ...
     tissueComposite.kspace(kx, ky, kz) + ...

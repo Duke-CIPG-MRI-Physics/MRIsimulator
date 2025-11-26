@@ -1,4 +1,4 @@
-classdef (Abstract) AnalyticalShape3D < handle
+classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     % AnalyticalShape3D
     %   Base class for analytic 3D shapes defined in BODY coordinates,
     %   but positioned + oriented in WORLD coordinates.
