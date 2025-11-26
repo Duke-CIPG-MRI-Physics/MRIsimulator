@@ -16,9 +16,9 @@ classdef AnalyticalBox3D < AnalyticalShape3D
 
     %% Private geometry parameters
     properties (Access = private)
-        Lx_mm (1,1) double {mustBePositive} = 10;   % box length in x (mm)
-        Ly_mm (1,1) double {mustBePositive} = 10;   % box length in y (mm)
-        Lz_mm (1,1) double {mustBePositive} = 10;   % box length in z (mm)
+        Lx_mm double {mustBePositive} = 10;   % box length in x (mm)
+        Ly_mm double {mustBePositive} = 10;   % box length in y (mm)
+        Lz_mm double {mustBePositive} = 10;   % box length in z (mm)
     end
 
     %% Constructor
@@ -55,10 +55,10 @@ classdef AnalyticalBox3D < AnalyticalShape3D
         function setLengthX(obj, newLx)
             arguments
                 obj
-                newLx (1,1) double {mustBePositive}
+                newLx double {mustBePositive}
             end
 
-            if obj.Lx_mm ~= newLx
+            if ~isequal(obj.Lx_mm, newLx)
                 obj.Lx_mm = newLx;
                 obj.markShapeChanged();
             end
@@ -71,10 +71,10 @@ classdef AnalyticalBox3D < AnalyticalShape3D
         function setLengthY(obj, newLy)
             arguments
                 obj
-                newLy (1,1) double {mustBePositive}
+                newLy double {mustBePositive}
             end
 
-            if obj.Ly_mm ~= newLy
+            if ~isequal(obj.Ly_mm, newLy)
                 obj.Ly_mm = newLy;
                 obj.markShapeChanged();
             end
@@ -87,10 +87,10 @@ classdef AnalyticalBox3D < AnalyticalShape3D
         function setLengthZ(obj, newLz)
             arguments
                 obj
-                newLz (1,1) double {mustBePositive}
+                newLz double {mustBePositive}
             end
 
-            if obj.Lz_mm ~= newLz
+            if ~isequal(obj.Lz_mm, newLz)
                 obj.Lz_mm = newLz;
                 obj.markShapeChanged();
             end
@@ -117,9 +117,9 @@ classdef AnalyticalBox3D < AnalyticalShape3D
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 
-            Lx = obj.Lx_mm;
-            Ly = obj.Ly_mm;
-            Lz = obj.Lz_mm;
+            Lx = obj.requireScalarOrSize(obj.Lx_mm, kx_body, 'Lx');
+            Ly = obj.requireScalarOrSize(obj.Ly_mm, kx_body, 'Ly');
+            Lz = obj.requireScalarOrSize(obj.Lz_mm, kx_body, 'Lz');
 
             Sx = Lx .* sinc(kx_body .* Lx);
             Sy = Ly .* sinc(ky_body .* Ly);
@@ -132,11 +132,11 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             % percentInsideShape
             %   BODY-frame inside test for rectangular box.
 
-            Lx = obj.Lx_mm;
-            Ly = obj.Ly_mm;
-            Lz = obj.Lz_mm;
+            Lx = obj.requireScalarOrSize(obj.Lx_mm, xb, 'Lx');
+            Ly = obj.requireScalarOrSize(obj.Ly_mm, xb, 'Ly');
+            Lz = obj.requireScalarOrSize(obj.Lz_mm, xb, 'Lz');
 
-            inside = (abs(xb) <= Lx/2) & (abs(yb) <= Ly/2) & (abs(zb) <= Lz/2);
+            inside = (abs(xb) <= Lx./2) & (abs(yb) <= Ly./2) & (abs(zb) <= Lz./2);
             frac = double(inside);
         end
     end

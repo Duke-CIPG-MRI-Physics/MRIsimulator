@@ -15,9 +15,9 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
 
     %% Private geometry parameters
     properties (Access = private)
-        a_mm (1,1) double {mustBePositive} = 5;    % semi-axis in x (mm)
-        b_mm (1,1) double {mustBePositive} = 3;    % semi-axis in y (mm)
-        L_mm (1,1) double {mustBePositive} = 20;   % length in z (mm)
+        a_mm double {mustBePositive} = 5;    % semi-axis in x (mm)
+        b_mm double {mustBePositive} = 3;    % semi-axis in y (mm)
+        L_mm double {mustBePositive} = 20;   % length in z (mm)
     end
 
     %% Constructor
@@ -54,10 +54,10 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
         function setA(obj, newA)
             arguments
                 obj
-                newA (1,1) double {mustBePositive}
+                newA double {mustBePositive}
             end
 
-            if obj.a_mm ~= newA
+            if ~isequal(obj.a_mm, newA)
                 obj.a_mm = newA;
                 obj.markShapeChanged();
             end
@@ -70,10 +70,10 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
         function setB(obj, newB)
             arguments
                 obj
-                newB (1,1) double {mustBePositive}
+                newB double {mustBePositive}
             end
 
-            if obj.b_mm ~= newB
+            if ~isequal(obj.b_mm, newB)
                 obj.b_mm = newB;
                 obj.markShapeChanged();
             end
@@ -86,10 +86,10 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
         function setLength(obj, newL)
             arguments
                 obj
-                newL (1,1) double {mustBePositive}
+                newL double {mustBePositive}
             end
 
-            if obj.L_mm ~= newL
+            if ~isequal(obj.L_mm, newL)
                 obj.L_mm = newL;
                 obj.markShapeChanged();
             end
@@ -120,33 +120,33 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 
-            a = obj.a_mm;
-            b = obj.b_mm;
-            L = obj.L_mm;
+            a = obj.requireScalarOrSize(obj.a_mm, kx_body, 'a');
+            b = obj.requireScalarOrSize(obj.b_mm, kx_body, 'b');
+            L = obj.requireScalarOrSize(obj.L_mm, kx_body, 'L');
 
             % Scaled radial frequency
-            k_perp_prime = sqrt( (a * kx_body).^2 + (b * ky_body).^2 );
+            k_perp_prime = sqrt( (a .* kx_body).^2 + (b .* ky_body).^2 );
 
             % Radial part (base cylinder radius R0 = 1, then scale by a*b)
             radial = zeros(size(k_perp_prime));
             idx_r = (k_perp_prime ~= 0);
             if any(idx_r(:))
-                x_r = 2*pi * k_perp_prime(idx_r);    % R0=1
-                radial(idx_r) = (a * b) .* besselj(1, x_r) ./ k_perp_prime(idx_r);
+                x_r = 2*pi .* k_perp_prime(idx_r);    % R0=1
+                radial(idx_r) = (a(idx_r) .* b(idx_r)) .* besselj(1, x_r) ./ k_perp_prime(idx_r);
             end
             % k_perp' -> 0 limit: area of ellipse = pi*a*b
-            radial(~idx_r) = pi * a * b;
+            radial(~idx_r) = pi .* a(~idx_r) .* b(~idx_r);
 
             % Axial part (same as finite cylinder of length L)
             kz = kz_body;
             zfac = zeros(size(kz));
             idx_z = (kz ~= 0);
             if any(idx_z(:))
-                x_z = pi * L .* kz(idx_z);
-                zfac(idx_z) = L .* (sin(x_z) ./ x_z);   % L * sinc(pi*L*kz)
+                x_z = pi .* L(idx_z) .* kz(idx_z);
+                zfac(idx_z) = L(idx_z) .* (sin(x_z) ./ x_z);   % L * sinc(pi*L*kz)
             end
             % kz -> 0 limit: length
-            zfac(~idx_z) = L;
+            zfac(~idx_z) = L(~idx_z);
 
             S = radial .* zfac;
         end
@@ -155,11 +155,11 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
             % percentInsideShape
             %   BODY-frame inside test for elliptical cylinder.
 
-            a = obj.a_mm;
-            b = obj.b_mm;
-            L = obj.L_mm;
+            a = obj.requireScalarOrSize(obj.a_mm, xb, 'a');
+            b = obj.requireScalarOrSize(obj.b_mm, xb, 'b');
+            L = obj.requireScalarOrSize(obj.L_mm, xb, 'L');
 
-            inside = (xb./a).^2 + (yb./b).^2 <= 1 & (abs(zb) <= L/2);
+            inside = (xb./a).^2 + (yb./b).^2 <= 1 & (abs(zb) <= L./2);
             frac = double(inside);
         end
     end

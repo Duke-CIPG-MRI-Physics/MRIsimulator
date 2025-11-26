@@ -39,7 +39,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     %% Properties -----------------------------------------------------------
     properties (Access = private)
         center (1,3) double = [0 0 0];          % world center [mm]
-        shapeIntensity (1,1) double = 1;        % dimensionless multiplier
+        shapeIntensity double = 1;              % dimensionless multiplier (scalar or grid-sized)
         rollPitchYaw (1,3) double = [0 0 0];    % [roll pitch yaw] in deg
     end
 
@@ -208,10 +208,10 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
         function setIntensity(obj, newIntensity)
             arguments
                 obj
-                newIntensity (1,1) double {mustBeFinite}
+                newIntensity double {mustBeFinite}
             end
 
-            if obj.shapeIntensity ~= newIntensity
+            if ~isequal(obj.shapeIntensity, newIntensity)
                 obj.shapeIntensity = newIntensity;
                 obj.markShapeChanged();
             end
@@ -229,7 +229,28 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             %   Evaluate WORLD-frame analytic 3D FT of the shape, including
             %   the shapeIntensity scaling factor.
 
-            S = obj.getIntensity() .* obj.kspace_shapeOnly(kx, ky, kz);
+            intensity = obj.getIntensity();
+            if ~isscalar(intensity) && ~isequal(size(intensity), size(kx))
+                error('AnalyticalShape3D:kspace:IntensitySizeMismatch', ...
+                    'intensity must be scalar or match size of kx/ky/kz.');
+            end
+
+            S = intensity .* obj.kspace_shapeOnly(kx, ky, kz);
+        end
+    end
+
+    methods (Static, Access = protected)
+        function paramOut = requireScalarOrSize(param, template, paramName)
+            % requireScalarOrSize
+            %   Enforce that a shape parameter is either scalar or matches the
+            %   size of a template array (typically kx/ky/kz or xb/yb/zb).
+
+            if isscalar(param) || isequal(size(param), size(template))
+                paramOut = param;
+            else
+                error('AnalyticalShape3D:ParameterSizeMismatch', ...
+                    'Parameter %s must be scalar or match template size.', paramName);
+            end
         end
     end
 
