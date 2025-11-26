@@ -29,8 +29,8 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
 
     %% Private geometry parameters
     properties (Access = private)
-        R_mm (1,1) double {mustBePositive} = 5;   % radius [mm]
-        L_mm (1,1) double {mustBePositive} = 20;  % length [mm]
+        R_mm double {mustBePositive} = 5;   % radius [mm]
+        L_mm double {mustBePositive} = 20;  % length [mm]
     end
 
     %% Constructor
@@ -58,9 +58,9 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         function setRadius(obj, newRadius)
             arguments
                 obj
-                newRadius (1,1) double {mustBePositive}
+                newRadius double {mustBePositive}
             end
-            if obj.R_mm ~= newRadius
+            if ~isequal(obj.R_mm, newRadius)
                 obj.R_mm = newRadius;
                 obj.markShapeChanged();
             end
@@ -73,9 +73,9 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         function setLength(obj, newLength)
             arguments
                 obj
-                newLength (1,1) double {mustBePositive}
+                newLength double {mustBePositive}
             end
-            if obj.L_mm ~= newLength
+            if ~isequal(obj.L_mm, newLength)
                 obj.L_mm = newLength;
                 obj.markShapeChanged();
             end
@@ -99,8 +99,8 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
                 error('AnalyticalCylinder3D:SizeMismatch');
             end
 
-            R = obj.R_mm;
-            L = obj.L_mm;
+            R = obj.requireScalarOrSize(obj.R_mm, kx_body, 'R');
+            L = obj.requireScalarOrSize(obj.L_mm, kx_body, 'L');
 
             % Radial term
             k_perp = sqrt(kx_body.^2 + ky_body.^2);
@@ -108,19 +108,19 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
 
             idx = (k_perp ~= 0);
             if any(idx(:))
-                x_r = 2*pi*R .* k_perp(idx);
-                radial(idx) = R .* besselj(1, x_r) ./ k_perp(idx);
+                x_r = 2*pi .* R(idx) .* k_perp(idx);
+                radial(idx) = R(idx) .* besselj(1, x_r) ./ k_perp(idx);
             end
-            radial(~idx) = pi * R^2;   % limit as k_perp → 0
+            radial(~idx) = pi .* (R(~idx).^2);   % limit as k_perp → 0
 
             % Axial term
             zfac = zeros(size(kz_body));
             idx = (kz_body ~= 0);
             if any(idx(:))
-                x_z = pi*L .* kz_body(idx);
-                zfac(idx) = L .* (sin(x_z) ./ x_z);
+                x_z = pi .* L(idx) .* kz_body(idx);
+                zfac(idx) = L(idx) .* (sin(x_z) ./ x_z);
             end
-            zfac(~idx) = L;
+            zfac(~idx) = L(~idx);
 
             S = radial .* zfac;
         end
@@ -128,10 +128,10 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         % ----------------- Inside test (BODY frame) ----------------------
         function frac = percentInsideShape(obj, xb, yb, zb)
             % 0/1 mask (upgradeable later to partial volume)
-            R = obj.R_mm;
-            L = obj.L_mm;
+            R = obj.requireScalarOrSize(obj.R_mm, xb, 'R');
+            L = obj.requireScalarOrSize(obj.L_mm, xb, 'L');
 
-            inside = (xb.^2 + yb.^2 <= R^2) & (abs(zb) <= L/2);
+            inside = (xb.^2 + yb.^2 <= R.^2) & (abs(zb) <= L./2);
             frac = double(inside);
         end
     end

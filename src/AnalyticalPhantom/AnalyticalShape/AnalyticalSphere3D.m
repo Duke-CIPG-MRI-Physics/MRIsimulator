@@ -20,7 +20,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
 
     %% Private geometry parameter
     properties (Access = private)
-        R_mm (1,1) double {mustBePositive} = 5;   % sphere radius [mm]
+        R_mm double {mustBePositive} = 5;   % sphere radius [mm]
     end
 
     %% Constructor
@@ -62,10 +62,10 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
         function setRadius(obj, newRadius)
             arguments
                 obj
-                newRadius (1,1) double {mustBePositive}
+                newRadius double {mustBePositive}
             end
 
-            if obj.R_mm ~= newRadius
+            if ~isequal(obj.R_mm, newRadius)
                 obj.R_mm = newRadius;
                 obj.markShapeChanged();
             end
@@ -89,19 +89,21 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             end
 
             k = sqrt(kx_body.^2 + ky_body.^2 + kz_body.^2);
-            R = obj.R_mm;
-            x = 2*pi * R .* k;
+            R = obj.requireScalarOrSize(obj.R_mm, kx_body, 'R');
+            x = 2*pi .* R .* k;
 
             S = zeros(size(k));
 
             idx = (k ~= 0);
             if any(idx(:))
                 x_nz = x(idx);
-                S(idx) = 4*pi*R^3 .* (sin(x_nz) - x_nz .* cos(x_nz)) ./ (x_nz.^3);
+                R_nz = R(idx);
+                S(idx) = 4*pi .* (R_nz.^3) .* (sin(x_nz) - x_nz .* cos(x_nz)) ./ (x_nz.^3);
             end
 
             % k = 0 → sphere volume
-            S(~idx) = (4/3) * pi * R^3;
+            volume = (4/3) * pi .* (R.^3);
+            S(~idx) = volume(~idx);
         end
 
         function imageShape = percentInsideShape(obj, xb, yb, zb)
@@ -122,8 +124,8 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
 
             %#ok<*INUSD>  % suppress unused varargin warning for now
 
-            R = obj.R_mm;
-            inside = (xb.^2 + yb.^2 + zb.^2) <= R^2;
+            R = obj.requireScalarOrSize(obj.R_mm, xb, 'R');
+            inside = (xb.^2 + yb.^2 + zb.^2) <= R.^2;
 
             imageShape = double(inside);   % 0 or 1 (no partial volume yet)
         end

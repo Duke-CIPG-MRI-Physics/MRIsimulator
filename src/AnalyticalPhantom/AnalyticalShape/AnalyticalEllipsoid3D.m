@@ -13,9 +13,9 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
 
     %% Private geometry parameters
     properties (Access = private)
-        a_mm (1,1) double {mustBePositive} = 5;   % semi-axis in x (mm)
-        b_mm (1,1) double {mustBePositive} = 5;   % semi-axis in y (mm)
-        c_mm (1,1) double {mustBePositive} = 5;   % semi-axis in z (mm)
+        a_mm double {mustBePositive} = 5;   % semi-axis in x (mm)
+        b_mm double {mustBePositive} = 5;   % semi-axis in y (mm)
+        c_mm double {mustBePositive} = 5;   % semi-axis in z (mm)
     end
 
     %% Constructor
@@ -52,10 +52,10 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         function setA(obj, newA)
             arguments
                 obj
-                newA (1,1) double {mustBePositive}
+                newA double {mustBePositive}
             end
 
-            if obj.a_mm ~= newA
+            if ~isequal(obj.a_mm, newA)
                 obj.a_mm = newA;
                 obj.markShapeChanged();
             end
@@ -68,10 +68,10 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         function setB(obj, newB)
             arguments
                 obj
-                newB (1,1) double {mustBePositive}
+                newB double {mustBePositive}
             end
 
-            if obj.b_mm ~= newB
+            if ~isequal(obj.b_mm, newB)
                 obj.b_mm = newB;
                 obj.markShapeChanged();
             end
@@ -84,10 +84,10 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         function setC(obj, newC)
             arguments
                 obj
-                newC (1,1) double {mustBePositive}
+                newC double {mustBePositive}
             end
 
-            if obj.c_mm ~= newC
+            if ~isequal(obj.c_mm, newC)
                 obj.c_mm = newC;
                 obj.markShapeChanged();
             end
@@ -116,9 +116,9 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 
-            a = obj.a_mm;
-            b = obj.b_mm;
-            c = obj.c_mm;
+            a = obj.requireScalarOrSize(obj.a_mm, kx_body, 'a');
+            b = obj.requireScalarOrSize(obj.b_mm, kx_body, 'b');
+            c = obj.requireScalarOrSize(obj.c_mm, kx_body, 'c');
 
             % "Effective" radial frequency in scaled coordinates
             kprime = sqrt((a .* kx_body).^2 + ...
@@ -128,25 +128,27 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             S = zeros(size(kprime));
 
             idx = (kprime ~= 0);
+            volume = a .* b .* c;
+
             if any(idx(:))
                 x = 2*pi .* kprime(idx);   % dimensionless
                 % Base sphere (R=1) FT
                 Fs = 4*pi .* (sin(x) - x .* cos(x)) ./ (x.^3);
                 % Scale by volume factor a*b*c
-                S(idx) = (a * b * c) .* Fs;
+                S(idx) = volume(idx) .* Fs;
             end
 
             % k' -> 0 limit: ellipsoid volume
-            S(~idx) = 4/3 * pi * a * b * c;
+            S(~idx) = (4/3) * pi .* volume(~idx);
         end
 
         function frac = percentInsideShape(obj, xb, yb, zb)
             % percentInsideShape
             %   BODY-frame inside test for ellipsoid.
 
-            a = obj.a_mm;
-            b = obj.b_mm;
-            c = obj.c_mm;
+            a = obj.requireScalarOrSize(obj.a_mm, xb, 'a');
+            b = obj.requireScalarOrSize(obj.b_mm, xb, 'b');
+            c = obj.requireScalarOrSize(obj.c_mm, xb, 'c');
 
             inside = (xb./a).^2 + (yb./b).^2 + (zb./c).^2 <= 1;
             frac = double(inside);
