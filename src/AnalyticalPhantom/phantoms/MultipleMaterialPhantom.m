@@ -77,9 +77,6 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
         end
 
-    end
-
-    methods (Access = protected, Hidden = false)
         function S = bodyKspace(obj, kx_body, ky_body, kz_body)
             % bodyKspace  BODY-frame analytic FT (no intensity scaling).
             %   Implemented as the sum of each contained shape's WORLD-frame
