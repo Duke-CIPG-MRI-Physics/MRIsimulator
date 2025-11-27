@@ -91,7 +91,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             [enhancedSegment, unenhancedSegment] = enhancingVessel.getVessels();
 
             breastRightTissue = CompositeAnalyticalShape3D(breast_right, ...
-                [unenhancedSegment, enhancedSegment], 0.5, [], []);
+                enhancingVessel, 0.5, [], []);
 
             shapes = [fatComposite, tissueComposite, heart, rightLung, leftLung, ...
                 breast_left, breastRightTissue, unenhancedSegment, enhancedSegment];
