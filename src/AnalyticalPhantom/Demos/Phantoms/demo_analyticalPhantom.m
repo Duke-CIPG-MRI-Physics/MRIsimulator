@@ -1,7 +1,6 @@
 % 3D phantom: single cylinder using analytic k-space.
 
 clear; clc;
-
 %% FOV and sampling
 FOV_mm = 300;     % 300 mm
 

@@ -11,7 +11,6 @@
 %          (B) Geometry-based “exact shape” rendering
 %
 clear; clc;
-
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [300 300 300];               % 300 mm cube
 N      = [150 150 80];      % [Nx Ny Nz]

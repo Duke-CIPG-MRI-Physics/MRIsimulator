@@ -12,7 +12,6 @@
 % - Multiple shapes can be added by summing their analytic FTs in K:
 %       K_total = cyl1.kspace(...) + cyl2.kspace(...) + ...
 clear; clc;
-
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = 300;               % scalar → 300 mm in x,y,z
 N      = [150 150 80];      % [Nx Ny Nz]; implies anisotropic voxels
