@@ -8,7 +8,8 @@ function height_mm = computeContrastWashIn(t_s, radius_mm, V_contrast_mm3)
 %   Inputs:
 %       t_s             : Time vector [s], numeric, real. Only the length is
 %                         used for validation; values need not be monotonic.
-%       radius_mm       : Vessel radius over time [mm], same length as t_s.
+%       radius_mm       : Vessel radius over time [mm], scalar or same length
+%                         as t_s (a scalar is expanded to match t_s).
 %       V_contrast_mm3  : Contrast volume over time [mm^3], same length as
 %                         t_s.
 %
@@ -35,7 +36,17 @@ arguments
 end
 
 numSamples = numel(t_s);
-if numel(radius_mm) ~= numSamples || numel(V_contrast_mm3) ~= numSamples
+
+% Allow a scalar radius to indicate a constant vessel over time; otherwise
+% enforce that the radius matches the time vector length.
+if isscalar(radius_mm)
+    radius_mm = repmat(radius_mm, numSamples, 1);
+elseif numel(radius_mm) ~= numSamples
+    error('computeContrastWashIn:SizeMismatch', ...
+        't_s, radius_mm, and V_contrast_mm3 must have identical lengths.');
+end
+
+if numel(V_contrast_mm3) ~= numSamples
     error('computeContrastWashIn:SizeMismatch', ...
         't_s, radius_mm, and V_contrast_mm3 must have identical lengths.');
 end
