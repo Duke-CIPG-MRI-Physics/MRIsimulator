@@ -1,4 +1,4 @@
-classdef MultipleMaterialPhantom < handle
+classdef MultipleMaterialPhantom < AnalyticalShape3D
     % MultipleMaterialPhantom
     %   Container for a collection of AnalyticalShape3D objects representing
     %   different materials. Evaluates k-space by summing the contributions
