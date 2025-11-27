@@ -90,6 +90,12 @@ classdef BreastPhantom < MultipleMaterialPhantom
             enhancingVessel.updateTimeArray(t_s(end), V_contrast_mm3(end), vesselRadius_mm);
             [enhancedSegment, unenhancedSegment] = enhancingVessel.getVessels();
 
+            % Ensure vessel segments are provided as a row vector of
+            % AnalyticalShape3D objects to satisfy CompositeAnalyticalShape3D
+            % argument validation even if upstream callers supply column
+            % vectors.
+            vesselSegments = [unenhancedSegment(:).', enhancedSegment(:).'];
+
             breastRightTissue = CompositeAnalyticalShape3D(breast_right, ...
                 enhancingVessel, 0.5, [], []);
 
