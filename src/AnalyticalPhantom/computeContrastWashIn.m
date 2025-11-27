@@ -29,9 +29,9 @@ function height_mm = computeContrastWashIn(t_s, radius_mm, V_contrast_mm3)
 %       % height_mm gives the necessary enhanced length at each time point.
 
 arguments
-    t_s (:) double {mustBeFinite}
-    radius_mm (:) double {mustBePositive, mustBeFinite}
-    V_contrast_mm3 (:) double {mustBeFinite, mustBeNonnegative}
+    t_s double {mustBeFinite, mustBeVector}
+    radius_mm double {mustBePositive, mustBeFinite, mustBeVector}
+    V_contrast_mm3 double {mustBeFinite, mustBeNonnegative, mustBeVector}
 end
 
 numSamples = numel(t_s);
