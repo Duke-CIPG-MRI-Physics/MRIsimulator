@@ -245,7 +245,13 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             %   Enforce that a shape parameter is either scalar or matches the
             %   size of a template array (typically kx/ky/kz or xb/yb/zb).
 
-            if isscalar(param) || isequal(size(param), size(template))
+            if isscalar(param)
+                % Expand scalar parameters to match the template size so that
+                % subsequent logical indexing (e.g., param(idx)) never
+                % produces an out-of-bounds error when the template is larger
+                % than a single element.
+                paramOut = param .* ones(size(template));
+            elseif isequal(size(param), size(template))
                 paramOut = param;
             else
                 error('AnalyticalShape3D:ParameterSizeMismatch', ...
