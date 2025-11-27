@@ -1,12 +1,12 @@
-classdef LungPhantom < MultipleMaterialPhantom
-    % LungPhantom
+classdef BreastPhantom < MultipleMaterialPhantom
+    % BreastPhantom
     %   Preconfigured collection of AnalyticalShape3D objects approximating
     %   a thoracic slice with lungs, heart, peripheral fat, breasts, and a
     %   simple vessel. Geometry and intensities follow the original
-    %   demo_analyticalLungPhantom.m setup.
+    %   demo_analyticalBreastPhantom.m setup.
 
     methods
-        function obj = LungPhantom(t_s, V_contrast_mm3, vesselRadius_mm)
+        function obj = BreastPhantom(t_s, V_contrast_mm3, vesselRadius_mm)
             arguments
                 t_s (:,1) double {mustBeFinite}
                 V_contrast_mm3 (:,1) double {mustBeFinite, mustBeNonnegative} = [];
@@ -80,7 +80,7 @@ classdef LungPhantom < MultipleMaterialPhantom
             else
                 V_contrast_mm3 = V_contrast_mm3(:);
                 if numel(V_contrast_mm3) ~= numel(t_s)
-                    error('LungPhantom:ContrastSizeMismatch', ...
+                    error('BreastPhantom:ContrastSizeMismatch', ...
                         'V_contrast_mm3 must match the length of t_s.');
                 end
             end

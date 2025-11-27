@@ -17,8 +17,8 @@ V_contrast_mm3 = linspace(0, totalVolume_mm3, numel(t_s)).';
 
 enhancedLength_mm = computeContrastWashIn(t_s, vesselRadius_mm, V_contrast_mm3);
 
-%% 3) Construct the lung phantom with the embedded enhancing vessel
-phantom = LungPhantom(t_s, V_contrast_mm3, vesselRadius_mm);
+%% 3) Construct the breast phantom with the embedded enhancing vessel
+phantom = BreastPhantom(t_s, V_contrast_mm3, vesselRadius_mm);
 
 %% 4) Build WORLD k-space grid
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
