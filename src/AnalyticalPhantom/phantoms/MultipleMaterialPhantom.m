@@ -76,7 +76,8 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 S = S + obj.shapes(idx).kspace_shapeOnly(kx, ky, kz);
             end
         end
-
+    end
+    methods (Access = protected)
         function S = bodyKspace(obj, kx_body, ky_body, kz_body)
             % bodyKspace  BODY-frame analytic FT (no intensity scaling).
             %   Implemented as the sum of each contained shape's WORLD-frame
@@ -93,6 +94,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 S = S + obj.shapes(idx).kspace(kx_body, ky_body, kz_body);
             end
         end
+
 
         function percent = percentInsideShape(obj, xb, yb, zb)
             % percentInsideShape  Fraction of each voxel occupied by the
