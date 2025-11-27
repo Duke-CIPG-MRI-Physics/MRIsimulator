@@ -8,8 +8,8 @@ classdef EnhancingVessel < MultipleMaterialPhantom
     %   other phantoms.
 
     properties (Access = private)
-        enhancedVessel (1,1) AnalyticalEllipticalCylinder3D
-        unenhancedVessel (1,1) AnalyticalEllipticalCylinder3D
+        enhancedVessel (1,:) AnalyticalEllipticalCylinder3D = AnalyticalEllipticalCylinder3D.empty
+        unenhancedVessel (1,:) AnalyticalEllipticalCylinder3D = AnalyticalEllipticalCylinder3D.empty
         totalLength_mm (1,1) double {mustBePositive}
         centerlineCenter (1,3) double = [0 0 0];
         vesselRadius_mm double {mustBePositive}
