@@ -6,7 +6,13 @@ classdef LungPhantom < MultipleMaterialPhantom
     %   demo_analyticalLungPhantom.m setup.
 
     methods
-        function obj = LungPhantom()
+        function obj = LungPhantom(t_s, V_contrast_mm3, vesselRadius_mm)
+            arguments
+                t_s (:,1) double {mustBeFinite}
+                V_contrast_mm3 (:,1) double {mustBeFinite, mustBeNonnegative} = [];
+                vesselRadius_mm double {mustBePositive} = 2.5;
+            end
+
             bodyShift = -80;
 
             % Heart
@@ -64,24 +70,31 @@ classdef LungPhantom < MultipleMaterialPhantom
             breast_left = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, 0.5, ...
                 [-right_breast_center(1), right_breast_center(2:3)], [0, 90, 90]);
 
-            % A/P blood vessel
-            vessel_radius_mm = 2.5;
+            % A/P blood vessel with contrast wash-in
             total_vessel_length_mm = 100;
-            enhancedLength = 10;
-            unenhancedLength = total_vessel_length_mm - enhancedLength;
-            enhancedCenter = [right_breast_center(1), right_breast_center(2) - 0.5 * unenhancedLength, 0];
-            unenhancedCenter = [right_breast_center(1), right_breast_center(2) + 0.5 * enhancedLength, 0];
+            rollPitchYaw = [0, 90, 90];
 
-            vessel_ap_unenhanced = AnalyticalCylinder3D(vessel_radius_mm, unenhancedLength, 0.4, ...
-                unenhancedCenter, [0, 90, 90]);
-            vessel_ap_enhanced = AnalyticalCylinder3D(vessel_radius_mm, enhancedLength, 2.5, ...
-                enhancedCenter, [0, 90, 90]);
+            if isempty(V_contrast_mm3)
+                totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
+                V_contrast_mm3 = linspace(0, totalVolume_mm3, numel(t_s)).';
+            else
+                V_contrast_mm3 = V_contrast_mm3(:);
+                if numel(V_contrast_mm3) ~= numel(t_s)
+                    error('LungPhantom:ContrastSizeMismatch', ...
+                        'V_contrast_mm3 must match the length of t_s.');
+                end
+            end
+
+            enhancingVessel = EnhancingVessel(t_s, total_vessel_length_mm, 2.5, 0.4, ...
+                vesselRadius_mm, V_contrast_mm3, right_breast_center, rollPitchYaw);
+            enhancingVessel.updateTimeArray(t_s(end), V_contrast_mm3(end), vesselRadius_mm);
+            [enhancedSegment, unenhancedSegment] = enhancingVessel.getVessels();
 
             breastRightTissue = CompositeAnalyticalShape3D(breast_right, ...
-                [vessel_ap_unenhanced, vessel_ap_enhanced], 0.5, [], []);
+                [unenhancedSegment, enhancedSegment], 0.5, [], []);
 
             shapes = [fatComposite, tissueComposite, heart, rightLung, leftLung, ...
-                breast_left, breastRightTissue, vessel_ap_unenhanced, vessel_ap_enhanced];
+                breast_left, breastRightTissue, unenhancedSegment, enhancedSegment];
 
             obj@MultipleMaterialPhantom(shapes);
         end

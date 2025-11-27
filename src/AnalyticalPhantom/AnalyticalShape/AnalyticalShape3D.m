@@ -38,7 +38,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
 
     %% Properties -----------------------------------------------------------
     properties (Access = private)
-        center (1,3) double = [0 0 0];          % world center [mm]
+        center double = [0 0 0];                % world center [mm]
         shapeIntensity double = 1;              % dimensionless multiplier (scalar or grid-sized)
         rollPitchYaw (1,3) double = [0 0 0];    % [roll pitch yaw] in deg
     end
@@ -132,11 +132,21 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                       'x_world, y_world, z_world must have identical sizes.');
             end
 
+            c = obj.getCenter();
+            if size(c, 2) ~= 3
+                error('AnalyticalShape3D:worldToBodyPoints:CenterSizeMismatch', ...
+                      'Center must have 3 columns for x, y, z.');
+            end
+
+            cx = obj.requireScalarOrSize(c(:,1), x_world, 'centerX');
+            cy = obj.requireScalarOrSize(c(:,2), y_world, 'centerY');
+            cz = obj.requireScalarOrSize(c(:,3), z_world, 'centerZ');
+
             % Vectorize WORLD points: 3×N
             P_world = [x_world(:).'; y_world(:).'; z_world(:).'];
 
             % Subtract center (WORLD translation)
-            P_shift = P_world - obj.center(:);   % 3×N
+            P_shift = P_world - [cx(:).'; cy(:).'; cz(:).'];   % 3×N
 
             % WORLD → BODY via Rᵀ
             R = obj.calculateRotationMatrix();
@@ -156,10 +166,15 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             % setCenter  Set WORLD center [mm].
             arguments
                 obj
-                newCenter (1,3) double
+                newCenter double
             end
 
-            newCenter = double(newCenter(:)).';  % force row vector
+            if size(newCenter, 2) ~= 3
+                error('AnalyticalShape3D:setCenter:SizeMismatch', ...
+                    'Center must have 3 columns for x, y, z.');
+            end
+
+            newCenter = double(newCenter);
 
             if ~isequal(obj.center, newCenter)
                 obj.center = newCenter;
@@ -311,10 +326,19 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             % WORLD translation phase
             if any(obj.center ~= 0)
                 c = obj.getCenter();
+                if size(c, 2) ~= 3
+                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                        'Center must have 3 columns for x, y, z.');
+                end
+
+                cx = obj.requireScalarOrSize(c(:,1), kx, 'centerX');
+                cy = obj.requireScalarOrSize(c(:,2), ky, 'centerY');
+                cz = obj.requireScalarOrSize(c(:,3), kz, 'centerZ');
+
                 phase = exp(-1i * 2*pi * ( ...
-                        kx * c(1) + ...
-                        ky * c(2) + ...
-                        kz * c(3)));
+                        kx .* cx + ...
+                        ky .* cy + ...
+                        kz .* cz));
                 S = S_body .* phase;
             else
                 S = S_body;
