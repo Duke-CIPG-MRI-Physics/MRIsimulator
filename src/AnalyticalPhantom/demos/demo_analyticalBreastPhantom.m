@@ -63,7 +63,9 @@ img_viaKspace = fftshift(ifftn(ifftshift(K)));
 imslice(abs(img_viaKspace))
 
 figure;
-plot(t_s, min(enhancedLength_mm, total_vessel_length_mm), 'LineWidth', 2);
+plot(t_s, min(enhancedLength_mm, total_vessel_length_mm), '-','LineWidth', 2);
+hold on
+plot(t_s, min(enhancedLength_mm, total_vessel_length_mm), '.r');
 xlabel('Time [s]');
 ylabel('Enhanced vessel length [mm]');
 title('Linear contrast wash-in to full vessel length');
