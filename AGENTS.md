@@ -1,48 +1,4 @@
-
-Draft AGENTS.md for MATLAB coding guidelines
-Dec 2
-·
-MRIsimulator
-·
-dev/draft-agents.md-for-matlab-coding-guidelines
-·
-+45
--0
-
-Archive
-
-Share
-View PR
-
-
-Help me draft an AGENTS.md file that explains how to code well in MATLAB for this project
-Copy
-Summary
-
-Added repository-wide AGENTS.md outlining MATLAB coding, documentation, validation, numerical, testing, dependency, performance, and version control guidelines for MRIsimulator contributors.
-
-Testing
-
-⚠️ Not run (not requested)
-
-
-File (1)
-
-AGENTS.md
-New
-
-
-
-Diff
-Logs
-
-AGENTS.md
-New
-+45
--0
-
 # MATLAB Coding Guidelines for MRIsimulator
-
 ## Scope
 These guidelines apply to all MATLAB (.m) files in the repository.
 
