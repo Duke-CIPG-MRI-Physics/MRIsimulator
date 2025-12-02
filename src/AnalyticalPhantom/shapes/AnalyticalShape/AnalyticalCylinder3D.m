@@ -30,7 +30,7 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
     %% Private geometry parameters
     properties (Access = private)
         R_mm double {mustBePositive} = 5;   % radius [mm]
-        L_mm double {mustBePositive} = 20;  % length [mm]
+        L_mm double {mustBeNonnegative} = 20;  % length [mm]
     end
 
     %% Constructor
@@ -73,7 +73,7 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         function setLength(obj, newLength)
             arguments
                 obj
-                newLength double {mustBePositive}
+                newLength double {mustBeNonnegative}
             end
             if ~isequal(obj.L_mm, newLength)
                 obj.L_mm = newLength;
