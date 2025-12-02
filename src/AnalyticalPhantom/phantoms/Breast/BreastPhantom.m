@@ -36,25 +36,27 @@ classdef BreastPhantom < MultipleMaterialPhantom
             heart_b_max_mm = max(heart_b_mm(:));
             heart_c_max_mm = max(heart_c_mm(:));
 
+            maxHeartDim_mm = max(heart_b_max_mm, heart_c_max_mm);
+
             % Lungs
-            lung_a_mm = 140;
-            lung_b_mm = 50;
-            lung_c_mm = 50;
-            lungSeparation = max(lung_b_mm, lung_c_mm) + max(heart_b_max_mm, heart_c_max_mm) + 2;
+            f_bpm = 12 * ones(1, numel(t_row));
+            VT_L = 0.6 * ones(1, numel(t_row));
+            Vres_L = 1.2 * ones(1, numel(t_row));
+            Vbase_L = 2.5 * ones(1, numel(t_row));
+            bellyFrac = zeros(1, numel(t_row));
+            inspFrac = 0.4 * ones(1, numel(t_row));
 
-            center_R_mm = [lungSeparation, bodyShift, 0];
-            rightLung = AnalyticalEllipsoid3D(lung_a_mm, lung_b_mm, lung_c_mm, 0.1, ...
-                center_R_mm, [0, 95, 0]);
+            breathingLung = BreathingLung(t_row, f_bpm, VT_L, Vres_L, ...
+                Vbase_L, bellyFrac, inspFrac, maxHeartDim_mm, 0.1, [0, bodyShift, 0]);
 
-            center_L_mm = [-lungSeparation, bodyShift, 0];
-            leftLung = AnalyticalEllipsoid3D(lung_a_mm, lung_b_mm, lung_c_mm, 0.1, ...
-                center_L_mm, [0, 85, 0]);
+            maxLungSize = breathingLung.getMaxLungSizeMm();
+            lungSeparation = breathingLung.getLungSeparationMm();
 
             % Peripheral fat (outer - inner shell)
             fatThickness_mm = 10;
             tissueThickness_mm = 10;
-            patientThickness_outer_mm = 1.85 * (max(lung_b_mm, lung_c_mm) + fatThickness_mm);
-            patientWidth_outer_mm = 1.5 * (lungSeparation + max(lung_b_mm, lung_c_mm) + ...
+            patientThickness_outer_mm = 1.85 * (maxLungSize + fatThickness_mm);
+            patientWidth_outer_mm = 1.5 * (lungSeparation + maxLungSize + ...
                 fatThickness_mm + tissueThickness_mm) + 2;
 
             bodyCenter = [0 bodyShift 0];
@@ -68,7 +70,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 patientThickness_inner_mm, 0.9 * phantomDepth_mm, [], bodyCenter, [0, 0, 0]);
 
             fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2, [], []);
-            tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, rightLung, leftLung], ...
+            tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, breathingLung], ...
                 0.5, [], []);
 
             % Breasts
@@ -104,7 +106,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             breastRightTissue = CompositeAnalyticalShape3D(breast_right, ...
                 enhancingVessel, 0.5, [], []);
 
-            shapes = [fatComposite, tissueComposite, heart, rightLung, leftLung, ...
+            shapes = [fatComposite, tissueComposite, heart, breathingLung, ...
                 breast_left, breastRightTissue, enhancingVessel];
 
             obj@MultipleMaterialPhantom(shapes);
