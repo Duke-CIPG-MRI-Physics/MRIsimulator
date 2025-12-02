@@ -102,6 +102,12 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
             R = obj.requireScalarOrSize(obj.R_mm, kx_body, 'R');
             L = obj.requireScalarOrSize(obj.L_mm, kx_body, 'L');
 
+            % Degenerate cylinder (zero radius or length) has zero volume → zero-valued FT
+            if all(R(:) == 0 | L(:) == 0)
+                S = zeros(size(kx_body));
+                return;
+            end
+
             % Radial term
             k_perp = sqrt(kx_body.^2 + ky_body.^2);
             radial = zeros(size(k_perp));
