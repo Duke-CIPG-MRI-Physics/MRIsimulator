@@ -102,25 +102,31 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
             R = obj.requireScalarOrSize(obj.R_mm, kx_body, 'R');
             L = obj.requireScalarOrSize(obj.L_mm, kx_body, 'L');
 
+            % Degenerate cylinder (zero radius or length) has zero volume → zero-valued FT
+            if all(R(:) == 0 | L(:) == 0)
+                S = zeros(size(kx_body));
+                return;
+            end
+
             % Radial term
             k_perp = sqrt(kx_body.^2 + ky_body.^2);
             radial = zeros(size(k_perp));
 
-            idx = (k_perp ~= 0);
-            if any(idx(:))
-                x_r = 2*pi .* R(idx) .* k_perp(idx);
-                radial(idx) = R(idx) .* besselj(1, x_r) ./ k_perp(idx);
+            nonZero_idx = (k_perp ~= 0);
+            if any(nonZero_idx(:))
+                x_r = 2*pi .* R(nonZero_idx) .* k_perp(nonZero_idx);
+                radial(nonZero_idx) = R(nonZero_idx) .* besselj(1, x_r) ./ k_perp(nonZero_idx);
             end
-            radial(~idx) = pi .* (R(~idx).^2);   % limit as k_perp → 0
+            radial(~nonZero_idx) = pi .* (R(~nonZero_idx).^2);   % limit as k_perp → 0
 
             % Axial term
             zfac = zeros(size(kz_body));
-            idx = (kz_body ~= 0);
-            if any(idx(:))
-                x_z = pi .* L(idx) .* kz_body(idx);
-                zfac(idx) = L(idx) .* (sin(x_z) ./ x_z);
+            nonZero_idx = (kz_body ~= 0) & (L ~= 0);
+            if any(nonZero_idx(:))
+                x_z = pi .* L(nonZero_idx) .* kz_body(nonZero_idx);
+                zfac(nonZero_idx) = L(nonZero_idx) .* (sin(x_z) ./ x_z);
             end
-            zfac(~idx) = L(~idx);
+            zfac(~nonZero_idx) = L(~nonZero_idx);
 
             S = radial .* zfac;
         end
