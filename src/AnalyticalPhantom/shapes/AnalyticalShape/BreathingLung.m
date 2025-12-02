@@ -21,7 +21,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     %       rollPitchYaw  - optional composite orientation [deg]
     %
     %   Notes:
-    %       - Left and right lungs are stored as private AnalyticalEllipsoid3D
+    %       - Left and right lungs are created as AnalyticalEllipsoid3D
     %         components and supplied to the CompositeAnalyticalShape3D
     %         constructor as additive components.
 
@@ -34,12 +34,6 @@ classdef BreathingLung < CompositeAnalyticalShape3D
         bellyFrac (1,:) double {mustBeReal, mustBeFinite}
         inspFrac (1,:) double {mustBeReal, mustBeFinite}
         maxHeartDim_mm (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-        leftLung (1,1) AnalyticalEllipsoid3D
-        rightLung (1,1) AnalyticalEllipsoid3D
-        lungRadius_mm (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-        lungHeight_mm (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-        lungSeparation_mm (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-        maxLungSize_mm (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
     end
 
     methods
@@ -59,6 +53,22 @@ classdef BreathingLung < CompositeAnalyticalShape3D
                 rollPitchYaw (1,3) double {mustBeFinite} = [0 0 0]
             end
 
+            [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(t_s, f_bpm, VT_L, ...
+                Vres_L, Vbase_L, bellyFrac, inspFrac);
+
+            lungRadius_mm = max(R_mm(:));
+            lungHeight_mm = max(H_mm(:));
+            lungSeparation_mm = lungRadius_mm + maxHeartDim_mm + 2;
+
+            rightCenter = [lungSeparation_mm, 0, 0];
+            leftCenter = [-lungSeparation_mm, 0, 0];
+
+            rightLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], rightCenter, [0, 95, 0]);
+            leftLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], leftCenter, [0, 85, 0]);
+
+            obj@CompositeAnalyticalShape3D([leftLung, rightLung], ...
+                AnalyticalShape3D.empty, intensity, center, rollPitchYaw);
+
             obj.t_s = t_s;
             obj.f_bpm = f_bpm;
             obj.VT_L = VT_L;
@@ -67,39 +77,34 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             obj.bellyFrac = bellyFrac;
             obj.inspFrac = inspFrac;
             obj.maxHeartDim_mm = maxHeartDim_mm;
-
-            [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(t_s, f_bpm, VT_L, ...
-                Vres_L, Vbase_L, bellyFrac, inspFrac);
-
-            obj.lungRadius_mm = max(R_mm(:));
-            obj.lungHeight_mm = max(H_mm(:));
-            obj.maxLungSize_mm = max(obj.lungRadius_mm, obj.lungHeight_mm);
-            obj.lungSeparation_mm = obj.lungRadius_mm + maxHeartDim_mm + 2;
-
-            rightCenter = [obj.lungSeparation_mm, 0, 0];
-            leftCenter = [-obj.lungSeparation_mm, 0, 0];
-
-            obj.rightLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], rightCenter, [0, 95, 0]);
-            obj.leftLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], leftCenter, [0, 85, 0]);
-
-            obj@CompositeAnalyticalShape3D([obj.leftLung, obj.rightLung], ...
-                AnalyticalShape3D.empty, intensity, center, rollPitchYaw);
         end
 
         function lungRadius = getLungRadiusMm(obj)
-            lungRadius = obj.lungRadius_mm;
+            [lungRadius, ~, ~, ~] = obj.computeLungDimensions();
         end
 
         function lungHeight = getLungHeightMm(obj)
-            lungHeight = obj.lungHeight_mm;
+            [~, lungHeight, ~, ~] = obj.computeLungDimensions();
         end
 
         function separation = getLungSeparationMm(obj)
-            separation = obj.lungSeparation_mm;
+            [~, ~, separation, ~] = obj.computeLungDimensions();
         end
 
         function maxSize = getMaxLungSizeMm(obj)
-            maxSize = obj.maxLungSize_mm;
+            [~, ~, ~, maxSize] = obj.computeLungDimensions();
+        end
+    end
+    
+    methods (Access = private)
+        function [lungRadius_mm, lungHeight_mm, lungSeparation_mm, maxLungSize_mm] = computeLungDimensions(obj)
+            [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(obj.t_s, obj.f_bpm, ...
+                obj.VT_L, obj.Vres_L, obj.Vbase_L, obj.bellyFrac, obj.inspFrac);
+
+            lungRadius_mm = max(R_mm(:));
+            lungHeight_mm = max(H_mm(:));
+            lungSeparation_mm = lungRadius_mm + obj.maxHeartDim_mm + 2;
+            maxLungSize_mm = max(lungRadius_mm, lungHeight_mm);
         end
     end
 end
