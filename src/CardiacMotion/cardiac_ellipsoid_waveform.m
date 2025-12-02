@@ -1,8 +1,8 @@
-function [V_ml, a_m, b_m, c_m, phase, eps_L, eps_C] = ...
+function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml, ESV_ml, opts)
 %CARDIAC_ELLIPSOID_WAVEFORM  LV volume + ellipsoid semi-axes vs time.
 %
-%   [V_ml, a_m, b_m, c_m, phase, eps_L, eps_C] = ...
+%   [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
 %       cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml, ESV_ml, opts)
 %
 %   Inputs (1xN vectors):
@@ -19,9 +19,9 @@ function [V_ml, a_m, b_m, c_m, phase, eps_L, eps_C] = ...
 %
 %   Outputs:
 %       V_ml   - instantaneous LV volume [mL] vs time
-%       a_m    - ellipsoid semi-axis along LV long-axis [m] vs time
-%       b_m    - ellipsoid short-axis [m] vs time
-%       c_m    - ellipsoid short-axis (set equal to b_m) [m] vs time
+%       a_mm   - ellipsoid semi-axis along LV long-axis [mm] vs time
+%       b_mm   - ellipsoid short-axis [mm] vs time
+%       c_mm   - ellipsoid short-axis (set equal to b_mm) [mm] vs time
 %       phase  - cumulative cardiac phase [rad] (0..∞), built from HR(t)
 %       eps_L  - longitudinal strain vs time (relative to ED)
 %       eps_C  - circumferential strain vs time (relative to ED)
@@ -168,10 +168,15 @@ function [V_ml, a_m, b_m, c_m, phase, eps_L, eps_C] = ...
     end
     lambda = (V_m3 ./ V_hat_m3).^(1/3);
 
-    % Final semi-axes
+    % Final semi-axes (meters)
     a_m = lambda .* a_hat;
     b_m = lambda .* b_hat;
     c_m = lambda .* c_hat;
+
+    % Convert to millimeters for output
+    a_mm = 1000 .* a_m;
+    b_mm = 1000 .* b_m;
+    c_mm = 1000 .* c_m;
 
     % Optional internal check (commented out)
     % V_check = (4/3)*pi .* a_m .* b_m.^2;
