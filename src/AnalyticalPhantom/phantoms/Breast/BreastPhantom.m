@@ -15,19 +15,32 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             bodyShift = -80;
 
+            t_row = t_s(:).';
+
+            heartOpts = struct('systFrac', 0.35, ...
+                'q_ED', 50/27, ...
+                'GLS_peak', -0.20, ...
+                'GCS_peak', -0.25);
+
+            HR_bpm = 70 * ones(1, numel(t_row));
+            EDV_ml = 170 * ones(1, numel(t_row));
+            ESV_ml = 85  * ones(1, numel(t_row));
+
             % Heart
-            heart_a_mm = 50;
-            heart_b_mm = 27;
-            heart_c_mm = 30;
             heart_center = [0 bodyShift 0];
-            heart = AnalyticalEllipsoid3D(heart_a_mm, heart_b_mm, heart_c_mm, 1, ...
-                heart_center, [0, -65, 70]);
+            heart = BeatingHeart(t_row, HR_bpm, EDV_ml, ESV_ml, 1, heart_center, ...
+                [0, -65, 70], heartOpts);
+
+            heart_b_mm = heart.getB();
+            heart_c_mm = heart.getC();
+            heart_b_max_mm = max(heart_b_mm(:));
+            heart_c_max_mm = max(heart_c_mm(:));
 
             % Lungs
             lung_a_mm = 140;
             lung_b_mm = 50;
             lung_c_mm = 50;
-            lungSeparation = max(lung_b_mm, lung_c_mm) + max(heart_b_mm, heart_c_mm) + 2;
+            lungSeparation = max(lung_b_mm, lung_c_mm) + max(heart_b_max_mm, heart_c_max_mm) + 2;
 
             center_R_mm = [lungSeparation, bodyShift, 0];
             rightLung = AnalyticalEllipsoid3D(lung_a_mm, lung_b_mm, lung_c_mm, 0.1, ...
@@ -76,16 +89,16 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             if isempty(V_contrast_mm3)
                 totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
-                V_contrast_mm3 = linspace(0, totalVolume_mm3, numel(t_s)).';
+                V_contrast_mm3 = linspace(0, totalVolume_mm3, numel(t_row)).';
             else
                 V_contrast_mm3 = V_contrast_mm3(:);
-                if numel(V_contrast_mm3) ~= numel(t_s)
+                if numel(V_contrast_mm3) ~= numel(t_row)
                     error('BreastPhantom:ContrastSizeMismatch', ...
                         'V_contrast_mm3 must match the length of t_s.');
                 end
             end
 
-            enhancingVessel = EnhancingVessel(t_s, total_vessel_length_mm, 2.5, 0.4, ...
+            enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...
                 vesselRadius_mm, V_contrast_mm3, right_breast_center, rollPitchYaw);
 
             breastRightTissue = CompositeAnalyticalShape3D(breast_right, ...
