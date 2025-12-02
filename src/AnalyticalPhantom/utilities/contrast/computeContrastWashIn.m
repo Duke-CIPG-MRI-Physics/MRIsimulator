@@ -40,7 +40,7 @@ numSamples = numel(t_s);
 % Allow a scalar radius to indicate a constant vessel over time; otherwise
 % enforce that the radius matches the time vector length.
 if isscalar(radius_mm)
-    radius_mm = repmat(radius_mm, numSamples, 1);
+    radius_mm = repmat(radius_mm, size(t_s));
 elseif numel(radius_mm) ~= numSamples
     error('computeContrastWashIn:SizeMismatch', ...
         't_s, radius_mm, and V_contrast_mm3 must have identical lengths.');

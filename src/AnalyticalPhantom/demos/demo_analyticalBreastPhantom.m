@@ -15,7 +15,7 @@ fprintf('Voxel size: [%.2f %.2f %.2f] mm\n', resolution(1), resolution(2), resol
 fprintf('Grid size : %d x %d x %d\n', N(1), N(2), N(3));
 
 %% 2) Configure acquisition ordering and timing
-freq_phase_slice = [1 2 3];
+freq_phase_slice = [2 1 3];
 dt = 4e-6;   % dwell time between frequency-encode samples [s]
 TR = 5e-3;   % time between starts of successive frequency-encode lines [s]
 
@@ -48,7 +48,7 @@ phantom = BreastPhantom(t_s, V_contrast_mm3, vesselRadius_mm);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-K_ordered = phantom.kspace(kx_vec(kx_orderedIdx), ky_vec(ky_orderedIdx), kz_vec(kz_orderedIdx));
+K_ordered = phantom.kspace(kx_vec(kx_orderedIdx)', ky_vec(ky_orderedIdx)', kz_vec(kz_orderedIdx)');
 
 % Reassemble onto the kx/ky/kz grid for reconstruction
 K = zeros(N);

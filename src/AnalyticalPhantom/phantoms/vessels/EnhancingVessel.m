@@ -16,11 +16,13 @@ classdef EnhancingVessel < MultipleMaterialPhantom
         contrastVolume_mm3 (:,1) double {mustBeFinite, mustBeNonnegative}
 
         time_s (:,1) double {mustBeFinite}
-        rollPitchYaw_deg (1,3) double = [0 0 0];
+        rollPitchYaw (1,3) double = [0 0 0];
     end
 
     methods
-        function obj = EnhancingVessel(t_s, totalLength_mm, enhancedIntensity, unenhancedIntensity, vesselRadius_mm, V_contrast_mm3, centerlineCenter, rollPitchYaw)
+        function obj = EnhancingVessel(t_s, totalLength_mm, ...
+                enhancedIntensity, unenhancedIntensity, ...
+                vesselRadius_mm, V_contrast_mm3, vesselCenter, rollPitchYaw)
             % Constructor
             %   obj = EnhancingVessel(t_s, totalLength_mm, enhancedIntensity, unenhancedIntensity, vesselRadius_mm, V_contrast_mm3)
             %   obj = EnhancingVessel(..., centerlineCenter)
@@ -42,7 +44,7 @@ classdef EnhancingVessel < MultipleMaterialPhantom
                 unenhancedIntensity double
                 vesselRadius_mm double {mustBePositive}
                 V_contrast_mm3 (:,1) double {mustBeFinite, mustBeNonnegative}
-                centerlineCenter (1,3) double = [0 0 0];
+                vesselCenter (1,3) double = [0 0 0];
                 rollPitchYaw (1,3) double = [0 0 0];
             end
 
@@ -51,14 +53,11 @@ classdef EnhancingVessel < MultipleMaterialPhantom
             obj.time_s = t_s;
             obj.totalLength_mm = obj.ensureTotalLengthVector(totalLength_mm, numel(t_s));
             obj.vesselRadius_mm = obj.ensureRadiusVector(vesselRadius_mm, numel(t_s));
-            obj.contrastVolume_mm3 = obj.ensureVectorSize(V_contrast_mm3, numel(t_s), ...
-                'EnhancingVessel:ContrastSizeMismatch', ...
-                'V_contrast_mm3 must match the length of t_s.');
-            obj.enhancingVesselCenter = centerlineCenter;
-            obj.rollPitchYaw_deg = rollPitchYaw;
+            obj.contrastVolume_mm3 = obj.ensureVectorSize(V_contrast_mm3, numel(t_s));
+            obj.rollPitchYaw = rollPitchYaw;
 
             [enhancedLength_mm, unenhancedLength_mm] = obj.calcVesselLengths(obj.time_s, obj.contrastVolume_mm3, obj.vesselRadius_mm);
-            [enhancedCenter_mm, unenhancedCenter_mm] = obj.calcVesselCenter(obj.enhancingVesselCenter, ...
+            [enhancedCenter_mm, unenhancedCenter_mm] = obj.calcVesselCenter(vesselCenter, ...
                 enhancedLength_mm, unenhancedLength_mm);
 
             obj.enhancedVessel = AnalyticalCylinder3D(obj.vesselRadius_mm, ...
@@ -69,7 +68,7 @@ classdef EnhancingVessel < MultipleMaterialPhantom
             obj.setShapes([obj.unenhancedVessel, obj.enhancedVessel]);
         end
 
-        function updateTimeArray(obj, t_s, V_contrast_mm3, vesselRadius_mm)
+        function updateTimeArray(obj, t_s, contrastVolume_mm3, vesselRadius_mm)
             % updateTimeArray
             %   Recompute the enhanced/unenhanced trajectories for a new time
             %   vector and update the paired cylindrical vessels.
@@ -84,13 +83,13 @@ classdef EnhancingVessel < MultipleMaterialPhantom
             arguments
                 obj
                 t_s (:,1) double {mustBeFinite}
-                V_contrast_mm3 (:,1) double {mustBeFinite, mustBeNonnegative} = obj.contrastVolume_mm3
+                contrastVolume_mm3 (:,1) double {mustBeFinite, mustBeNonnegative} = obj.contrastVolume_mm3
                 vesselRadius_mm double {mustBePositive} = obj.vesselRadius_mm
             end
 
             obj.time_s = t_s;
             obj.totalLength_mm = obj.ensureTotalLengthVector(obj.totalLength_mm, numel(t_s));
-            obj.contrastVolume_mm3 = obj.ensureVectorSize(V_contrast_mm3, numel(t_s), ...
+            obj.contrastVolume_mm3 = obj.ensureVectorSize(contrastVolume_mm3, numel(t_s), ...
                 'EnhancingVessel:ContrastSizeMismatch', ...
                 'V_contrast_mm3 must match the length of t_s.');
             obj.vesselRadius_mm = obj.ensureRadiusVector(vesselRadius_mm, numel(t_s));
@@ -164,30 +163,29 @@ classdef EnhancingVessel < MultipleMaterialPhantom
             obj.unenhancedVessel.setRadius(obj.vesselRadius_mm);
         end
 
-        function [enhancedCenter, unenhancedCenter] = calcVesselCenter(obj, enhancingVesselCenter, enhancedLength_mm, unenhancedLength_mm)
+        function [enhancedCenter, unenhancedCenter] = calcVesselCenter(obj, vesselCenter, enhancedLength_mm, unenhancedLength_mm)
             % calcVesselCenter
             %   Calculate the centers of the enhanced and unenhanced
-            %   segments given a desired overall vessel center.
-            obj.enhancingVesselCenter = double(enhancingVesselCenter(:)).';
+            %   segments 
+            axisUnit = obj.bodyZAxisInWorld(obj.rollPitchYaw);
 
-            axisUnit = obj.bodyZAxisInWorld(obj.rollPitchYaw_deg);
-
-            enhancedCenter = obj.enhancingVesselCenter - 0.5 .* unenhancedLength_mm .* axisUnit;
-            unenhancedCenter = obj.enhancingVesselCenter + 0.5 .* enhancedLength_mm .* axisUnit;
+            enhancedCenter = vesselCenter - 0.5 .* unenhancedLength_mm .* axisUnit;
+            unenhancedCenter = vesselCenter + 0.5 .* enhancedLength_mm .* axisUnit;
         end
 
-        function updateVesselCenter(obj, enhancingVesselCenter)
+        function updateVesselCenters(obj, vesselCenter)
             % updateVesselCenter
             %   Reposition the enhanced and unenhanced vessels while
             %   maintaining their relative spacing along the body z-axis.
             enhancedLength_mm = obj.enhancedVessel.getLength();
             unenhancedLength_mm = obj.unenhancedVessel.getLength();
 
-            [enhancedCenter, unenhancedCenter] = obj.calcVesselCenter(enhancingVesselCenter, ...
+            [enhancedCenter, unenhancedCenter] = obj.calcVesselCenter(vesselCenter, ...
                 enhancedLength_mm, unenhancedLength_mm);
 
             obj.enhancedVessel.setCenter(enhancedCenter);
             obj.unenhancedVessel.setCenter(unenhancedCenter);
+            obj.setCenter(vesselCenter);
         end
 
         function radiusVec = ensureRadiusVector(~, radiusInput, targetLength)
