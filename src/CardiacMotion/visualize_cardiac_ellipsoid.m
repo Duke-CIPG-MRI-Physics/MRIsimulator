@@ -1,14 +1,14 @@
-function visualize_cardiac_ellipsoid(t_s, V_ml, a_m, b_m, c_m, eps_L, eps_C, visOpts)
+function visualize_cardiac_ellipsoid(t_s, V_ml, a_mm, b_mm, c_mm, eps_L, eps_C, visOpts)
 %VISUALIZE_CARDIAC_ELLIPSOID  Animate LV ellipsoid + volume + strain.
 %
-%   visualize_cardiac_ellipsoid(t_s, V_ml, a_m, b_m, c_m, eps_L, eps_C, visOpts)
+%   visualize_cardiac_ellipsoid(t_s, V_ml, a_mm, b_mm, c_mm, eps_L, eps_C, visOpts)
 %
 %   Inputs:
 %       t_s     - time [s], 1xN, strictly increasing
 %       V_ml    - LV volume [mL] vs time, 1xN
-%       a_m     - ellipsoid semi-axis along long-axis [m], 1xN
-%       b_m     - ellipsoid short-axis [m], 1xN
-%       c_m     - ellipsoid short-axis [m], 1xN (not used separately here)
+%       a_mm    - ellipsoid semi-axis along long-axis [mm], 1xN
+%       b_mm    - ellipsoid short-axis [mm], 1xN
+%       c_mm    - ellipsoid short-axis [mm], 1xN (not used separately here)
 %       eps_L   - longitudinal strain (GLS, relative to ED), 1xN
 %       eps_C   - circumferential strain (GCS, relative to ED), 1xN
 %
@@ -25,9 +25,9 @@ function visualize_cardiac_ellipsoid(t_s, V_ml, a_m, b_m, c_m, eps_L, eps_C, vis
     arguments
         t_s    (1,:) double {mustBeReal, mustBeFinite}
         V_ml   (1,:) double {mustBeReal, mustBeFinite}
-        a_m    (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
-        b_m    (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
-        c_m    (1,:) double {mustBeReal, mustBeFinite, mustBePositive} %#ok<INUSD>
+        a_mm   (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
+        b_mm   (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
+        c_mm   (1,:) double {mustBeReal, mustBeFinite, mustBePositive} %#ok<INUSD>
         eps_L  (1,:) double {mustBeReal, mustBeFinite}
         eps_C  (1,:) double {mustBeReal, mustBeFinite}
         visOpts struct = struct()
@@ -50,15 +50,15 @@ function visualize_cardiac_ellipsoid(t_s, V_ml, a_m, b_m, c_m, eps_L, eps_C, vis
     if any(diff(t_s) <= 0)
         error('t_s must be strictly increasing.');
     end
-    if any([numel(V_ml), numel(a_m), numel(b_m), numel(eps_L), numel(eps_C)] ~= N)
+    if any([numel(V_ml), numel(a_mm), numel(b_mm), numel(eps_L), numel(eps_C)] ~= N)
         error('All input vectors must have the same length as t_s.');
     end
 
     % ---------------------------------------------------------------------
     % Pre-compute geometry in cm for plotting
     % ---------------------------------------------------------------------
-    a_cm = 100 * a_m;
-    b_cm = 100 * b_m;
+    a_cm = a_mm / 10;
+    b_cm = b_mm / 10;
 
     theta = linspace(0, 2*pi, nTheta);
 

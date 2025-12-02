@@ -32,7 +32,7 @@ opts.GLS_peak  = -0.20;   % peak longitudinal strain (GLS)
 opts.GCS_peak  = -0.25;   % peak circumferential strain (GCS)
 
 %% 3) Run ellipsoid waveform model
-[V_ml, a_m, b_m, c_m, phase, eps_L, eps_C] = ...
+[V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml, ESV_ml, opts);
 
 % Optional: equivalent sphere radius (sanity check)
@@ -44,4 +44,4 @@ visOpts = struct();
 visOpts.frameStep = 4;     % subsample frames to speed up animation (~N/4 frames)
 visOpts.nTheta    = 200;   % angular resolution for ellipse/circle
 
-visualize_cardiac_ellipsoid(t_s, V_ml, a_m, b_m, c_m, eps_L, eps_C, visOpts);
+visualize_cardiac_ellipsoid(t_s, V_ml, a_mm, b_mm, c_mm, eps_L, eps_C, visOpts);

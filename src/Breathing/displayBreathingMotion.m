@@ -1,13 +1,13 @@
-function displayBreathingMotion(t_s, V_L, R_m, H_m, B_phase, visOpts)
+function displayBreathingMotion(t_s, V_L, R_mm, H_mm, B_phase, visOpts)
 %DISPLAYBREATHINGMOTION  Animate simple lung ellipsoids + circles + V(t).
 %
-%   displayBreathingMotion(t_s, V_L, R_m, H_m, B_phase, visOpts)
+%   displayBreathingMotion(t_s, V_L, R_mm, H_mm, B_phase, visOpts)
 %
 %   Inputs:
 %       t_s     - time [s], 1xN
 %       V_L     - total lung volume [L], 1xN
-%       R_m     - lung radius [m], 1xN
-%       H_m     - lung height [m], 1xN
+%       R_mm    - lung radius [mm], 1xN
+%       H_mm    - lung height [mm], 1xN
 %       B_phase - breathing phase [rad], 1xN (for consistency; not used)
 %       visOpts - (optional struct)
 %                 .frameStep - frame stride for animation
@@ -21,8 +21,8 @@ function displayBreathingMotion(t_s, V_L, R_m, H_m, B_phase, visOpts)
     arguments
         t_s     (1,:) double {mustBeReal, mustBeFinite}
         V_L     (1,:) double {mustBeReal, mustBeFinite}
-        R_m     (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
-        H_m     (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
+        R_mm    (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
+        H_mm    (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
         B_phase (1,:) double {mustBeReal, mustBeFinite}
         visOpts struct = struct()   % <- visOpts is a struct positional arg
     end
@@ -31,7 +31,7 @@ function displayBreathingMotion(t_s, V_L, R_m, H_m, B_phase, visOpts)
     if any(diff(t_s) <= 0)
         error('t_s must be strictly increasing.');
     end
-    if any([numel(V_L), numel(R_m), numel(H_m), numel(B_phase)] ~= N)
+    if any([numel(V_L), numel(R_mm), numel(H_mm), numel(B_phase)] ~= N)
         error('All input vectors must have the same length as t_s.');
     end
 
@@ -47,8 +47,8 @@ function displayBreathingMotion(t_s, V_L, R_m, H_m, B_phase, visOpts)
     nTheta    = visOpts.nTheta;
 
     % Work in cm for display
-    R_cm = 100 * R_m;
-    H_cm = 100 * H_m;
+    R_cm = R_mm / 10;
+    H_cm = H_mm / 10;
 
     % Angular sampling for circles/ellipses
     theta = linspace(0, 2*pi, nTheta);

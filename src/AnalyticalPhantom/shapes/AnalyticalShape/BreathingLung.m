@@ -68,11 +68,8 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             obj.inspFrac = inspFrac;
             obj.maxHeartDim_mm = maxHeartDim_mm;
 
-            [~, R_m, H_m] = computeBreathingMotionEllipsoid(t_s, f_bpm, VT_L, ...
+            [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(t_s, f_bpm, VT_L, ...
                 Vres_L, Vbase_L, bellyFrac, inspFrac);
-
-            R_mm = 1000 .* R_m;
-            H_mm = 1000 .* H_m;
 
             obj.lungRadius_mm = max(R_mm(:));
             obj.lungHeight_mm = max(H_mm(:));

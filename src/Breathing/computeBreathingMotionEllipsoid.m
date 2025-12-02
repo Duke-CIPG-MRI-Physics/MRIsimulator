@@ -1,8 +1,8 @@
-function [V_L, R_m, H_m, B_phase] = computeBreathingMotionEllipsoid( ...
+function [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
             t_s, f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac)
 %COMPUTEBREATHINGMOTIONELLIPSOID  Lung volume + ellipsoid geometry vs time.
 %
-%   [V_L, R_m, H_m, B_phase] = computeBreathingMotionEllipsoid( ...
+%   [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
 %           t_s, f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac)
 %
 %   Inputs (1xN row vectors):
@@ -16,8 +16,8 @@ function [V_L, R_m, H_m, B_phase] = computeBreathingMotionEllipsoid( ...
 %
 %   Outputs:
 %       V_L     - total lung volume [L] (both lungs combined)
-%       R_m     - effective radius [m] of each lung ellipsoid (LR/AP)
-%       H_m     - height [m] of each lung ellipsoid (SI)
+%       R_mm    - effective radius [mm] of each lung ellipsoid (LR/AP)
+%       H_mm    - height [mm] of each lung ellipsoid (SI)
 %       B_phase - cumulative breathing phase [rad]
 %
 %   Model details:
@@ -143,6 +143,10 @@ function [V_L, R_m, H_m, B_phase] = computeBreathingMotionEllipsoid( ...
 
     H_m = (3 .* V2_m3) ./ (4 * pi .* R_ch_m.^2);
     R_m = R_ch_m;
+
+    % Convert to millimeters for output
+    R_mm = 1000 .* R_m;
+    H_mm = 1000 .* H_m;
 
     % Optional sanity check:
     % V_check = (4/3)*pi.*R_m.^2.*H_m;
