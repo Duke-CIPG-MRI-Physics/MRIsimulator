@@ -23,8 +23,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 'GCS_peak', -0.25);
 
             HR_bpm = 70 * ones(1, numel(t_row));
-            EDV_ml = 170 * ones(1, numel(t_row));
-            ESV_ml = 85  * ones(1, numel(t_row));
+            EDV_ml = 150 * ones(1, numel(t_row));
+            ESV_ml = 75  * ones(1, numel(t_row));
 
             % Heart
             heart_center = [0 bodyShift 0];
@@ -40,9 +40,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             % Lungs
             f_bpm = 12 * ones(1, numel(t_row));
-            VT_L = 0.6 * ones(1, numel(t_row));
-            Vres_L = 1.2 * ones(1, numel(t_row));
-            Vbase_L = 2.5 * ones(1, numel(t_row));
+            VT_L = 0.4 * ones(1, numel(t_row));
+            Vres_L = 0.8 * ones(1, numel(t_row));
+            Vbase_L = 1.5 * ones(1, numel(t_row));
             bellyFrac = zeros(1, numel(t_row));
             inspFrac = 0.4 * ones(1, numel(t_row));
 
