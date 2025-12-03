@@ -5,6 +5,14 @@ classdef BreastPhantom < MultipleMaterialPhantom
     %   simple vessel. Geometry and intensities follow the original
     %   demo_analyticalBreastPhantom.m setup.
 
+    properties (Access = private)
+        time_s (:,1) double {mustBeFinite}
+        contrastVolume_mm3 (:,1) double {mustBeFinite, mustBeNonnegative}
+        vesselRadius_mm (:,1) double {mustBePositive}
+        enhancingVessel (1,1) EnhancingVessel = EnhancingVessel.empty
+        totalVesselLength_mm double {mustBePositive} = 100;
+    end
+
     methods
         function obj = BreastPhantom(t_s, V_contrast_mm3, vesselRadius_mm)
             arguments
@@ -12,6 +20,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 V_contrast_mm3 (:,1) double {mustBeFinite, mustBeNonnegative} = [];
                 vesselRadius_mm double {mustBePositive} = 2.5;
             end
+
+            obj@MultipleMaterialPhantom();
 
             bodyShift = -80;
 
@@ -37,6 +47,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
             heart_c_max_mm = max(heart_c_mm(:));
 
             maxHeartDim_mm = max(heart_b_max_mm, heart_c_max_mm);
+
+            obj.time_s = t_s(:);
+            obj.vesselRadius_mm = obj.ensureRadiusVector(vesselRadius_mm, numel(obj.time_s));
 
             % Lungs
             f_bpm = 12 * ones(1, numel(t_row));
@@ -87,30 +100,92 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 [-right_breast_center(1), right_breast_center(2:3)], [0, 90, 90]);
 
             % A/P blood vessel with contrast wash-in
-            total_vessel_length_mm = 100;
             rollPitchYaw = [0, 90, 90];
 
-            if isempty(V_contrast_mm3)
-                totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
-                V_contrast_mm3 = linspace(0, totalVolume_mm3, numel(t_row)).';
+            obj.contrastVolume_mm3 = obj.ensureContrastCurve(V_contrast_mm3, ...
+                numel(obj.time_s));
+
+            obj.enhancingVessel = EnhancingVessel(obj.time_s, obj.totalVesselLength_mm, 2.5, 0.4, ...
+                obj.vesselRadius_mm, obj.contrastVolume_mm3, right_breast_center, rollPitchYaw);
+
+            breastRightTissue = CompositeAnalyticalShape3D(breast_right, ...
+                obj.enhancingVessel, 0.5, [], []);
+
+            shapes = [fatComposite, tissueComposite, heart, breathingLung, ...
+                breast_left, breastRightTissue, obj.enhancingVessel];
+
+            obj.setShapes(shapes);
+        end
+
+        function t_s = getTimeVector(obj)
+            % getTimeVector
+            %   Return the time base used when constructing the phantom.
+            t_s = obj.time_s;
+        end
+
+        function contrastCurve = getContrastVolumeCurve(obj)
+            % getContrastVolumeCurve
+            %   Return the contrast volume curve driving the enhancing
+            %   vessel.
+            contrastCurve = obj.contrastVolume_mm3;
+        end
+
+        function vesselRadius_mm = getVesselRadius(obj)
+            % getVesselRadius
+            %   Return the vessel radius used for the enhancing vessel.
+            vesselRadius_mm = obj.vesselRadius_mm;
+        end
+
+        function enhancingVessel = getEnhancingVessel(obj)
+            % getEnhancingVessel
+            %   Return the EnhancingVessel instance embedded in the phantom.
+            enhancingVessel = obj.enhancingVessel;
+        end
+
+        function totalLength_mm = getTotalVesselLength(obj)
+            % getTotalVesselLength
+            %   Return the total vessel length used in the enhancing vessel model.
+            totalLength_mm = obj.totalVesselLength_mm;
+        end
+    end
+
+    methods (Access = private)
+        function radiusVec = ensureRadiusVector(~, radiusInput, targetLength)
+            if isscalar(radiusInput)
+                radiusVec = radiusInput * ones(targetLength, 1);
             else
-                V_contrast_mm3 = V_contrast_mm3(:);
-                if numel(V_contrast_mm3) ~= numel(t_row)
+                if numel(radiusInput) ~= targetLength
+                    error('BreastPhantom:RadiusSizeMismatch', ...
+                        'vesselRadius_mm must be scalar or match length of t_s.');
+                end
+                radiusVec = radiusInput(:);
+            end
+        end
+
+        function contrastCurve = ensureContrastCurve(obj, contrastInput, targetLength)
+            if isempty(contrastInput)
+                contrastCurve = obj.defaultContrastCurve();
+            else
+                contrastCurve = contrastInput(:);
+                if numel(contrastCurve) ~= targetLength
                     error('BreastPhantom:ContrastSizeMismatch', ...
                         'V_contrast_mm3 must match the length of t_s.');
                 end
             end
+        end
 
-            enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...
-                vesselRadius_mm, V_contrast_mm3, right_breast_center, rollPitchYaw);
+        function contrastCurve = defaultContrastCurve(obj)
+            startTime = 0.25 * obj.time_s(end);
+            endTime = 0.75 * obj.time_s(end);
 
-            breastRightTissue = CompositeAnalyticalShape3D(breast_right, ...
-                enhancingVessel, 0.5, [], []);
+            contrastCurve = zeros(numel(obj.time_s), 1);
 
-            shapes = [fatComposite, tissueComposite, heart, breathingLung, ...
-                breast_left, breastRightTissue, enhancingVessel];
+            totalVolume_mm3 = pi .* obj.vesselRadius_mm.^2 .* obj.totalVesselLength_mm;
 
-            obj@MultipleMaterialPhantom(shapes);
+            midRamp = obj.time_s >= startTime & obj.time_s <= endTime;
+            contrastCurve(midRamp) = totalVolume_mm3 .* ...
+                (obj.time_s(midRamp) - startTime) ./ (endTime - startTime);
+            contrastCurve(obj.time_s > endTime) = totalVolume_mm3(obj.time_s > endTime);
         end
     end
 end
