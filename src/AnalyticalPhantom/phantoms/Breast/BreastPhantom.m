@@ -49,15 +49,16 @@ classdef BreastPhantom < MultipleMaterialPhantom
             breathingLung = BreathingLung(t_row, f_bpm, VT_L, Vres_L, ...
                 Vbase_L, bellyFrac, inspFrac, maxHeartDim_mm, 0.1, [0, bodyShift, 0]);
 
+            lungRadius = breathingLung.getLungRadiusMm();
             maxLungSize = breathingLung.getMaxLungSizeMm();
             lungSeparation = breathingLung.getLungSeparationMm();
 
             % Peripheral fat (outer - inner shell)
             fatThickness_mm = 10;
             tissueThickness_mm = 10;
-            patientThickness_outer_mm = 1.85 * (maxLungSize + fatThickness_mm);
-            patientWidth_outer_mm = 1.5 * (lungSeparation + maxLungSize + ...
-                fatThickness_mm + tissueThickness_mm) + 2;
+            patientThickness_outer_mm = 1.85 * (lungRadius + fatThickness_mm);
+            patientWidth_outer_mm = lungSeparation + lungRadius + ...
+                fatThickness_mm + tissueThickness_mm + 1;
 
             bodyCenter = [0 bodyShift 0];
             phantomDepth_mm = 400;
