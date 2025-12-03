@@ -50,25 +50,16 @@ ordKsx_kx = kx_vec(kx_orderedIdx)';
 ordKsx_ky = ky_vec(ky_orderedIdx)'; 
 ordKsx_kz = kz_vec(kz_orderedIdx)';
 
-%% 4) Configure time-varying contrast wash-in for the embedded vessel
+%% 4) Construct the breast phantom with the embedded enhancing vessel
 vesselRadius_mm = 2.5;
-total_vessel_length_mm = 100;
-totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
+phantom = BreastPhantom(t_s, [], vesselRadius_mm);
 
-startTime = 0.25 * t_s(end);
-endTime   = 0.75 * t_s(end);
+contrastVolumeCurve = phantom.getContrastVolumeCurve();
+enhancedLength_mm = computeContrastWashIn(phantom.getTimeVector(), ...
+    phantom.getVesselRadius(), contrastVolumeCurve);
+total_vessel_length_mm = phantom.getTotalVesselLength();
 
-V_contrast_mm3 = zeros(numel(t_s), 1);
-midRamp = t_s >= startTime & t_s <= endTime;
-V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_s(midRamp) - startTime) ./ (endTime - startTime);
-V_contrast_mm3(t_s > endTime) = totalVolume_mm3;
-
-enhancedLength_mm = computeContrastWashIn(t_s, vesselRadius_mm, V_contrast_mm3);
-
-%% 5) Construct the breast phantom with the embedded enhancing vessel
-phantom = BreastPhantom(t_s, V_contrast_mm3, vesselRadius_mm);
-
-%% 6) Compute analytic k-space for the phantom in ordered acquisition space
+%% 5) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
 
@@ -77,7 +68,7 @@ K = zeros(N);
 linearIdx = sub2ind(N, kx_orderedIdx, ky_orderedIdx, kz_orderedIdx);
 K(linearIdx) = K_ordered;
 
-%% 7) Reconstruct 3D image via inverse FFT
+%% 6) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
 img_viaKspace = fftshift(ifftn(ifftshift(K)));
 
