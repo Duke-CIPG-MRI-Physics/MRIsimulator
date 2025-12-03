@@ -268,6 +268,11 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                 paramOut = param .* ones(size(template));
             elseif isequal(size(param), size(template))
                 paramOut = param;
+            elseif isvector(param) && numel(param) == numel(template)
+                % Allow vector-valued parameters (e.g., waveforms) to follow
+                % the requested evaluation order even if their original shape
+                % is transposed relative to the template.
+                paramOut = reshape(param, size(template));
             else
                 error('AnalyticalShape3D:ParameterSizeMismatch', ...
                     'Parameter %s must be scalar or match template size.', paramName);
