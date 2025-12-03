@@ -21,6 +21,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 vesselRadius_mm double {mustBePositive} = 2.5;
             end
 
+            obj@MultipleMaterialPhantom();
+
             bodyShift = -80;
 
             t_row = t_s(:).';
