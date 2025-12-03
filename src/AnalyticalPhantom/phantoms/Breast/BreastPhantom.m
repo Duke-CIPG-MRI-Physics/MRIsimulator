@@ -23,8 +23,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 'GCS_peak', -0.25);
 
             HR_bpm = 70 * ones(1, numel(t_row));
-            EDV_ml = 170 * ones(1, numel(t_row));
-            ESV_ml = 85  * ones(1, numel(t_row));
+            EDV_ml = 150 * ones(1, numel(t_row));
+            ESV_ml = 75  * ones(1, numel(t_row));
 
             % Heart
             heart_center = [0 bodyShift 0];
@@ -40,24 +40,25 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             % Lungs
             f_bpm = 12 * ones(1, numel(t_row));
-            VT_L = 0.6 * ones(1, numel(t_row));
-            Vres_L = 1.2 * ones(1, numel(t_row));
-            Vbase_L = 2.5 * ones(1, numel(t_row));
+            VT_L = 0.4 * ones(1, numel(t_row));
+            Vres_L = 0.8 * ones(1, numel(t_row));
+            Vbase_L = 1.5 * ones(1, numel(t_row));
             bellyFrac = zeros(1, numel(t_row));
             inspFrac = 0.4 * ones(1, numel(t_row));
 
             breathingLung = BreathingLung(t_row, f_bpm, VT_L, Vres_L, ...
                 Vbase_L, bellyFrac, inspFrac, maxHeartDim_mm, 0.1, [0, bodyShift, 0]);
 
+            lungRadius = breathingLung.getLungRadiusMm();
             maxLungSize = breathingLung.getMaxLungSizeMm();
             lungSeparation = breathingLung.getLungSeparationMm();
 
             % Peripheral fat (outer - inner shell)
             fatThickness_mm = 10;
             tissueThickness_mm = 10;
-            patientThickness_outer_mm = 1.85 * (maxLungSize + fatThickness_mm);
-            patientWidth_outer_mm = 1.5 * (lungSeparation + maxLungSize + ...
-                fatThickness_mm + tissueThickness_mm) + 2;
+            patientThickness_outer_mm = 1.85 * (lungRadius + fatThickness_mm);
+            patientWidth_outer_mm = lungSeparation + lungRadius + ...
+                fatThickness_mm + tissueThickness_mm + 1;
 
             bodyCenter = [0 bodyShift 0];
             phantomDepth_mm = 400;

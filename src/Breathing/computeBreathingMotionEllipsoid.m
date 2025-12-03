@@ -16,8 +16,8 @@ function [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
 %
 %   Outputs:
 %       V_L     - total lung volume [L] (both lungs combined)
-%       R_mm    - effective radius [mm] of each lung ellipsoid (LR/AP)
-%       H_mm    - height [mm] of each lung ellipsoid (SI)
+%       R_mm    - effective semi-axis radius [mm] of each lung ellipsoid (LR/AP)
+%       H_mm    - semi-axis height [mm] of each lung ellipsoid (SI)
 %       B_phase - cumulative breathing phase [rad]
 %
 %   Model details:
@@ -108,8 +108,8 @@ function [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
     % ---------------------------------------------------------------------
     V0_m3 = V_m3(1);
 
-    % Choose a baseline radius ~8 cm (can be adjusted)
-    R0_m = 0.08;                               % 8 cm
+    % Choose a baseline radius ~5 cm (can be adjusted)
+    R0_m = 0.05;                               % 5 cm
     H0_m = (3 * V0_m3) / (4 * pi * R0_m^2);    % from V0 = (4/3)*pi*R0^2*H0
 
     % Total volume change relative to baseline

@@ -19,9 +19,9 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
 %
 %   Outputs:
 %       V_ml   - instantaneous LV volume [mL] vs time
-%       a_mm   - ellipsoid semi-axis along LV long-axis [mm] vs time
-%       b_mm   - ellipsoid short-axis [mm] vs time
-%       c_mm   - ellipsoid short-axis (set equal to b_mm) [mm] vs time
+%       a_mm   - ellipsoid semi-axis (radius) along LV long-axis [mm] vs time
+%       b_mm   - ellipsoid short semi-axis (radius) [mm] vs time
+%       c_mm   - ellipsoid short semi-axis (radius, =b_mm) [mm] vs time
 %       phase  - cumulative cardiac phase [rad] (0..∞), built from HR(t)
 %       eps_L  - longitudinal strain vs time (relative to ED)
 %       eps_C  - circumferential strain vs time (relative to ED)
