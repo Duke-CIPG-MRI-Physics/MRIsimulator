@@ -114,7 +114,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             shapes = [fatComposite, tissueComposite, heart, breathingLung, ...
                 breast_left, breastRightTissue, obj.enhancingVessel];
 
-            obj@MultipleMaterialPhantom(shapes);
+            obj.setShapes(shapes);
         end
 
         function t_s = getTimeVector(obj)
