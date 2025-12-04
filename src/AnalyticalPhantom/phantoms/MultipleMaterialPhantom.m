@@ -9,8 +9,15 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
     end
 
     methods
-        function obj = MultipleMaterialPhantom(shapes)
-            obj@AnalyticalShape3D(1, [0 0 0], [0 0 0]);
+        function obj = MultipleMaterialPhantom(shapes, center, rollPitchYaw)
+            if nargin < 3 
+                rollPitchYaw = [0, 0, 0];
+            end
+            if nargin < 2
+                center = [0, 0, 0];
+            end
+
+            obj@AnalyticalShape3D(1, center, rollPitchYaw);
 
             if nargin >= 1 && ~isempty(shapes)
                 obj.setShapes(shapes);

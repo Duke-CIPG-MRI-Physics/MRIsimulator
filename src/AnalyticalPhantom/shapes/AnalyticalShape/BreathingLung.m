@@ -34,6 +34,8 @@ classdef BreathingLung < CompositeAnalyticalShape3D
         bellyFrac (1,:) double {mustBeReal, mustBeFinite}
         inspFrac (1,:) double {mustBeReal, mustBeFinite}
         maxHeartDim_mm (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
+        R_mm (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
+        H_mm (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
     end
 
     methods
@@ -76,34 +78,16 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             obj.Vbase_L = Vbase_L;
             obj.bellyFrac = bellyFrac;
             obj.inspFrac = inspFrac;
+            obj.R_mm = R_mm;
+            obj.H_mm = H_mm;
         end
 
         function lungRadius = getLungRadiusMm(obj)
-            [lungRadius, ~, ~, ~] = obj.computeLungDimensions();
+            lungRadius = obj.R_mm;
         end
 
         function lungHeight = getLungHeightMm(obj)
-            [~, lungHeight, ~, ~] = obj.computeLungDimensions();
-        end
-
-        function separation = getLungSeparationMm(obj)
-            [~, ~, separation, ~] = obj.computeLungDimensions();
-        end
-
-        function maxSize = getMaxLungSizeMm(obj)
-            [~, ~, ~, maxSize] = obj.computeLungDimensions();
-        end
-    end
-    
-    methods (Access = private)
-        function [lungRadius_mm, lungHeight_mm, lungSeparation_mm, maxLungSize_mm] = computeLungDimensions(obj)
-            [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(obj.t_s, obj.f_bpm, ...
-                obj.VT_L, obj.Vres_L, obj.Vbase_L, obj.bellyFrac, obj.inspFrac);
-
-            lungRadius_mm = max(R_mm(:));
-            lungHeight_mm = max(H_mm(:));
-            lungSeparation_mm = lungRadius_mm + obj.maxHeartDim_mm + 2;
-            maxLungSize_mm = max(lungRadius_mm, lungHeight_mm);
+            lungHeight = obj.H_mm;
         end
     end
 end
