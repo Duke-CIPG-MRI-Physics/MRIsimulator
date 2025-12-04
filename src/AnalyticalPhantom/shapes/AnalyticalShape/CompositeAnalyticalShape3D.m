@@ -6,6 +6,8 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     %     • Component intensities are ignored; this class treats components as
     %       geometry-only building blocks and applies its own shapeIntensity to
     %       the combined result.
+    %     • Component centers and orientations are interpreted relative to the
+    %       composite's BODY frame so that nesting preserves pose hierarchies.
     %     • Components are handle objects. Any external mutation (geometry or
     %       intensity) to a shared component will affect every
     %       CompositeAnalyticalShape3D instance containing that handle. The
@@ -74,6 +76,45 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
                 obj.componentListeners(end+1) = lh;
             end
         end
+
+        function componentKspace = evaluateComponentKspace(~, component, kx_body, ky_body, kz_body)
+            rpy = component.getRollPitchYaw();
+            noRotation = ~any(rpy);
+
+            if noRotation
+                kx_componentBody = kx_body;
+                ky_componentBody = ky_body;
+                kz_componentBody = kz_body;
+            else
+                inputSize = size(kx_body);
+                K_body = [kx_body(:) ky_body(:) kz_body(:)].';
+                R_component = component.calculateRotationMatrix();
+                K_componentBody = R_component.' * K_body;
+
+                kx_componentBody = reshape(K_componentBody(1,:), inputSize);
+                ky_componentBody = reshape(K_componentBody(2,:), inputSize);
+                kz_componentBody = reshape(K_componentBody(3,:), inputSize);
+            end
+
+            componentBodyKspace = component.bodyKspace(kx_componentBody, ky_componentBody, kz_componentBody);
+
+            componentCenter = component.getCenter();
+            if size(componentCenter, 2) ~= 3
+                error('CompositeAnalyticalShape3D:bodyKspace:CenterSizeMismatch', ...
+                    'Component center must have 3 columns for x, y, z.');
+            end
+
+            cx = component.requireScalarOrSize(componentCenter(:,1), kx_body, 'componentCenterX');
+            cy = component.requireScalarOrSize(componentCenter(:,2), ky_body, 'componentCenterY');
+            cz = component.requireScalarOrSize(componentCenter(:,3), kz_body, 'componentCenterZ');
+
+            phase = exp(-1i * 2*pi * ( ...
+                    kx_body .* cx + ...
+                    ky_body .* cy + ...
+                    kz_body .* cz));
+
+            componentKspace = componentBodyKspace .* phase;
+        end
     end
 
     methods (Access = protected)
@@ -93,52 +134,35 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
             S = zeros(size(kx_body));
 
             for idx = 1:numel(obj.additiveComponents)
-                S = S + obj.additiveComponents(idx).kspace_shapeOnly(kx_body, ky_body, kz_body);
+                component = obj.additiveComponents(idx);
+                componentKspace = obj.evaluateComponentKspace(component, kx_body, ky_body, kz_body);
+                S = S + componentKspace;
             end
 
             for idx = 1:numel(obj.subtractiveComponents)
-                S = S - obj.subtractiveComponents(idx).kspace_shapeOnly(kx_body, ky_body, kz_body);
+                component = obj.subtractiveComponents(idx);
+                componentKspace = obj.evaluateComponentKspace(component, kx_body, ky_body, kz_body);
+                S = S - componentKspace;
             end
         end
 
         function mask = percentInsideShape(obj, xb, yb, zb)
             additiveMask = false(size(xb));
             for idx = 1:numel(obj.additiveComponents)
-                additiveMask = additiveMask | (obj.additiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
+                component = obj.additiveComponents(idx);
+                [xb_comp, yb_comp, zb_comp] = component.worldToBodyPoints(xb, yb, zb);
+                additiveMask = additiveMask | (component.percentInsideShape(xb_comp, yb_comp, zb_comp) ~= 0);
             end
 
             subtractiveMask = false(size(xb));
             for idx = 1:numel(obj.subtractiveComponents)
-                subtractiveMask = subtractiveMask | (obj.subtractiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
+                component = obj.subtractiveComponents(idx);
+                [xb_comp, yb_comp, zb_comp] = component.worldToBodyPoints(xb, yb, zb);
+                subtractiveMask = subtractiveMask | (component.percentInsideShape(xb_comp, yb_comp, zb_comp) ~= 0);
             end
 
             mask = additiveMask & ~subtractiveMask;
         end
     end
 
-    methods
-        function image = estimateImage(obj, xMesh, yMesh, zMesh)
-            arguments
-                obj
-                xMesh double
-                yMesh double
-                zMesh double
-            end
-
-            if ~isequal(size(xMesh), size(yMesh), size(zMesh))
-                error('CompositeAnalyticalShape3D:estimateImage:SizeMismatch', ...
-                    'xMesh, yMesh, zMesh must have identical sizes.');
-            end
-
-            image = zeros(size(xMesh));
-
-            for idx = 1:numel(obj.additiveComponents)
-                image = image + obj.additiveComponents(idx).estimateImage(xMesh, yMesh, zMesh);
-            end
-
-            for idx = 1:numel(obj.subtractiveComponents)
-                image = image - obj.subtractiveComponents(idx).estimateImage(xMesh, yMesh, zMesh);
-            end
-        end
-    end
 end
