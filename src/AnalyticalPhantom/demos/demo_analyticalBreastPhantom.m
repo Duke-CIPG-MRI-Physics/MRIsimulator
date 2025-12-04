@@ -62,7 +62,7 @@ K = zeros(N);
 linearIdx = sub2ind(N, kx_orderedIdx, ky_orderedIdx, kz_orderedIdx);
 K(linearIdx) = K_ordered;
 
-%% 7) Reconstruct 3D image via inverse FFT
+%% 6) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
 img_viaKspace = fftshift(ifftn(ifftshift(K)));
 

@@ -5,11 +5,21 @@ classdef BreastPhantom < MultipleMaterialPhantom
     %   simple vessel. Geometry and intensities follow the original
     %   demo_analyticalBreastPhantom.m setup.
 
+    properties (Access = private)
+        time_s (:,1) double {mustBeFinite}
+        contrastVolume_mm3 (:,1) double {mustBeFinite, mustBeNonnegative}
+        vesselRadius_mm (:,1) double {mustBePositive}
+        enhancingVessel (1,1) EnhancingVessel = EnhancingVessel.empty
+        totalVesselLength_mm double {mustBePositive} = 100;
+    end
+
     methods
         function obj = BreastPhantom(t_s)
             arguments
                 t_s (:,1) double {mustBeFinite}
             end
+
+            obj@MultipleMaterialPhantom();
 
             bodyShift = -80;
 
@@ -35,6 +45,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
             heart_c_max_mm = max(heart_c_mm(:));
 
             maxHeartDim_mm = max(heart_b_max_mm, heart_c_max_mm);
+
+            obj.time_s = t_s(:);
+            obj.vesselRadius_mm = obj.ensureRadiusVector(vesselRadius_mm, numel(obj.time_s));
 
             % Lungs
             f_bpm = 12 * ones(1, numel(t_row));
@@ -112,13 +125,14 @@ classdef BreastPhantom < MultipleMaterialPhantom
             enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...
                 vesselRadius_mm, V_contrast_mm3, right_breast_center, rollPitchYaw);
 
-            breastRightTissue = CompositeAnalyticalShape3D(breast_right, ...
-                enhancingVessel, 0.5, [], []);
+            contrastCurve = zeros(numel(obj.time_s), 1);
 
-            shapes = [fatComposite, tissueComposite, heart, breathingLung, ...
-                breast_left, breastRightTissue, enhancingVessel];
+            totalVolume_mm3 = pi .* obj.vesselRadius_mm.^2 .* obj.totalVesselLength_mm;
 
-            obj@MultipleMaterialPhantom(shapes);
+            midRamp = obj.time_s >= startTime & obj.time_s <= endTime;
+            contrastCurve(midRamp) = totalVolume_mm3 .* ...
+                (obj.time_s(midRamp) - startTime) ./ (endTime - startTime);
+            contrastCurve(obj.time_s > endTime) = totalVolume_mm3(obj.time_s > endTime);
         end
     end
 end
