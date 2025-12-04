@@ -70,16 +70,14 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 kzb = reshape(K_body(3,:), inputSize);
             end
 
-
-            S_body = zeros(size(kx));
+            S_body = zeros(size(kxb));
             for idx = 1:numel(obj.shapes)
                 S_body = S_body + obj.shapes(idx).kspace(kxb, kyb, kzb);
             end
 
-            % WORLD translation phase
+             % WORLD translation phase
             c = obj.getCenter();
-            if any(c ~= 0)
-                
+            if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
                     error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
@@ -108,15 +106,55 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             %
             %   Output:
             %       S : complex double, same size as inputs.
-
             if isempty(obj.shapes)
                 S = zeros(size(kx));
                 return;
             end
 
-            S = zeros(size(kx));
+            rpy = obj.getRollPitchYaw();
+            noRotation = ~any(rpy);
+
+            if noRotation
+                % Fast path: BODY and WORLD frames align
+                kxb = kx;
+                kyb = ky;
+                kzb = kz;
+            else
+                % WORLD → BODY transform
+                inputSize = size(kx);
+                K_world = [kx(:) ky(:) kz(:)].';
+                R = obj.calculateRotationMatrix();
+                K_body = R.' * K_world;
+
+                kxb = reshape(K_body(1,:), inputSize);
+                kyb = reshape(K_body(2,:), inputSize);
+                kzb = reshape(K_body(3,:), inputSize);
+            end
+
+            S_body = zeros(size(kxb));
             for idx = 1:numel(obj.shapes)
-                S = S + obj.shapes(idx).kspace_shapeOnly(kx, ky, kz);
+                S_body = S_body + obj.shapes(idx).kspace_shapeOnly(kxb, kyb, kzb);
+            end
+
+            % WORLD translation phase
+            c = obj.getCenter;
+            if any(c(:) ~= 0)
+                if size(c, 2) ~= 3
+                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                        'Center must have 3 columns for x, y, z.');
+                end
+
+                cx = obj.requireScalarOrSize(c(:,1), kx, 'centerX');
+                cy = obj.requireScalarOrSize(c(:,2), ky, 'centerY');
+                cz = obj.requireScalarOrSize(c(:,3), kz, 'centerZ');
+
+                phase = exp(-1i * 2*pi * ( ...
+                        kx .* cx + ...
+                        ky .* cy + ...
+                        kz .* cz));
+                S = S_body .* phase;
+            else
+                S = S_body;
             end
         end
     end

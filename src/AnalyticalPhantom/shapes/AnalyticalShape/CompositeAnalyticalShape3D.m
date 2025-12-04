@@ -77,7 +77,7 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     end
 
     methods (Access = protected)
-        function S = bodyKspace(obj, kx, ky, kz)
+        function S_body = bodyKspace(obj, kx, ky, kz)
             arguments
                 obj
                 kx double
@@ -89,55 +89,14 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
                 error('CompositeAnalyticalShape3D:bodyKspace:SizeMismatch', ...
                     'kx, ky, kz must have identical sizes.');
             end
-    
-            rpy = obj.getRollPitchYaw();
-            noRotation = ~any(rpy);
-
-            if noRotation
-                % Fast path: BODY and WORLD frames align
-                kxb = kx;
-                kyb = ky;
-                kzb = kz;
-            else
-                % WORLD → BODY transform
-                inputSize = size(kx);
-                K_world = [kx(:) ky(:) kz(:)].';
-                R = obj.calculateRotationMatrix();
-                K_body = R.' * K_world;
-
-                kxb = reshape(K_body(1,:), inputSize);
-                kyb = reshape(K_body(2,:), inputSize);
-                kzb = reshape(K_body(3,:), inputSize);
-            end
-
-            S_body = zeros(size(kxb));
+   
+            S_body = zeros(size(kx));
             for idx = 1:numel(obj.additiveComponents)
-                S_body = S_body + obj.additiveComponents(idx).kspace_shapeOnly(kxb, kyb, kzb);
+                S_body = S_body + obj.additiveComponents(idx).kspace_shapeOnly(kx, ky, kz);
             end
 
             for idx = 1:numel(obj.subtractiveComponents)
-                S_body = S_body - obj.subtractiveComponents(idx).kspace_shapeOnly(kxb, kyb, kzb);
-            end
-
-            % WORLD translation phase
-            c = obj.getCenter();
-            if any(c ~= 0, 'all')
-                if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
-                        'Center must have 3 columns for x, y, z.');
-                end
-
-                cx = obj.requireScalarOrSize(c(:,1), kxb, 'centerX');
-                cy = obj.requireScalarOrSize(c(:,2), kyb, 'centerY');
-                cz = obj.requireScalarOrSize(c(:,3), kzb, 'centerZ');
-
-                phase = exp(-1i * 2*pi * ( ...
-                        kxb .* cx + ...
-                        kyb .* cy + ...
-                        kzb .* cz));
-                S = S_body .* phase;
-            else
-                S = S_body;
+                S_body = S_body - obj.subtractiveComponents(idx).kspace_shapeOnly(kx, ky, kz);
             end
         end
 

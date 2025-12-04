@@ -335,8 +335,8 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             S_body = obj.bodyKspace(kxb, kyb, kzb);
 
             % WORLD translation phase
-            if any(obj.center ~= 0)
-                c = obj.getCenter();
+            c = obj.center;
+            if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
                     error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');

@@ -92,8 +92,10 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             breast_right = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, [], ...
                 right_breast_center, [0, 90, 90]);
+
+            left_breast_center = [-right_breast_center(1), right_breast_center(2:3)];
             breast_left = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, [], ...
-                [-right_breast_center(1), right_breast_center(2:3)], [0, 90, 90]);
+                left_breast_center, [0, 90, 90]);
 
             % A/P blood vessel with contrast wash-in
             vesselRadius_mm = 2.5;
@@ -126,8 +128,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
             rightBreastComposite = CompositeAnalyticalShape3D(breast_right, enhancingVessel, ...
                 0.5, tempCenter, noRotation);
 
-            obj.setShapes([breathingLung]);
-            % obj.setShapes([heart, breathingLung, fatComposite, tissueComposite, breast_left, rightBreastComposite, enhancingVessel]);
+            % obj.setShapes([breathingLung]);
+            obj.setShapes([heart, breathingLung, fatComposite, tissueComposite, breast_left, rightBreastComposite, enhancingVessel]);
         end
     end
 end
