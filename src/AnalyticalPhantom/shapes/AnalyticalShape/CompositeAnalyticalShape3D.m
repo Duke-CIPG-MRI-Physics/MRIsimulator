@@ -101,21 +101,21 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
             end
 
             % WORLD translation phase
-            if any(obj.center ~= 0)
-                c = obj.getCenter();
+            c = obj.getCenter();
+            if any(c ~= 0, 'all')
                 if size(c, 2) ~= 3
                     error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
-                cx = obj.requireScalarOrSize(c(:,1), kx, 'centerX');
-                cy = obj.requireScalarOrSize(c(:,2), ky, 'centerY');
-                cz = obj.requireScalarOrSize(c(:,3), kz, 'centerZ');
+                cx = obj.requireScalarOrSize(c(:,1), kx_body, 'centerX');
+                cy = obj.requireScalarOrSize(c(:,2), ky_body, 'centerY');
+                cz = obj.requireScalarOrSize(c(:,3), kz_body, 'centerZ');
 
                 phase = exp(-1i * 2*pi * ( ...
-                        kx .* cx + ...
-                        ky .* cy + ...
-                        kz .* cz));
+                        kx_body .* cx + ...
+                        ky_body .* cy + ...
+                        kz_body .* cz));
                 S = S_body .* phase;
             else
                 S = S_body;
