@@ -105,13 +105,13 @@ classdef BreastPhantom < MultipleMaterialPhantom
             totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
             
             % Option 1: Contrast already present
-            V_contrast_mm3 = totalVolume_mm3*ones(numel(t_s), 1);
+            % V_contrast_mm3 = totalVolume_mm3*ones(numel(t_s), 1);
             
             % Option 2: Contrast linear washin
-            % V_contrast_mm3 = zeros(numel(t_s), 1);
-            % midRamp = t_s >= ContrastStartTime & t_s <= ContrastEndTime;
-            % V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_s(midRamp) - ContrastStartTime) ./ (ContrastEndTime - ContrastStartTime);
-            % V_contrast_mm3(t_s > ContrastEndTime) = totalVolume_mm3;
+            V_contrast_mm3 = zeros(numel(t_s), 1);
+            midRamp = t_s >= ContrastStartTime & t_s <= ContrastEndTime;
+            V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_s(midRamp) - ContrastStartTime) ./ (ContrastEndTime - ContrastStartTime);
+            V_contrast_mm3(t_s > ContrastEndTime) = totalVolume_mm3;
             
             V_contrast_mm3 = V_contrast_mm3(:);
             if numel(V_contrast_mm3) ~= numel(t_row)

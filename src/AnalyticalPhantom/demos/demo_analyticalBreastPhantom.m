@@ -21,7 +21,7 @@ dt = 4e-6;   % dwell time between frequency-encode samples [s]
 TR = 5e-3;   % time between starts of successive frequency-encode lines [s]
 
 [kOrderedIdx, tSamp] = orderRectilinearKspace(N, freq_phase_slice, dt, TR);
-t_s = 0*tSamp(:); % use sampling timestamps as the phantom time base
+t_s = tSamp(:); % use sampling timestamps as the phantom time base
 
 encodingDimStr = {'freq:',', phase:',', slice:'};
 encodingFullStr = '';

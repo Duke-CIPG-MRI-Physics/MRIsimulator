@@ -42,7 +42,7 @@ classdef EnhancingVessel < MultipleMaterialPhantom
                 totalLength_mm double {mustBePositive}
                 enhancedIntensity double
                 unenhancedIntensity double
-                vesselRadius_mm double {mustBePositive}
+                vesselRadius_mm double {mustBeNonnegative}
                 V_contrast_mm3 (:,1) double {mustBeFinite, mustBeNonnegative}
                 vesselCenter (1,3) double = [0 0 0];
                 rollPitchYaw (1,3) double = [0 0 0];
