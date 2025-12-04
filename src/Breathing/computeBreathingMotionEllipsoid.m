@@ -41,7 +41,7 @@ function [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
     end
 
     N = numel(t_s);
-    if any(diff(t_s) <= 0)
+    if any(diff(t_s) < 0)
         error('t_s must be strictly increasing.');
     end
     if any([numel(f_bpm), numel(VT_L), numel(Vres_L), ...

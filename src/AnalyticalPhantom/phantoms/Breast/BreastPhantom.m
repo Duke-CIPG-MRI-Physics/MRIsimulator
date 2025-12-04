@@ -6,11 +6,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
     %   demo_analyticalBreastPhantom.m setup.
 
     methods
-        function obj = BreastPhantom(t_s, V_contrast_mm3, vesselRadius_mm)
+        function obj = BreastPhantom(t_s)
             arguments
                 t_s (:,1) double {mustBeFinite}
-                V_contrast_mm3 (:,1) double {mustBeFinite, mustBeNonnegative} = [];
-                vesselRadius_mm double {mustBePositive} = 2.5;
             end
 
             bodyShift = -80;
@@ -87,20 +85,30 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 [-right_breast_center(1), right_breast_center(2:3)], [0, 90, 90]);
 
             % A/P blood vessel with contrast wash-in
+            vesselRadius_mm = 2.5;
             total_vessel_length_mm = 100;
             rollPitchYaw = [0, 90, 90];
 
-            if isempty(V_contrast_mm3)
-                totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
-                V_contrast_mm3 = linspace(0, totalVolume_mm3, numel(t_row)).';
-            else
-                V_contrast_mm3 = V_contrast_mm3(:);
-                if numel(V_contrast_mm3) ~= numel(t_row)
-                    error('BreastPhantom:ContrastSizeMismatch', ...
-                        'V_contrast_mm3 must match the length of t_s.');
-                end
+            % Calculate contrast wash-in
+            ContrastStartTime = 0.25 * t_s(end);
+            ContrastEndTime   = 0.75 * t_s(end);
+            totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
+            
+            % Option 1: Contrast already present
+            V_contrast_mm3 = totalVolume_mm3*ones(numel(t_s), 1);
+            
+            % Option 2: Contrast linear washin
+            % V_contrast_mm3 = zeros(numel(t_s), 1);
+            % midRamp = t_s >= ContrastStartTime & t_s <= ContrastEndTime;
+            % V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_s(midRamp) - ContrastStartTime) ./ (ContrastEndTime - ContrastStartTime);
+            % V_contrast_mm3(t_s > ContrastEndTime) = totalVolume_mm3;
+            
+            V_contrast_mm3 = V_contrast_mm3(:);
+            if numel(V_contrast_mm3) ~= numel(t_row)
+                error('BreastPhantom:ContrastSizeMismatch', ...
+                    'V_contrast_mm3 must match the length of t_s.');
             end
-
+            
             enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...
                 vesselRadius_mm, V_contrast_mm3, right_breast_center, rollPitchYaw);
 

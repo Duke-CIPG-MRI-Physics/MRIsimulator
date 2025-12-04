@@ -72,7 +72,7 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     % Basic checks
     % ---------------------------------------------------------------------
     N = numel(t_s);
-    if any(diff(t_s) <= 0)
+    if any(diff(t_s) < 0)
         error('t_s must be strictly increasing.');
     end
     if any([numel(HR_bpm), numel(EDV_ml), numel(ESV_ml)] ~= N)

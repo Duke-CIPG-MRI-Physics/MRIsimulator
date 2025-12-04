@@ -21,7 +21,7 @@ dt = 4e-6;   % dwell time between frequency-encode samples [s]
 TR = 5e-3;   % time between starts of successive frequency-encode lines [s]
 
 [kOrderedIdx, tSamp] = orderRectilinearKspace(N, freq_phase_slice, dt, TR);
-t_s = tSamp(:); % use sampling timestamps as the phantom time base
+t_s = 0*tSamp(:); % use sampling timestamps as the phantom time base
 
 encodingDimStr = {'freq:',', phase:',', slice:'};
 encodingFullStr = '';
@@ -50,23 +50,8 @@ ordKsx_kx = kx_vec(kx_orderedIdx)';
 ordKsx_ky = ky_vec(ky_orderedIdx)'; 
 ordKsx_kz = kz_vec(kz_orderedIdx)';
 
-%% 4) Configure time-varying contrast wash-in for the embedded vessel
-vesselRadius_mm = 2.5;
-total_vessel_length_mm = 100;
-totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
-
-startTime = 0.25 * t_s(end);
-endTime   = 0.75 * t_s(end);
-
-V_contrast_mm3 = zeros(numel(t_s), 1);
-midRamp = t_s >= startTime & t_s <= endTime;
-V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_s(midRamp) - startTime) ./ (endTime - startTime);
-V_contrast_mm3(t_s > endTime) = totalVolume_mm3;
-
-enhancedLength_mm = computeContrastWashIn(t_s, vesselRadius_mm, V_contrast_mm3);
-
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-phantom = BreastPhantom(t_s, V_contrast_mm3, vesselRadius_mm);
+phantom = BreastPhantom(t_s);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
@@ -113,12 +98,3 @@ ax3 = ancestor(h3,'axes');
 set(ax3,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
     'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([2 3 1]));
 set(gcf,'Position',[680         665        1137         213]);
-
-figure;
-plot(t_s, min(enhancedLength_mm, total_vessel_length_mm), '-','LineWidth', 2);
-hold on
-plot(t_s, min(enhancedLength_mm, total_vessel_length_mm), '.r');
-xlabel('Time [s]');
-ylabel('Enhanced vessel length [mm]');
-title('Linear contrast wash-in to full vessel length');
-grid on;
