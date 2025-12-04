@@ -90,14 +90,35 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 
-            S = zeros(size(kx_body));
-
+            
+            S_body = zeros(size(kx_body));
             for idx = 1:numel(obj.additiveComponents)
-                S = S + obj.additiveComponents(idx).kspace_shapeOnly(kx_body, ky_body, kz_body);
+                S_body = S_body + obj.additiveComponents(idx).kspace_shapeOnly(kx_body, ky_body, kz_body);
             end
 
             for idx = 1:numel(obj.subtractiveComponents)
-                S = S - obj.subtractiveComponents(idx).kspace_shapeOnly(kx_body, ky_body, kz_body);
+                S_body = S_body - obj.subtractiveComponents(idx).kspace_shapeOnly(kx_body, ky_body, kz_body);
+            end
+
+            % WORLD translation phase
+            if any(obj.center ~= 0)
+                c = obj.getCenter();
+                if size(c, 2) ~= 3
+                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                        'Center must have 3 columns for x, y, z.');
+                end
+
+                cx = obj.requireScalarOrSize(c(:,1), kx, 'centerX');
+                cy = obj.requireScalarOrSize(c(:,2), ky, 'centerY');
+                cz = obj.requireScalarOrSize(c(:,3), kz, 'centerZ');
+
+                phase = exp(-1i * 2*pi * ( ...
+                        kx .* cx + ...
+                        ky .* cy + ...
+                        kz .* cz));
+                S = S_body .* phase;
+            else
+                S = S_body;
             end
         end
 

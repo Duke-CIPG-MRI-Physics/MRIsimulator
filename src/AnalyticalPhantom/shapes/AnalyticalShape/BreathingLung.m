@@ -67,7 +67,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             leftLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], leftCenter, [0, 0, 0]);
 
             obj@CompositeAnalyticalShape3D([leftLung, rightLung], ...
-                AnalyticalShape3D.empty, intensity, center, [0, 0, 0]);
+                AnalyticalShape3D.empty, intensity, center, rollPitchYaw);
 
             obj.t_s = t_s;
             obj.f_bpm = f_bpm;
