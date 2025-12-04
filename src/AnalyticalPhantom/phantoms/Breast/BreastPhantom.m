@@ -7,10 +7,6 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
     properties (Access = private)
         time_s (:,1) double {mustBeFinite}
-        contrastVolume_mm3 (:,1) double {mustBeFinite, mustBeNonnegative}
-        vesselRadius_mm (:,1) double {mustBePositive}
-        enhancingVessel (1,1) EnhancingVessel = EnhancingVessel.empty
-        totalVesselLength_mm double {mustBePositive} = 100;
     end
 
     methods
@@ -21,35 +17,26 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             obj@MultipleMaterialPhantom();
 
-            bodyShift = -80;
-
             t_row = t_s(:).';
+            obj.time_s = t_row;
 
+            % Defaults
+            tempCenter = [0, 0, 0]; % will be corrected in future 
+            noRotation = [0, 0, 0];
+
+            % Heart parameters
             heartOpts = struct('systFrac', 0.35, ...
                 'q_ED', 50/27, ...
                 'GLS_peak', -0.20, ...
                 'GCS_peak', -0.25);
-
             HR_bpm = 70 * ones(1, numel(t_row));
             EDV_ml = 150 * ones(1, numel(t_row));
             ESV_ml = 75  * ones(1, numel(t_row));
 
             % Heart
-            heart_center = [0 bodyShift 0];
-            heart = BeatingHeart(t_row, HR_bpm, EDV_ml, ESV_ml, 1, heart_center, ...
-                [0, 0, 0], heartOpts);
+            heart = BeatingHeart(t_row, HR_bpm, EDV_ml, ESV_ml, 1, tempCenter, noRotation, heartOpts);
 
-            heart_b_mm = heart.getB();
-            heart_c_mm = heart.getC();
-            heart_b_max_mm = max(heart_b_mm(:));
-            heart_c_max_mm = max(heart_c_mm(:));
-
-            maxHeartDim_mm = max(heart_b_max_mm, heart_c_max_mm);
-
-            obj.time_s = t_s(:);
-            obj.vesselRadius_mm = obj.ensureRadiusVector(vesselRadius_mm, numel(obj.time_s));
-
-            % Lungs
+            % Lung parameters
             f_bpm = 12 * ones(1, numel(t_row));
             VT_L = 0.4 * ones(1, numel(t_row));
             Vres_L = 0.8 * ones(1, numel(t_row));
@@ -57,8 +44,19 @@ classdef BreastPhantom < MultipleMaterialPhantom
             bellyFrac = zeros(1, numel(t_row));
             inspFrac = 0.4 * ones(1, numel(t_row));
 
+            % Lung
+            heart_lr_mm = heart.getA(); % Lungs get pushed L/R with cardiac cycle
+            heartThickness_mm = 8;
+            spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
             breathingLung = BreathingLung(t_row, f_bpm, VT_L, Vres_L, ...
-                Vbase_L, bellyFrac, inspFrac, maxHeartDim_mm, 0.1, [0, bodyShift, 0]);
+                Vbase_L, bellyFrac, inspFrac, spacingBetweenLungs, ...
+                0.1, tempCenter, noRotation);
+
+            % TODO - make this depend on breathing and cardiac motion
+            bodyShift = -80;
+            heart_ap_mm = heart.getB();
+
+            
 
             lungRadius = breathingLung.getLungRadiusMm();
             maxLungSize = breathingLung.getMaxLungSizeMm();
@@ -94,7 +92,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             breast_right = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, [], ...
                 right_breast_center, [0, 90, 90]);
-            breast_left = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, 0.5, ...
+            breast_left = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, [], ...
                 [-right_breast_center(1), right_breast_center(2:3)], [0, 90, 90]);
 
             % A/P blood vessel with contrast wash-in
@@ -125,14 +123,11 @@ classdef BreastPhantom < MultipleMaterialPhantom
             enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...
                 vesselRadius_mm, V_contrast_mm3, right_breast_center, rollPitchYaw);
 
-            contrastCurve = zeros(numel(obj.time_s), 1);
+            
+            breastsNoVesselComposite = CompositeAnalyticalShape3D([breast_right breast_left], enhancingVessel, ...
+                0.5, [], []);
 
-            totalVolume_mm3 = pi .* obj.vesselRadius_mm.^2 .* obj.totalVesselLength_mm;
-
-            midRamp = obj.time_s >= startTime & obj.time_s <= endTime;
-            contrastCurve(midRamp) = totalVolume_mm3 .* ...
-                (obj.time_s(midRamp) - startTime) ./ (endTime - startTime);
-            contrastCurve(obj.time_s > endTime) = totalVolume_mm3(obj.time_s > endTime);
+            obj.setShapes([heart, breathingLung, fatComposite, tissueComposite, breastsNoVesselComposite, enhancingVessel]);
         end
     end
 end
