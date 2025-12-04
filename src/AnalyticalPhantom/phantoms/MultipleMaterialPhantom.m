@@ -77,8 +77,9 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
 
             % WORLD translation phase
-            if any(obj.center ~= 0)
-                c = obj.getCenter();
+            c = obj.getCenter();
+            if any(c ~= 0)
+                
                 if size(c, 2) ~= 3
                     error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
