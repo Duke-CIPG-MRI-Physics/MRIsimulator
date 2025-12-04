@@ -27,7 +27,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             % Heart
             heart_center = [0 bodyShift 0];
             heart = BeatingHeart(t_row, HR_bpm, EDV_ml, ESV_ml, 1, heart_center, ...
-                [0, -65, 70], heartOpts);
+                [0, 0, 0], heartOpts);
 
             heart_b_mm = heart.getB();
             heart_c_mm = heart.getC();
