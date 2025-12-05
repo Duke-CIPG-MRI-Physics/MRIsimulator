@@ -42,7 +42,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             VT_L = 0.4 * ones(1, numel(t_row));
             Vres_L = 0.8 * ones(1, numel(t_row));
             Vbase_L = 1.5 * ones(1, numel(t_row));
-            bellyFrac = zeros(1, numel(t_row));
+            bellyFrac = 0.6*ones(1, numel(t_row));
             inspFrac = 0.4 * ones(1, numel(t_row));
 
             % Lung
@@ -53,14 +53,27 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 Vbase_L, bellyFrac, inspFrac, spacingBetweenLungs, ...
                 0.1, tempCenter, noRotation);
 
+            figure();
+            plot(t_row,heart.getA(),'-r');
+            hold on
+            plot(t_row,heart.getB(),'--k');
+            plot(t_row,heart.getC(),':r');
+
+            plot(t_row,breathingLung.getLungRadiusMm,'-b');
+            plot(t_row,breathingLung.getLungHeightMm,'--b');
+            legend('Heart A','Heart B','Heart C','Lung A','Lung B')
+            
+
+
             % TODO - make this depend on breathing and cardiac motion
             bodyShift = -80;
             heart_ap_mm = heart.getB();
             lungRadius = breathingLung.getLungRadiusMm();
-            tissueGap_mm = 10;
-            chest_ap_inner_mm = 1.3*(max(heart_ap_mm,lungRadius) + tissueGap_mm);
-            chest_lr_inner_mm = 2*(lungRadius + spacingBetweenLungs + tissueGap_mm);
-            phantomDepth_mm = 400;
+            tissueGap_lr_mm = 20;
+            tissueGap_lr_mm = 30;
+            chest_ap_inner_mm = (max(heart_ap_mm,lungRadius) + tissueGap_lr_mm);
+            chest_lr_inner_mm = (2*lungRadius + spacingBetweenLungs + tissueGap_lr_mm);
+            phantomDepth_mm = 300;
             bodyCenter = [0 bodyShift 0];
             fat_inner = AnalyticalEllipticalCylinder3D(chest_lr_inner_mm, ...
                 chest_ap_inner_mm, 0.9 * phantomDepth_mm, [], tempCenter, noRotation);
@@ -81,9 +94,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 thoraxCenter, noRotation);
 
             % Breasts
-            breast_gap_mm = 50;
-            breast_radius_mm = 65;
-            breast_depth_mm = 200;
+            breast_gap_mm = 60;
+            breast_radius_mm = 60;
+            breast_depth_mm = 125;
             right_breast_center = [breast_radius_mm + 0.5 * breast_gap_mm, ...
                 0, 0];
 
@@ -105,13 +118,13 @@ classdef BreastPhantom < MultipleMaterialPhantom
             totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
             
             % Option 1: Contrast already present
-            % V_contrast_mm3 = totalVolume_mm3*ones(numel(t_s), 1);
+            V_contrast_mm3 = totalVolume_mm3*ones(numel(t_s), 1);
             
             % Option 2: Contrast linear washin
-            V_contrast_mm3 = zeros(numel(t_s), 1);
-            midRamp = t_s >= ContrastStartTime & t_s <= ContrastEndTime;
-            V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_s(midRamp) - ContrastStartTime) ./ (ContrastEndTime - ContrastStartTime);
-            V_contrast_mm3(t_s > ContrastEndTime) = totalVolume_mm3;
+            % V_contrast_mm3 = zeros(numel(t_s), 1);
+            % midRamp = t_s >= ContrastStartTime & t_s <= ContrastEndTime;
+            % V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_s(midRamp) - ContrastStartTime) ./ (ContrastEndTime - ContrastStartTime);
+            % V_contrast_mm3(t_s > ContrastEndTime) = totalVolume_mm3;
             
             V_contrast_mm3 = V_contrast_mm3(:);
             if numel(V_contrast_mm3) ~= numel(t_row)

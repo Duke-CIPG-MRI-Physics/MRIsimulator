@@ -8,7 +8,7 @@ savepath
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [400 400 400];
-N      = [100 100 50]; % [Nx Ny Nz]
+N      = [200 200 30]; % [Nx Ny Nz]
 resolution = FOV_mm./N;
 resolution_normalized = resolution/max(resolution);
 
@@ -21,7 +21,7 @@ dt = 4e-6;   % dwell time between frequency-encode samples [s]
 TR = 5e-3;   % time between starts of successive frequency-encode lines [s]
 
 [kOrderedIdx, tSamp] = orderRectilinearKspace(N, freq_phase_slice, dt, TR);
-t_s = tSamp(:); % use sampling timestamps as the phantom time base
+t_s = 0*tSamp(:); % use sampling timestamps as the phantom time base
 
 encodingDimStr = {'freq:',', phase:',', slice:'};
 encodingFullStr = '';
