@@ -9,8 +9,8 @@ savepath;
 % parameters from clinical ultrafast protocol
 FOV_read_mm = 350;
 FOV_phase_pct = 100;
-oversampling_phase_pct = 20; % 20%
-oversampling_slice_pct = 100/3; %33.3%
+oversampling_phase_pct = 20; 
+oversampling_slice_pct = 33.3; 
 slices_per_slab = 240;
 slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
 base_resolution = 224;
@@ -104,8 +104,8 @@ disp(['   Nominal resoluton (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' 
 
 %% Order k-space 
 % * NOTE * this does not use TWIST, PI, PF yet so its much slower!
-[kOrderedIdx, tSamp] = orderRectilinearKspace(matrix_acq_os, freq_phase_slice, dt_s, TR_s);
-t_s = tSamp(:); % use sampling timestamps as the phantom time base
+[kOrderedIdx, t_s] = orderRectilinearKspace(matrix_acq_os, freq_phase_slice, dt_s, TR_s);
+t_s = t_s(:); % use sampling timestamps as the phantom time base
 
 encodingFullStr = '';
 for iDim = 1:3
@@ -128,27 +128,33 @@ end
 
 disp(['   Encoding          (f x ph x sl):' encodingFullStr])
 
+%% 5) Construct the breast phantom with the embedded enhancing vessel
+phantom = BreastPhantom(t_s);
+clear t_s;
+
 %% 3) Build WORLD k-space grid and map to the rectilinear ordering
-[kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_oversampled, matrix_acq_os);
+[kx_vec, ky_vec, kz_vec, ~, ~, ~] = computeKspaceGrid3D(FOV_oversampled, matrix_acq_os);
 kx_orderedIdx = kOrderedIdx(1, :);
 ky_orderedIdx = kOrderedIdx(2, :);
 kz_orderedIdx = kOrderedIdx(3, :);
+clear kOrderedIdx;
 
 ordKsx_kx = kx_vec(kx_orderedIdx)';
 ordKsx_ky = ky_vec(ky_orderedIdx)'; 
 ordKsx_kz = kz_vec(kz_orderedIdx)';
-
-%% 5) Construct the breast phantom with the embedded enhancing vessel
-phantom = BreastPhantom(t_s);
+clear kx_vec ky_vec kz_vec;
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
+clear ordKsx_kx ordKsx_ky ordKsx_kz phantom;
 
 % Reassemble onto the kx/ky/kz grid for reconstruction
-K = zeros(N);
-linearIdx = sub2ind(N, kx_orderedIdx, ky_orderedIdx, kz_orderedIdx);
+K = zeros(matrix_acq_os);
+linearIdx = sub2ind(matrix_acq_os, kx_orderedIdx, ky_orderedIdx, kz_orderedIdx);
+clear kx_orderedIdx ky_orderedIdx kz_orderedIdx;
 K(linearIdx) = K_ordered;
+clear K_ordered;
 
 %% 6) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
