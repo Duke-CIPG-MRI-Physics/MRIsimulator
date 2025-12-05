@@ -7,8 +7,8 @@ run('C:\code\Duke-CIVM-MRI-Tools\setup.m');
 savepath
 
 %% 1) FOV and matrix size (scanner-style inputs)
-FOV_mm = [500 500 400];
-N      = [150 150 150]; % [Nx Ny Nz]
+FOV_mm = [400 400 400];
+N      = [100 100 50]; % [Nx Ny Nz]
 resolution = FOV_mm./N;
 resolution_normalized = resolution/max(resolution);
 
@@ -73,7 +73,7 @@ imslice(abs(img_viaKspace))
 
 figure()
 subplot(1,3,1)
-h1 = imagesc(rot90(squeeze(abs(img_viaKspace(:,:,11)))));
+h1 = imagesc(rot90(squeeze(abs(img_viaKspace(:,:,round(0.5*size(img_viaKspace,3)))))));
 colormap(gray)
 xlabel('R/L');
 ylabel('A/P');
