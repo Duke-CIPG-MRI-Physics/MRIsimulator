@@ -40,7 +40,7 @@ cyl = AnalyticalCylinder3D(R_mm, L_mm, [], center_cyl, [roll_deg, pitch_deg, yaw
 
 %% Compute analytic k-space for cylinder
 fprintf('Evaluating analytic k-space (cylinder)...\n');
-K_total = cyl.kspace(kx, ky, kz);
+K_total = cyl.kspaceWorldGeometryScaled(kx, ky, kz);
 
 %% 3D inverse FFT to obtain centered image
 fprintf('Performing 3D iFFT...\n');

@@ -38,7 +38,7 @@ ellip = AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, [], center_ellip, [roll_deg, pit
 
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of ellipsoid...\n');
-K = ellip.kspace(kx, ky, kz);
+K = ellip.kspaceWorldGeometryScaled(kx, ky, kz);
 volV = ellip.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT

@@ -97,8 +97,8 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
 
     %% Analytic BODY-frame FT and inside-test
     methods (Access = protected)
-        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
-            % bodyKspace
+        function S = kspaceBodyGeometry(obj, kx_body, ky_body, kz_body)
+            % kspaceBodyGeometry
             %   Analytic FT of a solid ellipsoid centered at origin in body frame.
             %
             %   Uses affine scaling from a unit sphere:
@@ -112,7 +112,7 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             %   At k' = 0, F_ellip = 4/3*pi*a*b*c (ellipsoid volume).
 
             if ~isequal(size(kx_body), size(ky_body), size(kz_body))
-                error('AnalyticalEllipsoid3D:bodyKspace:SizeMismatch', ...
+                error('AnalyticalEllipsoid3D:kspaceBodyGeometry:SizeMismatch', ...
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 

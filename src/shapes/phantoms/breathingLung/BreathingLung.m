@@ -1,4 +1,4 @@
-classdef BreathingLung < CompositeAnalyticalShape3D
+classdef BreathingLung < SharedIntensityShapeGroup3D
     % BreathingLung
     %   Composite of two breathing lungs modeled as ellipsoids whose
     %   geometry follows computeBreathingMotionEllipsoid.
@@ -22,7 +22,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     %
     %   Notes:
     %       - Left and right lungs are created as AnalyticalEllipsoid3D
-    %         components and supplied to the CompositeAnalyticalShape3D
+    %         components and supplied to the SharedIntensityShapeGroup3D
     %         constructor as additive components.
 
     properties (Access = private)
@@ -68,7 +68,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             rightLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], rightCenter, [0, 0, 0]);
             leftLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], leftCenter, [0, 0, 0]);
 
-            obj@CompositeAnalyticalShape3D([leftLung, rightLung], ...
+            obj@SharedIntensityShapeGroup3D([leftLung, rightLung], ...
                 AnalyticalShape3D.empty, intensity, center, rollPitchYaw);
 
             obj.t_s = t_s;

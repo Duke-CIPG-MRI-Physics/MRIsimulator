@@ -87,7 +87,7 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
     methods (Access = protected)
 
         % ----------- Analytic Fourier transform (BODY frame) -------------
-        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
+        function S = kspaceBodyGeometry(obj, kx_body, ky_body, kz_body)
             arguments
                 obj
                 kx_body double

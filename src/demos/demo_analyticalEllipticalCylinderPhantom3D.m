@@ -38,7 +38,7 @@ ellipCyl = AnalyticalEllipticalCylinder3D(a_mm, b_mm, L_mm, [], center_cyl, [rol
 
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of elliptical cylinder...\n');
-K = ellipCyl.kspace(kx, ky, kz);
+K = ellipCyl.kspaceWorldGeometryScaled(kx, ky, kz);
 volV = ellipCyl.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT

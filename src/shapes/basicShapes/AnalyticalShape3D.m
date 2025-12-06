@@ -12,7 +12,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     %     • Fire a unified shapeChanged event whenever geometry changes
     %     • Provide estimateImageShape() for slice-wise shape masks
     %     • Require subclasses to implement:
-    %           bodyKspace(kx_body, ky_body, kz_body)
+    %           kspaceBodyGeometry(kx_body, ky_body, kz_body)
     %           percentInsideShape(xb, yb, zb)
     %
     %   BODY frame:
@@ -238,19 +238,40 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     end
 
     %% K-space evaluation ---------------------------------------------------
+    %   kspaceBodyGeometry        : BODY-frame geometry-only FT (subclasses implement)
+    %   kspaceWorldGeometry       : WORLD-frame geometry-only FT (pose + translation)
+    %   kspaceWorldGeometryScaled : WORLD-frame FT with intensity scaling applied
     methods
-        function S = kspace(obj, kx, ky, kz)
-            % kspace
+        function S = kspaceWorldGeometryScaled(obj, kx, ky, kz)
+            % kspaceWorldGeometryScaled
             %   Evaluate WORLD-frame analytic 3D FT of the shape, including
             %   the shapeIntensity scaling factor.
 
             intensity = obj.getIntensity();
             if ~isscalar(intensity) && ~isequal(size(intensity), size(kx))
-                error('AnalyticalShape3D:kspace:IntensitySizeMismatch', ...
+                error('AnalyticalShape3D:kspaceWorldGeometryScaled:IntensitySizeMismatch', ...
                     'intensity must be scalar or match size of kx/ky/kz.');
             end
 
-            S = intensity .* obj.kspace_shapeOnly(kx, ky, kz);
+            S = intensity .* obj.kspaceWorldGeometry(kx, ky, kz);
+        end
+    end
+
+    methods
+        function S = kspace(obj, kx, ky, kz)
+            % kspace  Deprecated compatibility wrapper.
+            %   Use kspaceWorldGeometryScaled for clarity about scaling + frame.
+            warning('AnalyticalShape3D:DeprecatedMethod', ...
+                'kspace() is deprecated. Use kspaceWorldGeometryScaled() instead.');
+            S = obj.kspaceWorldGeometryScaled(kx, ky, kz);
+        end
+
+        function S = kspace_shapeOnly(obj, kx, ky, kz)
+            % kspace_shapeOnly  Deprecated compatibility wrapper.
+            %   Use kspaceWorldGeometry to emphasize geometry-only evaluation.
+            warning('AnalyticalShape3D:DeprecatedMethod', ...
+                'kspace_shapeOnly() is deprecated. Use kspaceWorldGeometry() instead.');
+            S = obj.kspaceWorldGeometry(kx, ky, kz);
         end
     end
 
@@ -281,12 +302,12 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     end
 
     methods
-        function S = kspace_shapeOnly(obj, kx, ky, kz)
-            % kspace_shapeOnly
+        function S = kspaceWorldGeometry(obj, kx, ky, kz)
+            % kspaceWorldGeometry
             %   Evaluate WORLD-frame analytic 3D FT of the shape geometry
             %   (no intensity scaling).
             %
-            %   S = kspace_shapeOnly(obj, kx, ky, kz)
+            %   S = kspaceWorldGeometry(obj, kx, ky, kz)
             %
             %   Inputs:
             %       kx,ky,kz : WORLD freqs [cycles/mm], same size.
@@ -296,7 +317,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             %
             %   Steps:
             %       1) WORLD → BODY k
-            %       2) Evaluate bodyKspace() in BODY frame
+            %       2) Evaluate kspaceBodyGeometry() in BODY frame
             %       3) Apply WORLD translation phase ramp
 
             arguments
@@ -307,7 +328,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
 
             if ~isequal(size(kx), size(ky), size(kz))
-                error('AnalyticalShape3D:kspace:SizeMismatch', ...
+                error('AnalyticalShape3D:kspaceWorldGeometry:SizeMismatch', ...
                       'kx, ky, kz must have identical sizes.');
             end
 
@@ -332,13 +353,13 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
 
             % Analytic FT in BODY frame
-            S_body = obj.bodyKspace(kxb, kyb, kzb);
+            S_body = obj.kspaceBodyGeometry(kxb, kyb, kzb);
 
             % WORLD translation phase
             c = obj.center;
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                    error('AnalyticalShape3D:kspaceWorldGeometry:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
@@ -354,6 +375,16 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             else
                 S = S_body;
             end
+        end
+    end
+
+    methods (Access = protected)
+        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
+            % bodyKspace  Deprecated compatibility wrapper.
+            %   Use kspaceBodyGeometry to clarify BODY-frame geometry-only FT.
+            warning('AnalyticalShape3D:DeprecatedMethod', ...
+                'bodyKspace() is deprecated. Implement kspaceBodyGeometry() instead.');
+            S = obj.kspaceBodyGeometry(kx_body, ky_body, kz_body);
         end
     end
 
@@ -440,17 +471,17 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
 
     %% Abstract analytic FT + inside test ----------------------------------
     methods (Abstract, Access = protected)
-        % bodyKspace
-        %   Analytic FT of the shape in the BODY frame.
+        % kspaceBodyGeometry
+        %   Analytic FT of the shape in the BODY frame (geometry only).
         %
-        %   S = bodyKspace(obj, kx_body, ky_body, kz_body)
+        %   S = kspaceBodyGeometry(obj, kx_body, ky_body, kz_body)
         %
         %   Inputs:
         %       kx_body, ky_body, kz_body : BODY freqs [cycles/mm], same size
         %
         %   Output:
         %       S : complex double, same size as kx_body
-        S = bodyKspace(obj, kx_body, ky_body, kz_body);
+        S = kspaceBodyGeometry(obj, kx_body, ky_body, kz_body);
 
         % percentInsideShape
         %   BODY-frame inside/outside test on a spatial grid.

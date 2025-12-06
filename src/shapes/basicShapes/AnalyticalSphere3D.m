@@ -75,7 +75,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
 
     %% Analytic BODY-frame FT
     methods (Access = protected)
-        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
+        function S = kspaceBodyGeometry(obj, kx_body, ky_body, kz_body)
             arguments
                 obj
                 kx_body double

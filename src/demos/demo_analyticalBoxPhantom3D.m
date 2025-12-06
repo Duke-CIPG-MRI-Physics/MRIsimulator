@@ -38,7 +38,7 @@ box = AnalyticalBox3D(Lx_mm, Ly_mm, Lz_mm, [], center_box, [roll_deg, pitch_deg,
 
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of box...\n');
-K = box.kspace(kx, ky, kz);
+K = box.kspaceWorldGeometryScaled(kx, ky, kz);
 volV = box.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT

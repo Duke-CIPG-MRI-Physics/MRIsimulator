@@ -1,4 +1,4 @@
-classdef BreastPhantom < MultipleMaterialPhantom
+classdef BreastPhantom < MultiIntensityShapeGroup3D
     % BreastPhantom
     %   Preconfigured collection of AnalyticalShape3D objects approximating
     %   a thoracic slice with lungs, heart, peripheral fat, breasts, and a
@@ -18,7 +18,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             tempCenter = [0, 0, 0]; % will be corrected in future 
             noRotation = [0, 0, 0];
 
-            obj@MultipleMaterialPhantom();
+            obj@MultiIntensityShapeGroup3D();
 
             t_row = t_s(:).';
             obj.time_s = t_row;
@@ -85,12 +85,12 @@ classdef BreastPhantom < MultipleMaterialPhantom
             fat_outer = AnalyticalEllipticalCylinder3D(chest_lr_outer_mm, ...
                 chest_ap_outer_mm, 0.9 * phantomDepth_mm, [], tempCenter, noRotation);
 
-            fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2, [], []);
-            tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, breathingLung], ...
+            fatComposite = SharedIntensityShapeGroup3D(fat_outer, fat_inner, 2, [], []);
+            tissueComposite = SharedIntensityShapeGroup3D(fat_inner, [heart, breathingLung], ...
                 0.5, tempCenter, noRotation);
 
             thoraxCenter = [zeros(size(chest_ap_outer_mm(:))), -chest_ap_outer_mm(:), zeros(size(chest_ap_outer_mm(:)))];
-            thorax = MultipleMaterialPhantom([heart, breathingLung, fatComposite, tissueComposite],...
+            thorax = MultiIntensityShapeGroup3D([heart, breathingLung, fatComposite, tissueComposite],...
                 thoraxCenter, noRotation);
 
             % Breasts
@@ -135,11 +135,11 @@ classdef BreastPhantom < MultipleMaterialPhantom
             enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...
                 vesselRadius_mm, V_contrast_mm3, right_breast_center, rollPitchYaw);
 
-            leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], enhancingVessel, ...
+            leftAndRightBreastTissue = SharedIntensityShapeGroup3D([breast_right, breast_left], enhancingVessel, ...
                 0.5, tempCenter, noRotation);
 
             breastCenter = [0, 0.5*breast_depth_mm, 0];
-            bothBreasts = MultipleMaterialPhantom([leftAndRightBreastTissue, enhancingVessel],...
+            bothBreasts = MultiIntensityShapeGroup3D([leftAndRightBreastTissue, enhancingVessel],...
                 breastCenter, noRotation);
             
             obj.setShapes([thorax, bothBreasts]);
