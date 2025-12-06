@@ -5,14 +5,10 @@ classdef BreastPhantom < MultiIntensityShapeGroup3D
     %   simple vessel. Geometry and intensities follow the original
     %   demo_analyticalBreastPhantom.m setup.
 
-    properties (Access = private)
-        time_s (:,1) double {mustBeFinite}
-    end
-
     methods
-        function obj = BreastPhantom(t_s)
+        function obj = BreastPhantom(provider)
             arguments
-                t_s (:,1) double {mustBeFinite}
+                provider (1,1) PhantomContext
             end
             % Defaults
             tempCenter = [0, 0, 0]; % will be corrected in future 
@@ -20,37 +16,16 @@ classdef BreastPhantom < MultiIntensityShapeGroup3D
 
             obj@MultiIntensityShapeGroup3D();
 
-            t_row = t_s(:).';
-            obj.time_s = t_row;
-
-            
-
-            % Heart parameters
-            heartOpts = struct('systFrac', 0.35, ...
-                'q_ED', 50/27, ...
-                'GLS_peak', -0.20, ...
-                'GCS_peak', -0.25);
-            HR_bpm = 70 * ones(1, numel(t_row));
-            EDV_ml = 150 * ones(1, numel(t_row));
-            ESV_ml = 75  * ones(1, numel(t_row));
+            t_row = provider.getTime();
 
             % Heart
-            heart = BeatingHeart(t_row, HR_bpm, EDV_ml, ESV_ml, 1, tempCenter, noRotation, heartOpts);
-
-            % Lung parameters
-            f_bpm = 12 * ones(1, numel(t_row));
-            VT_L = 0.4 * ones(1, numel(t_row));
-            Vres_L = 0.8 * ones(1, numel(t_row));
-            Vbase_L = 1.5 * ones(1, numel(t_row));
-            bellyFrac = 0.6*ones(1, numel(t_row));
-            inspFrac = 0.4 * ones(1, numel(t_row));
+            heart = BeatingHeart(provider, 1, tempCenter, noRotation);
 
             % Lung
-            heart_lr_mm = heart.getA(); % Lungs get pushed L/R with cardiac cycle
+            [heart_lr_mm, ~, ~] = provider.getHeartRadiiMm(); % Lungs get pushed L/R with cardiac cycle
             heartThickness_mm = 8;
             spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
-            breathingLung = BreathingLung(t_row, f_bpm, VT_L, Vres_L, ...
-                Vbase_L, bellyFrac, inspFrac, spacingBetweenLungs, ...
+            breathingLung = BreathingLung(provider, spacingBetweenLungs, ...
                 0.1, tempCenter, noRotation);
 
             figure();
@@ -113,23 +88,23 @@ classdef BreastPhantom < MultiIntensityShapeGroup3D
             rollPitchYaw = [0, 90, 90];
 
             % Calculate contrast wash-in
-            ContrastStartTime = 0.25 * t_s(end);
-            ContrastEndTime   = 0.75 * t_s(end);
+            ContrastStartTime = 0.25 * t_row(end);
+            ContrastEndTime   = 0.75 * t_row(end);
             totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
-            
+
             % Option 1: Contrast already present
-            V_contrast_mm3 = totalVolume_mm3*ones(numel(t_s), 1);
+            V_contrast_mm3 = provider.getVesselContrastMm3();
             
             % Option 2: Contrast linear washin
-            % V_contrast_mm3 = zeros(numel(t_s), 1);
-            % midRamp = t_s >= ContrastStartTime & t_s <= ContrastEndTime;
-            % V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_s(midRamp) - ContrastStartTime) ./ (ContrastEndTime - ContrastStartTime);
-            % V_contrast_mm3(t_s > ContrastEndTime) = totalVolume_mm3;
-            
+            % V_contrast_mm3 = zeros(numel(t_row), 1);
+            % midRamp = t_row >= ContrastStartTime & t_row <= ContrastEndTime;
+            % V_contrast_mm3(midRamp) = totalVolume_mm3 * (t_row(midRamp) - ContrastStartTime) ./ (ContrastEndTime - ContrastStartTime);
+            % V_contrast_mm3(t_row > ContrastEndTime) = totalVolume_mm3;
+
             V_contrast_mm3 = V_contrast_mm3(:);
             if numel(V_contrast_mm3) ~= numel(t_row)
                 error('BreastPhantom:ContrastSizeMismatch', ...
-                    'V_contrast_mm3 must match the length of t_s.');
+                    'V_contrast_mm3 must match the length of the time vector.');
             end
             
             enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...

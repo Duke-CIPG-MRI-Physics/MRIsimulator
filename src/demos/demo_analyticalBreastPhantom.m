@@ -51,7 +51,8 @@ ordKsx_ky = ky_vec(ky_orderedIdx)';
 ordKsx_kz = kz_vec(kz_orderedIdx)';
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-phantom = BreastPhantom(t_s);
+context = PhantomContext(t_s);
+phantom = BreastPhantom(context);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
