@@ -146,7 +146,7 @@ clear kx_vec ky_vec kz_vec;
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
+K_ordered = phantom.kspaceWorldGeometryScaled(ordKsx_kx, ordKsx_ky, ordKsx_kz);
 clear ordKsx_kx ordKsx_ky ordKsx_kz phantom;
 
 % Reassemble onto the kx/ky/kz grid for reconstruction

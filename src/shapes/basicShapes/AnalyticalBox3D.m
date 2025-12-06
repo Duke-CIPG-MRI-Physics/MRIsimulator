@@ -100,8 +100,8 @@ classdef AnalyticalBox3D < AnalyticalShape3D
 
     %% Analytic BODY-frame FT and inside-test
     methods (Access = protected)
-        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
-            % bodyKspace
+        function S = kspaceBodyGeometry(obj, kx_body, ky_body, kz_body)
+            % kspaceBodyGeometry
             %   Analytic FT of a solid box centered at origin in body frame.
             %
             %   Uses MATLAB's sinc(u) = sin(pi*u)/(pi*u).
@@ -113,7 +113,7 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             %                     sinc(kx*Lx) * sinc(ky*Ly) * sinc(kz*Lz)
 
             if ~isequal(size(kx_body), size(ky_body), size(kz_body))
-                error('AnalyticalBox3D:bodyKspace:SizeMismatch', ...
+                error('AnalyticalBox3D:kspaceBodyGeometry:SizeMismatch', ...
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 

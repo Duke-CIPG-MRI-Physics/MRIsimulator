@@ -99,8 +99,8 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
 
     %% Analytic BODY-frame FT and inside-test
     methods (Access = protected)
-        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
-            % bodyKspace
+        function S = kspaceBodyGeometry(obj, kx_body, ky_body, kz_body)
+            % kspaceBodyGeometry
             %   Analytic FT of elliptical cylinder aligned with body z-axis.
             %
             %   Using affine-scaling relationship from circular cylinder:
@@ -116,7 +116,7 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
             %   to get the elliptical cross-section area = pi*a*b.
 
             if ~isequal(size(kx_body), size(ky_body), size(kz_body))
-                error('AnalyticalEllipticalCylinder3D:bodyKspace:SizeMismatch', ...
+                error('AnalyticalEllipticalCylinder3D:kspaceBodyGeometry:SizeMismatch', ...
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 

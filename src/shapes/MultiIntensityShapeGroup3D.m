@@ -1,15 +1,22 @@
-classdef MultipleMaterialPhantom < AnalyticalShape3D
-    % MultipleMaterialPhantom
-    %   Container for a collection of AnalyticalShape3D objects representing
-    %   different materials. Evaluates k-space by summing the contributions
-    %   from each contained shape (each shape carries its own intensity).
+classdef MultiIntensityShapeGroup3D < AnalyticalShape3D
+    % MultiIntensityShapeGroup3D
+    %   Groups AnalyticalShape3D objects (or SharedIntensityShapeGroup3D
+    %   instances) that each retain their own intensity. K-space is the sum of
+    %   all children, optionally sharing a common WORLD center/orientation.
+    %
+    %   Differences vs SharedIntensityShapeGroup3D:
+    %     • MultiIntensityShapeGroup3D preserves each child's intensity and is
+    %       suited for phantoms with multiple labeled materials.
+    %     • SharedIntensityShapeGroup3D ignores child intensities and applies a
+    %       single scaling to the boolean blend of additive/subtractive parts.
+    %     • Both containers allow grouped pose so nested shapes move together.
 
     properties (Access = protected)
         shapes (1,:) AnalyticalShape3D = AnalyticalShape3D.empty;
     end
 
     methods
-        function obj = MultipleMaterialPhantom(shapes, center, rollPitchYaw)
+        function obj = MultiIntensityShapeGroup3D(shapes, center, rollPitchYaw)
             if nargin < 3 
                 rollPitchYaw = [0, 0, 0];
             end
@@ -42,9 +49,10 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             obj.shapes = [obj.shapes, shape];
         end
 
-        function S = kspace(obj, kx, ky, kz)
-            % kspace  Sum analytic k-space over all materials.
-            %   S = kspace(obj, kx, ky, kz)
+        function S = kspaceWorldGeometryScaled(obj, kx, ky, kz)
+            % kspaceWorldGeometryScaled  Sum analytic k-space over all materials,
+            %   including each shape's own intensity scaling.
+            %   S = kspaceWorldGeometryScaled(obj, kx, ky, kz)
             %
             %   Inputs:
             %       kx, ky, kz : WORLD frequencies [cycles/mm], same size.
@@ -79,14 +87,14 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
 
             S_body = zeros(size(kxb));
             for idx = 1:numel(obj.shapes)
-                S_body = S_body + obj.shapes(idx).kspace(kxb, kyb, kzb);
+                S_body = S_body + obj.shapes(idx).kspaceWorldGeometryScaled(kxb, kyb, kzb);
             end
 
              % WORLD translation phase
             c = obj.getCenter();
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                    error('MultiIntensityShapeGroup3D:kspaceWorldGeometryScaled:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
@@ -104,9 +112,9 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
         end
 
-        function S = kspace_shapeOnly(obj, kx, ky, kz)
-            % kspace_shapeOnly  Sum geometry-only k-space for all materials.
-            %   S = kspace_shapeOnly(obj, kx, ky, kz)
+        function S = kspaceWorldGeometry(obj, kx, ky, kz)
+            % kspaceWorldGeometry  Sum geometry-only k-space for all materials.
+            %   S = kspaceWorldGeometry(obj, kx, ky, kz)
             %
             %   Inputs:
             %       kx, ky, kz : WORLD frequencies [cycles/mm], same size.
@@ -140,14 +148,14 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
 
             S_body = zeros(size(kxb));
             for idx = 1:numel(obj.shapes)
-                S_body = S_body + obj.shapes(idx).kspace_shapeOnly(kxb, kyb, kzb);
+                S_body = S_body + obj.shapes(idx).kspaceWorldGeometry(kxb, kyb, kzb);
             end
 
             % WORLD translation phase
-            c = obj.getCenter;
+            c = obj.getCenter();
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                    error('MultiIntensityShapeGroup3D:kspaceWorldGeometry:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
@@ -166,8 +174,8 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
         end
     end
     methods (Access = protected)
-        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
-            % bodyKspace  BODY-frame analytic FT (no intensity scaling).
+        function S = kspaceBodyGeometry(obj, kx_body, ky_body, kz_body)
+            % kspaceBodyGeometry  BODY-frame analytic FT (no intensity scaling).
             %   Implemented as the sum of each contained shape's WORLD-frame
             %   k-space because the phantom itself does not apply any
             %   additional transform beyond the individual shapes.
@@ -179,7 +187,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
 
             S = zeros(size(kx_body));
             for idx = 1:numel(obj.shapes)
-                S = S + obj.shapes(idx).kspace(kx_body, ky_body, kz_body);
+                S = S + obj.shapes(idx).kspaceWorldGeometryScaled(kx_body, ky_body, kz_body);
             end
         end
 

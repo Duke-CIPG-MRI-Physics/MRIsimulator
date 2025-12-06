@@ -55,7 +55,7 @@ phantom = BreastPhantom(t_s);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
+K_ordered = phantom.kspaceWorldGeometryScaled(ordKsx_kx, ordKsx_ky, ordKsx_kz);
 
 % Reassemble onto the kx/ky/kz grid for reconstruction
 K = zeros(N);

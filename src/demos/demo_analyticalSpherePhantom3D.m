@@ -32,7 +32,7 @@ sph = AnalyticalSphere3D(R_mm, [], center_sph, [0 0 0]);
 
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of sphere...\n');
-K = sph.kspace(kx, ky, kz);
+K = sph.kspaceWorldGeometryScaled(kx, ky, kz);
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing inverse FFT...\n');

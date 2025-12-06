@@ -1,10 +1,10 @@
-classdef EnhancingVessel < MultipleMaterialPhantom
+classdef EnhancingVessel < MultiIntensityShapeGroup3D
     % EnhancingVessel
     %   Vessel phantom built from two AnalyticalCylinder3D objects: an
     %   enhancing segment (with contrast) and an unenhanced segment. The
     %   total length remains fixed while the enhanced segment grows or
     %   shrinks according to a supplied contrast volume curve. The object
-    %   behaves as a MultipleMaterialPhantom so it can be added directly to
+    %   behaves as a MultiIntensityShapeGroup3D so it can be added directly to
     %   other phantoms.
 
     properties (Access = private)
@@ -48,7 +48,7 @@ classdef EnhancingVessel < MultipleMaterialPhantom
                 rollPitchYaw (1,3) double = [0 0 0];
             end
 
-            obj@MultipleMaterialPhantom();
+            obj@MultiIntensityShapeGroup3D();
 
             obj.time_s = t_s;
             obj.totalLength_mm = obj.ensureTotalLengthVector(totalLength_mm, numel(t_s));

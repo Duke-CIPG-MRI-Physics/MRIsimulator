@@ -10,7 +10,7 @@
 %       finite k-space sampling (i.e., band-limiting) → sinc/Gibbs ringing.
 % - The object is never voxelized explicitly; we work entirely in k-space.
 % - Multiple shapes can be added by summing their analytic FTs in K:
-%       K_total = cyl1.kspace(...) + cyl2.kspace(...) + ...
+%       K_total = cyl1.kspaceWorldGeometryScaled(...) + cyl2.kspaceWorldGeometryScaled(...) + ...
 clear; clc;
 
 %% 1) FOV and matrix size (scanner-style inputs)
@@ -52,7 +52,7 @@ cyl = AnalyticalCylinder3D(R_mm, L_mm, [], center_cyl, [roll_deg, pitch_deg, yaw
 
 %% 4) Compute analytic k-space for the cylinder
 fprintf('Evaluating analytic k-space...\n');
-K = cyl.kspace(kx, ky, kz);
+K = cyl.kspaceWorldGeometryScaled(kx, ky, kz);
 volV = cyl.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT
