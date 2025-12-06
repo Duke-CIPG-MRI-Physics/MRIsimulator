@@ -89,5 +89,18 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
         function lungHeight = getLungHeightMm(obj)
             lungHeight = obj.H_mm;
         end
+
+        function centers = getLungCenters(obj)
+            % getLungCenters
+            %   Return WORLD centers for the left and right lung components.
+
+            if numel(obj.additiveComponents) < 2
+                error('BreathingLung:MissingComponents', ...
+                    'Expected left and right lung components to be present.');
+            end
+
+            centers.left = obj.additiveComponents(1).getCenter();
+            centers.right = obj.additiveComponents(2).getCenter();
+        end
     end
 end
