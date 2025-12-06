@@ -40,6 +40,9 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
             rightLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], rightCenter, [0, 0, 0]);
             leftLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], leftCenter, [0, 0, 0]);
 
+            rightLung.setTimeSamples(t_s);
+            leftLung.setTimeSamples(t_s);
+
             obj@SharedIntensityShapeGroup3D([leftLung, rightLung], ...
                 AnalyticalShape3D.empty, intensity, center, rollPitchYaw);
 
@@ -53,6 +56,19 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
 
         function lungHeight = getLungHeightMm(obj)
             lungHeight = obj.H_mm;
+        end
+
+        function centers = getLungCenters(obj)
+            % getLungCenters
+            %   Return WORLD centers for the left and right lung components.
+
+            if numel(obj.additiveComponents) < 2
+                error('BreathingLung:MissingComponents', ...
+                    'Expected left and right lung components to be present.');
+            end
+
+            centers.left = obj.additiveComponents(1).getCenter();
+            centers.right = obj.additiveComponents(2).getCenter();
         end
     end
 end

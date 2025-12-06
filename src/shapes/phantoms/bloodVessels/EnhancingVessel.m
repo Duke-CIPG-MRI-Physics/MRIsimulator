@@ -65,6 +65,9 @@ classdef EnhancingVessel < MultiIntensityShapeGroup3D
             obj.unenhancedVessel = AnalyticalCylinder3D(obj.vesselRadius_mm, ...
                 unenhancedLength_mm, unenhancedIntensity, unenhancedCenter_mm, rollPitchYaw);
 
+            obj.enhancedVessel.setTimeSamples(obj.time_s.');
+            obj.unenhancedVessel.setTimeSamples(obj.time_s.');
+
             obj.setShapes([obj.unenhancedVessel, obj.enhancedVessel]);
         end
 
@@ -96,6 +99,8 @@ classdef EnhancingVessel < MultiIntensityShapeGroup3D
 
             obj.updateVesselLengths(obj.time_s, obj.contrastVolume_mm3, obj.vesselRadius_mm);
             obj.updateVesselCenter(obj.enhancingVesselCenter);
+            obj.enhancedVessel.setTimeSamples(obj.time_s.');
+            obj.unenhancedVessel.setTimeSamples(obj.time_s.');
         end
 
         function setCenterlineCenter(obj, newCenter)

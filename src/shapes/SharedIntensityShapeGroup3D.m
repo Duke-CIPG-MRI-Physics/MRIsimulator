@@ -17,8 +17,8 @@ classdef SharedIntensityShapeGroup3D < AnalyticalShape3D
     %     • Components are handle objects. Any external mutation (geometry or
     %       intensity) to a shared component will affect every
     %       SharedIntensityShapeGroup3D instance containing that handle. The
-    %       composite listens for component shapeChanged events and forwards a
-    %       shapeChanged notification when any component changes.
+    %       composite queries component geometry directly when evaluated rather
+    %       than relying on listener callbacks.
     %
     %   Constructor:
     %       obj = SharedIntensityShapeGroup3D(additiveComponents, subtractiveComponents, ...
@@ -31,10 +31,6 @@ classdef SharedIntensityShapeGroup3D < AnalyticalShape3D
     properties (Access = protected)
         additiveComponents (1,:) AnalyticalShape3D = AnalyticalShape3D.empty;
         subtractiveComponents (1,:) AnalyticalShape3D = AnalyticalShape3D.empty;
-    end
-
-    properties (Access = private)
-        componentListeners = event.listener.empty(1,0);
     end
 
     methods
@@ -58,7 +54,6 @@ classdef SharedIntensityShapeGroup3D < AnalyticalShape3D
             end
 
             obj.additiveComponents = [obj.additiveComponents, shape];
-            obj.registerComponentListeners(shape);
             obj.markShapeChanged();
         end
 
@@ -69,18 +64,7 @@ classdef SharedIntensityShapeGroup3D < AnalyticalShape3D
             end
 
             obj.subtractiveComponents = [obj.subtractiveComponents, shape];
-            obj.registerComponentListeners(shape);
             obj.markShapeChanged();
-        end
-    end
-
-    methods (Access = private)
-        function registerComponentListeners(obj, components)
-            for idx = 1:numel(components)
-                comp = components(idx);
-                lh = comp.addShapeChangedListener(@(~,~) obj.markShapeChanged()); %#ok<AGROW>
-                obj.componentListeners(end+1) = lh;
-            end
         end
     end
 

@@ -20,7 +20,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
 
     %% Private geometry parameter
     properties (Access = private)
-        R_mm double {mustBePositive} = 5;   % sphere radius [mm]
+        R_mm = 5;   % sphere radius [mm], numeric or time-varying spec
     end
 
     %% Constructor
@@ -59,14 +59,23 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             R = obj.R_mm;
         end
 
-        function setRadius(obj, newRadius)
+        function setRadius(obj, newRadius, opts)
+            % setRadius  Accepts numeric radii or a function handle @(t) -> R_mm.
+            %   When a function handle is provided, it will be evaluated using
+            %   the object's time samples (set via setTimeSamples). The handle
+            %   should accept a 1xN vector of times and return either a scalar
+            %   or a vector matching that length.
             arguments
                 obj
-                newRadius double {mustBePositive}
+                newRadius
+                opts.Cache logical = true
             end
 
-            if ~isequal(obj.R_mm, newRadius)
-                obj.R_mm = newRadius;
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
+            radiusSpec = obj.normalizeGeometryInput(newRadius, validator, opts.Cache, 'R');
+
+            if ~isequal(obj.R_mm, radiusSpec)
+                obj.R_mm = radiusSpec;
                 obj.markShapeChanged();
             end
         end

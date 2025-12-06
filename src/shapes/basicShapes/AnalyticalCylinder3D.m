@@ -29,8 +29,8 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
 
     %% Private geometry parameters
     properties (Access = private)
-        R_mm double {mustBePositive} = 5;   % radius [mm]
-        L_mm double {mustBeNonnegative} = 20;  % length [mm]
+        R_mm = 5;   % radius [mm], numeric or time-varying spec
+        L_mm = 20;  % length [mm], numeric or time-varying spec
     end
 
     %% Constructor
@@ -49,19 +49,28 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         end
     end
 
-    %% Public geometry getters/setters (fires shapeChanged)
+    %% Public geometry getters/setters
     methods
         function R = getRadius(obj)
             R = obj.R_mm;
         end
 
-        function setRadius(obj, newRadius)
+        function setRadius(obj, newRadius, opts)
+            % setRadius  Accepts numeric radii or @(t)->R_mm waveforms.
+            %   Function handles are evaluated against the object's time
+            %   samples. Use the Cache flag to reuse evaluations when the same
+            %   time base is queried repeatedly.
             arguments
                 obj
-                newRadius double {mustBePositive}
+                newRadius
+                opts.Cache logical = true
             end
-            if ~isequal(obj.R_mm, newRadius)
-                obj.R_mm = newRadius;
+
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
+            radiusSpec = obj.normalizeGeometryInput(newRadius, validator, opts.Cache, 'R');
+
+            if ~isequal(obj.R_mm, radiusSpec)
+                obj.R_mm = radiusSpec;
                 obj.markShapeChanged();
             end
         end
@@ -70,13 +79,22 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
             L = obj.L_mm;
         end
 
-        function setLength(obj, newLength)
+        function setLength(obj, newLength, opts)
+            % setLength  Accepts numeric lengths or @(t)->L_mm waveforms.
+            %   Function handles are evaluated against the object's time
+            %   samples. Use the Cache flag to reuse evaluations when the same
+            %   time base is queried repeatedly.
             arguments
                 obj
-                newLength double {mustBeNonnegative}
+                newLength
+                opts.Cache logical = true
             end
-            if ~isequal(obj.L_mm, newLength)
-                obj.L_mm = newLength;
+
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'nonnegative'});
+            lengthSpec = obj.normalizeGeometryInput(newLength, validator, opts.Cache, 'L');
+
+            if ~isequal(obj.L_mm, lengthSpec)
+                obj.L_mm = lengthSpec;
                 obj.markShapeChanged();
             end
         end
