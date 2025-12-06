@@ -9,7 +9,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     %     • Convert WORLD → BODY spatial coordinates
     %     • Apply WORLD translation phase ramp
     %     • Store an intensity multiplier for k-space scaling
-    %     • Fire a unified shapeChanged event whenever geometry changes
+    %     • Geometry is fetched directly at evaluation time (no event listeners)
     %     • Provide estimateImageShape() for slice-wise shape masks
     %     • Require subclasses to implement:
     %           kspaceBodyGeometry(kx_body, ky_body, kz_body)
@@ -30,11 +30,6 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     %
     %   WORLD → BODY, spatial:
     %       r_body = Rᵀ * (r_world - center)
-
-    %% Events ---------------------------------------------------------------
-    events
-        shapeChanged   % fire whenever *anything* affecting FT changes
-    end
 
     %% Properties -----------------------------------------------------------
     properties (Access = private)
@@ -99,10 +94,10 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             R = Rz * Ry * Rx;   % intrinsic rotations
         end
 
-        function markShapeChanged(obj)
+        function markShapeChanged(~)
             % markShapeChanged
-            %   Notify listeners that shape geometry/pose has changed.
-            notify(obj, 'shapeChanged');
+            %   Retained for compatibility; geometry is queried directly at
+            %   evaluation time so no change notifications are dispatched.
         end
 
         function [xb, yb, zb] = worldToBodyPoints(obj, x_world, y_world, z_world)
@@ -447,25 +442,6 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             %   the shape's intensity.
 
             image = obj.getIntensity() .* obj.estimateImageShape(xMesh, yMesh, zMesh);
-        end
-    end
-
-    %% Listener helpers -----------------------------------------------------
-    methods
-        function lh = addShapeChangedListener(obj, callback)
-            % addShapeChangedListener
-            %   Attach listener to the shapeChanged event.
-            %
-            %   lh = addShapeChangedListener(obj, @(src,evt)...)
-            lh = addlistener(obj, 'shapeChanged', callback);
-        end
-
-        function removeListener(~, lh)
-            % removeListener
-            %   Convenience wrapper to delete a listener handle.
-            if ~isempty(lh) && isvalid(lh)
-                delete(lh);
-            end
         end
     end
 

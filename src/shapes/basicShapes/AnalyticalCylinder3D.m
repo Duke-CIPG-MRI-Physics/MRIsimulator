@@ -49,7 +49,7 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         end
     end
 
-    %% Public geometry getters/setters (fires shapeChanged)
+    %% Public geometry getters/setters
     methods
         function R = getRadius(obj)
             R = obj.R_mm;
