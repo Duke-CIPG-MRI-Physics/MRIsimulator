@@ -36,6 +36,8 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
         center double = [0 0 0];                % world center [mm]
         shapeIntensity double = 1;              % dimensionless multiplier (scalar or grid-sized)
         rollPitchYaw (1,3) double = [0 0 0];    % [roll pitch yaw] in deg
+        time_s (1,:) double {mustBeReal, mustBeFinite} = double.empty(1,0);
+        parameterCache struct = struct();
     end
 
     %% Constructor ----------------------------------------------------------
@@ -98,6 +100,28 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             % markShapeChanged
             %   Retained for compatibility; geometry is queried directly at
             %   evaluation time so no change notifications are dispatched.
+        end
+
+        function setTimeSamples(obj, t_s)
+            % setTimeSamples  Assign the shared time base for time-varying parameters.
+            %   t_s should be a row vector of time samples [s]. Time-dependent
+            %   geometry functions (e.g., @(t) ...) are evaluated against this
+            %   vector when the shape is queried. Changing t_s clears cached
+            %   parameter evaluations.
+
+            arguments
+                obj
+                t_s (1,:) double {mustBeReal, mustBeFinite}
+            end
+
+            obj.time_s = double(t_s);
+            obj.parameterCache = struct();
+            obj.markShapeChanged();
+        end
+
+        function t_s = getTimeSamples(obj)
+            % getTimeSamples  Return the shared time samples for this shape.
+            t_s = obj.time_s;
         end
 
         function [xb, yb, zb] = worldToBodyPoints(obj, x_world, y_world, z_world)
@@ -270,28 +294,89 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
         end
     end
 
-    methods (Static, Access = protected)
-        function paramOut = requireScalarOrSize(param, template, paramName)
+    methods (Access = protected)
+        function paramOut = requireScalarOrSize(obj, param, template, paramName)
             % requireScalarOrSize
             %   Enforce that a shape parameter is either scalar or matches the
             %   size of a template array (typically kx/ky/kz or xb/yb/zb).
 
-            if isscalar(param)
+            paramValue = obj.resolveTimeVariantParameter(param, paramName);
+
+            if isscalar(paramValue)
                 % Expand scalar parameters to match the template size so that
                 % subsequent logical indexing (e.g., param(idx)) never
                 % produces an out-of-bounds error when the template is larger
                 % than a single element.
-                paramOut = param .* ones(size(template));
-            elseif isequal(size(param), size(template))
-                paramOut = param;
-            elseif isvector(param) && numel(param) == numel(template)
+                paramOut = paramValue .* ones(size(template));
+            elseif isequal(size(paramValue), size(template))
+                paramOut = paramValue;
+            elseif isvector(paramValue) && numel(paramValue) == numel(template)
                 % Allow vector-valued parameters (e.g., waveforms) to follow
                 % the requested evaluation order even if their original shape
                 % is transposed relative to the template.
-                paramOut = reshape(param, size(template));
+                paramOut = reshape(paramValue, size(template));
             else
                 error('AnalyticalShape3D:ParameterSizeMismatch', ...
                     'Parameter %s must be scalar or match template size.', paramName);
+            end
+        end
+    end
+
+    methods (Access = protected)
+        function clearParameterCache(obj, paramName)
+            if isfield(obj.parameterCache, paramName)
+                obj.parameterCache = rmfield(obj.parameterCache, paramName);
+            end
+        end
+
+        function paramSpec = normalizeGeometryInput(obj, rawValue, validatorFcn, cacheResult, paramName)
+            if isa(rawValue, 'function_handle')
+                paramSpec = struct('isFunction', true, ...
+                                   'handle', rawValue, ...
+                                   'cacheEnabled', logical(cacheResult), ...
+                                   'validator', validatorFcn);
+            else
+                validatorFcn(rawValue);
+                paramSpec = struct('isFunction', false, ...
+                                   'value', double(rawValue), ...
+                                   'cacheEnabled', logical(cacheResult), ...
+                                   'validator', validatorFcn);
+            end
+
+            obj.clearParameterCache(paramName);
+        end
+
+        function paramValue = resolveTimeVariantParameter(obj, param, paramName)
+            if ~(isstruct(param) && isfield(param, 'isFunction'))
+                paramValue = param;
+                return;
+            end
+
+            if param.isFunction
+                if isempty(obj.time_s)
+                    error('AnalyticalShape3D:MissingTimeSamples', ...
+                        'Time samples must be set before evaluating %s.', paramName);
+                end
+
+                cacheKey = paramName;
+                if param.cacheEnabled && isfield(obj.parameterCache, cacheKey)
+                    cacheEntry = obj.parameterCache.(cacheKey);
+                    if isequal(cacheEntry.time_s, obj.time_s)
+                        paramValue = cacheEntry.value;
+                        return;
+                    end
+                end
+
+                paramValue = param.handle(obj.time_s);
+                param.validator(paramValue);
+
+                if param.cacheEnabled
+                    obj.parameterCache.(cacheKey) = struct('time_s', obj.time_s, ...
+                                                           'value', paramValue);
+                end
+            else
+                param.validator(param.value);
+                paramValue = param.value;
             end
         end
     end

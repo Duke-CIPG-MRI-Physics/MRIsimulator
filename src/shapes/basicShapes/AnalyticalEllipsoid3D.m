@@ -13,9 +13,9 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
 
     %% Private geometry parameters
     properties (Access = private)
-        a_mm double {mustBePositive} = 5;   % semi-axis in x (mm)
-        b_mm double {mustBePositive} = 5;   % semi-axis in y (mm)
-        c_mm double {mustBePositive} = 5;   % semi-axis in z (mm)
+        a_mm = 5;   % semi-axis in x (mm), numeric or time-varying spec
+        b_mm = 5;   % semi-axis in y (mm), numeric or time-varying spec
+        c_mm = 5;   % semi-axis in z (mm), numeric or time-varying spec
     end
 
     %% Constructor
@@ -49,14 +49,19 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             a = obj.a_mm;
         end
 
-        function setA(obj, newA)
+        function setA(obj, newA, opts)
+            % setA  Accepts numeric values or @(t)->a_mm waveforms.
             arguments
                 obj
-                newA double {mustBePositive}
+                newA
+                opts.Cache logical = true
             end
 
-            if ~isequal(obj.a_mm, newA)
-                obj.a_mm = newA;
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
+            aSpec = obj.normalizeGeometryInput(newA, validator, opts.Cache, 'a');
+
+            if ~isequal(obj.a_mm, aSpec)
+                obj.a_mm = aSpec;
                 obj.markShapeChanged();
             end
         end
@@ -65,14 +70,19 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             b = obj.b_mm;
         end
 
-        function setB(obj, newB)
+        function setB(obj, newB, opts)
+            % setB  Accepts numeric values or @(t)->b_mm waveforms.
             arguments
                 obj
-                newB double {mustBePositive}
+                newB
+                opts.Cache logical = true
             end
 
-            if ~isequal(obj.b_mm, newB)
-                obj.b_mm = newB;
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
+            bSpec = obj.normalizeGeometryInput(newB, validator, opts.Cache, 'b');
+
+            if ~isequal(obj.b_mm, bSpec)
+                obj.b_mm = bSpec;
                 obj.markShapeChanged();
             end
         end
@@ -81,14 +91,19 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             c = obj.c_mm;
         end
 
-        function setC(obj, newC)
+        function setC(obj, newC, opts)
+            % setC  Accepts numeric values or @(t)->c_mm waveforms.
             arguments
                 obj
-                newC double {mustBePositive}
+                newC
+                opts.Cache logical = true
             end
 
-            if ~isequal(obj.c_mm, newC)
-                obj.c_mm = newC;
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
+            cSpec = obj.normalizeGeometryInput(newC, validator, opts.Cache, 'c');
+
+            if ~isequal(obj.c_mm, cSpec)
+                obj.c_mm = cSpec;
                 obj.markShapeChanged();
             end
         end
