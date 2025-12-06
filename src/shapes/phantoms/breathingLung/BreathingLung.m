@@ -40,6 +40,8 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
             rightLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], rightCenter, [0, 0, 0]);
             leftLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], leftCenter, [0, 0, 0]);
 
+            t_s = provider.getTime();
+
             rightLung.setTimeSamples(t_s);
             leftLung.setTimeSamples(t_s);
 
