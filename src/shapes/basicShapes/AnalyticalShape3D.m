@@ -37,7 +37,6 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
         shapeIntensity double = 1;              % dimensionless multiplier (scalar or grid-sized)
         rollPitchYaw (1,3) double = [0 0 0];    % [roll pitch yaw] in deg
         time_s (1,:) double {mustBeReal, mustBeFinite} = double.empty(1,0);
-        parameterCache struct = struct();
     end
 
     %% Constructor ----------------------------------------------------------
@@ -106,8 +105,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             % setTimeSamples  Assign the shared time base for time-varying parameters.
             %   t_s should be a row vector of time samples [s]. Time-dependent
             %   geometry functions (e.g., @(t) ...) are evaluated against this
-            %   vector when the shape is queried. Changing t_s clears cached
-            %   parameter evaluations.
+            %   vector when the shape is queried.
 
             arguments
                 obj
@@ -115,7 +113,6 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
 
             obj.time_s = double(t_s);
-            obj.parameterCache = struct();
             obj.markShapeChanged();
         end
 
@@ -295,6 +292,14 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     end
 
     methods (Access = protected)
+        function paramValue = evaluateParameter(obj, paramSpec, paramName)
+            % evaluateParameter
+            %   Resolve a parameter that may be static or time-varying.
+            %   Function-handle parameters are evaluated against the current
+            %   time base; numeric parameters are returned as-is.
+            paramValue = obj.resolveTimeVariantParameter(paramSpec, paramName);
+        end
+
         function paramOut = requireScalarOrSize(obj, param, template, paramName)
             % requireScalarOrSize
             %   Enforce that a shape parameter is either scalar or matches the
@@ -323,27 +328,17 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     end
 
     methods (Access = protected)
-        function clearParameterCache(obj, paramName)
-            if isfield(obj.parameterCache, paramName)
-                obj.parameterCache = rmfield(obj.parameterCache, paramName);
-            end
-        end
-
-        function paramSpec = normalizeGeometryInput(obj, rawValue, validatorFcn, cacheResult, paramName)
+        function paramSpec = normalizeGeometryInput(obj, rawValue, validatorFcn, paramName)
             if isa(rawValue, 'function_handle')
                 paramSpec = struct('isFunction', true, ...
                                    'handle', rawValue, ...
-                                   'cacheEnabled', logical(cacheResult), ...
                                    'validator', validatorFcn);
             else
                 validatorFcn(rawValue);
                 paramSpec = struct('isFunction', false, ...
                                    'value', double(rawValue), ...
-                                   'cacheEnabled', logical(cacheResult), ...
                                    'validator', validatorFcn);
             end
-
-            obj.clearParameterCache(paramName);
         end
 
         function paramValue = resolveTimeVariantParameter(obj, param, paramName)
@@ -358,22 +353,8 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                         'Time samples must be set before evaluating %s.', paramName);
                 end
 
-                cacheKey = paramName;
-                if param.cacheEnabled && isfield(obj.parameterCache, cacheKey)
-                    cacheEntry = obj.parameterCache.(cacheKey);
-                    if isequal(cacheEntry.time_s, obj.time_s)
-                        paramValue = cacheEntry.value;
-                        return;
-                    end
-                end
-
                 paramValue = param.handle(obj.time_s);
                 param.validator(paramValue);
-
-                if param.cacheEnabled
-                    obj.parameterCache.(cacheKey) = struct('time_s', obj.time_s, ...
-                                                           'value', paramValue);
-                end
             else
                 param.validator(param.value);
                 paramValue = param.value;

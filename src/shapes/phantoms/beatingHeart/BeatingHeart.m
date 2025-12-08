@@ -3,27 +3,36 @@ classdef BeatingHeart < AnalyticalEllipsoid3D
     %   Time-varying ellipsoidal heart model driven by cardiac_ellipsoid_waveform.
     %
     %   Constructor:
-    %       heart = BeatingHeart(provider, intensity, center, rollPitchYaw)
+    %       heart = BeatingHeart(aFcn, bFcn, cFcn, time_s, intensity, center, rollPitchYaw)
     %
     %   Inputs:
-    %       provider      : PhantomContext supplying precomputed radii
-    %       intensity     : (optional) shape intensity scaling
-    %       center        : (optional) WORLD center [mm]
-    %       rollPitchYaw  : (optional) [roll pitch yaw] in deg
+    %       aFcn, bFcn, cFcn : function handles returning semi-axis lengths [mm]
+    %       time_s           : row vector of time samples [s]
+    %       intensity        : (optional) shape intensity scaling
+    %       center           : (optional) WORLD center [mm]
+    %       rollPitchYaw     : (optional) [roll pitch yaw] in deg
 
     methods
-        function obj = BeatingHeart(provider, intensity, center, rollPitchYaw)
+        function obj = BeatingHeart(aFcn, bFcn, cFcn, time_s, intensity, center, rollPitchYaw)
             arguments
-                provider (1,1) PhantomContext
+                aFcn (1,1) function_handle
+                bFcn (1,1) function_handle
+                cFcn (1,1) function_handle
+                time_s (1,:) double {mustBeReal, mustBeFinite}
                 intensity double {mustBeReal, mustBeFinite} = 1
                 center double {mustBeReal, mustBeFinite} = [0 0 0]
                 rollPitchYaw (1,3) double {mustBeReal, mustBeFinite} = [0 0 0]
             end
 
-            [a_mm, b_mm, c_mm] = provider.getHeartRadiiMm();
+            timeRow = double(time_s(:).');
 
-            obj@AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, intensity, center, ...
+            obj@AnalyticalEllipsoid3D([], [], [], intensity, center, ...
                 rollPitchYaw);
+
+            obj.setA(aFcn);
+            obj.setB(bFcn);
+            obj.setC(cFcn);
+            obj.setTimeSamples(timeRow);
         end
     end
 end

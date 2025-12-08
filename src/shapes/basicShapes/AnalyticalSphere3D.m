@@ -56,10 +56,10 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
     %% Public geometry API
     methods
         function R = getRadius(obj)
-            R = obj.R_mm;
+            R = obj.evaluateParameter(obj.R_mm, 'R');
         end
 
-        function setRadius(obj, newRadius, opts)
+        function setRadius(obj, newRadius)
             % setRadius  Accepts numeric radii or a function handle @(t) -> R_mm.
             %   When a function handle is provided, it will be evaluated using
             %   the object's time samples (set via setTimeSamples). The handle
@@ -68,11 +68,10 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             arguments
                 obj
                 newRadius
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            radiusSpec = obj.normalizeGeometryInput(newRadius, validator, opts.Cache, 'R');
+            radiusSpec = obj.normalizeGeometryInput(newRadius, validator, 'R');
 
             if ~isequal(obj.R_mm, radiusSpec)
                 obj.R_mm = radiusSpec;
@@ -98,7 +97,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             end
 
             k = sqrt(kx_body.^2 + ky_body.^2 + kz_body.^2);
-            R = obj.requireScalarOrSize(obj.R_mm, kx_body, 'R');
+            R = obj.requireScalarOrSize(obj.getRadius(), kx_body, 'R');
             x = 2*pi .* R .* k;
 
             S = zeros(size(k));
@@ -133,7 +132,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
 
             %#ok<*INUSD>  % suppress unused varargin warning for now
 
-            R = obj.requireScalarOrSize(obj.R_mm, xb, 'R');
+            R = obj.requireScalarOrSize(obj.getRadius(), xb, 'R');
             inside = (xb.^2 + yb.^2 + zb.^2) <= R.^2;
 
             imageShape = double(inside);   % 0 or 1 (no partial volume yet)

@@ -46,19 +46,18 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
     %% Public geometry getters/setters
     methods
         function a = getA(obj)
-            a = obj.a_mm;
+            a = obj.evaluateParameter(obj.a_mm, 'a');
         end
 
-        function setA(obj, newA, opts)
+        function setA(obj, newA)
             % setA  Accepts numeric values or @(t)->a_mm waveforms.
             arguments
                 obj
                 newA
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            aSpec = obj.normalizeGeometryInput(newA, validator, opts.Cache, 'a');
+            aSpec = obj.normalizeGeometryInput(newA, validator, 'a');
 
             if ~isequal(obj.a_mm, aSpec)
                 obj.a_mm = aSpec;
@@ -67,19 +66,18 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         end
 
         function b = getB(obj)
-            b = obj.b_mm;
+            b = obj.evaluateParameter(obj.b_mm, 'b');
         end
 
-        function setB(obj, newB, opts)
+        function setB(obj, newB)
             % setB  Accepts numeric values or @(t)->b_mm waveforms.
             arguments
                 obj
                 newB
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            bSpec = obj.normalizeGeometryInput(newB, validator, opts.Cache, 'b');
+            bSpec = obj.normalizeGeometryInput(newB, validator, 'b');
 
             if ~isequal(obj.b_mm, bSpec)
                 obj.b_mm = bSpec;
@@ -88,19 +86,18 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         end
 
         function c = getC(obj)
-            c = obj.c_mm;
+            c = obj.evaluateParameter(obj.c_mm, 'c');
         end
 
-        function setC(obj, newC, opts)
+        function setC(obj, newC)
             % setC  Accepts numeric values or @(t)->c_mm waveforms.
             arguments
                 obj
                 newC
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            cSpec = obj.normalizeGeometryInput(newC, validator, opts.Cache, 'c');
+            cSpec = obj.normalizeGeometryInput(newC, validator, 'c');
 
             if ~isequal(obj.c_mm, cSpec)
                 obj.c_mm = cSpec;
@@ -131,9 +128,9 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 
-            a = obj.requireScalarOrSize(obj.a_mm, kx_body, 'a');
-            b = obj.requireScalarOrSize(obj.b_mm, kx_body, 'b');
-            c = obj.requireScalarOrSize(obj.c_mm, kx_body, 'c');
+            a = obj.requireScalarOrSize(obj.getA(), kx_body, 'a');
+            b = obj.requireScalarOrSize(obj.getB(), kx_body, 'b');
+            c = obj.requireScalarOrSize(obj.getC(), kx_body, 'c');
 
             % "Effective" radial frequency in scaled coordinates
             kprime = sqrt((a .* kx_body).^2 + ...
@@ -161,9 +158,9 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             % percentInsideShape
             %   BODY-frame inside test for ellipsoid.
 
-            a = obj.requireScalarOrSize(obj.a_mm, xb, 'a');
-            b = obj.requireScalarOrSize(obj.b_mm, xb, 'b');
-            c = obj.requireScalarOrSize(obj.c_mm, xb, 'c');
+            a = obj.requireScalarOrSize(obj.getA(), xb, 'a');
+            b = obj.requireScalarOrSize(obj.getB(), xb, 'b');
+            c = obj.requireScalarOrSize(obj.getC(), xb, 'c');
 
             inside = (xb./a).^2 + (yb./b).^2 + (zb./c).^2 <= 1;
             frac = double(inside);

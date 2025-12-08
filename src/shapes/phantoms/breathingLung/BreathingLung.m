@@ -4,60 +4,71 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
     %   geometry follows computeBreathingMotionEllipsoid.
     %
     %   Constructor:
-    %       obj = BreathingLung(provider, lungSeparation_mm, intensity, ...)
+    %       obj = BreathingLung(radiusFcn, heightFcn, lungSeparation_mm, ...
+    %                           time_s, intensity, center, rollPitchYaw)
     %
     %   Inputs:
-    %       provider         - PhantomContext supplying lung geometry
-    %       lungSeparation_mm- spacing between lungs [mm]
+    %       radiusFcn        - function handle returning lung radius [mm]
+    %       heightFcn        - function handle returning lung height [mm]
+    %       lungSeparation_mm- spacing between lungs [mm] (scalar or @(t))
+    %       time_s           - row vector of time samples [s]
     %       intensity        - shape intensity (handled by parent)
     %       center           - composite center [mm]
     %       rollPitchYaw     - optional composite orientation [deg]
 
     properties (Access = private)
-        R_mm (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-        H_mm (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
+        radiusFcn (1,1) function_handle
+        heightFcn (1,1) function_handle
+        separationFcn (1,1) function_handle
+        time_s (1,:) double {mustBeReal, mustBeFinite}
     end
 
     methods
-        function obj = BreathingLung(provider, lungSeparation_mm, intensity, center, rollPitchYaw)
+        function obj = BreathingLung(radiusFcn, heightFcn, lungSeparation_mm, time_s, intensity, center, rollPitchYaw)
             arguments
-                provider (1,1) PhantomContext
-                lungSeparation_mm (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
+                radiusFcn (1,1) function_handle
+                heightFcn (1,1) function_handle
+                lungSeparation_mm
+                time_s (1,:) double {mustBeFinite}
                 intensity double {mustBeFinite} = 0.1
                 center (1,3) double {mustBeFinite} = [0, 0, 0]
                 rollPitchYaw (1,3) double {mustBeFinite} = [0 0 0]
             end
 
-            R_mm = provider.getLungRadiusMm();
-            H_mm = provider.getLungHeightMm();
+            obj.radiusFcn = radiusFcn;
+            obj.heightFcn = heightFcn;
+            obj.separationFcn = obj.normalizeSeparation(lungSeparation_mm);
+            obj.time_s = double(time_s(:).');
 
-            lungPosition_mm = R_mm + lungSeparation_mm;
+            lungPosition_mm = obj.radiusFcn(obj.time_s) + obj.separationFcn(obj.time_s);
 
             rightCenter = [lungPosition_mm(:), zeros(size(lungPosition_mm(:))), zeros(size(lungPosition_mm(:)))];
             leftCenter = [-lungPosition_mm(:), zeros(size(lungPosition_mm(:))), zeros(size(lungPosition_mm(:)))];
 
+            rightLung = AnalyticalEllipsoid3D([], [], [], [], rightCenter, [0, 0, 0]);
+            leftLung = AnalyticalEllipsoid3D([], [], [], [], leftCenter, [0, 0, 0]);
 
-            rightLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], rightCenter, [0, 0, 0]);
-            leftLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], leftCenter, [0, 0, 0]);
+            rightLung.setA(obj.radiusFcn);
+            rightLung.setB(obj.radiusFcn);
+            rightLung.setC(obj.heightFcn);
 
-            t_s = provider.getTime();
+            leftLung.setA(obj.radiusFcn);
+            leftLung.setB(obj.radiusFcn);
+            leftLung.setC(obj.heightFcn);
 
-            rightLung.setTimeSamples(t_s);
-            leftLung.setTimeSamples(t_s);
+            rightLung.setTimeSamples(obj.time_s);
+            leftLung.setTimeSamples(obj.time_s);
 
             obj@SharedIntensityShapeGroup3D([leftLung, rightLung], ...
                 AnalyticalShape3D.empty, intensity, center, rollPitchYaw);
-
-            obj.R_mm = R_mm;
-            obj.H_mm = H_mm;
         end
 
-        function lungRadius = getLungRadiusMm(obj)
-            lungRadius = obj.R_mm;
+        function lungRadius = getLungRadiusMm(obj, t_s)
+            lungRadius = obj.radiusFcn(obj.normalizeTime(t_s));
         end
 
-        function lungHeight = getLungHeightMm(obj)
-            lungHeight = obj.H_mm;
+        function lungHeight = getLungHeightMm(obj, t_s)
+            lungHeight = obj.heightFcn(obj.normalizeTime(t_s));
         end
 
         function centers = getLungCenters(obj)
@@ -71,6 +82,26 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
 
             centers.left = obj.additiveComponents(1).getCenter();
             centers.right = obj.additiveComponents(2).getCenter();
+        end
+    end
+
+    methods (Access = private)
+        function tRow = normalizeTime(obj, t_s)
+            if nargin < 2 || isempty(t_s)
+                tRow = obj.time_s;
+            else
+                validateattributes(t_s, {'double'}, {'finite'});
+                tRow = t_s(:).';
+            end
+        end
+
+        function separationFcn = normalizeSeparation(~, lungSeparation_mm)
+            if isa(lungSeparation_mm, 'function_handle')
+                separationFcn = @(t) lungSeparation_mm(t);
+            else
+                validateattributes(lungSeparation_mm, {'double'}, {'nonnegative', 'finite'});
+                separationFcn = @(t) lungSeparation_mm .* ones(size(t));
+            end
         end
     end
 end
