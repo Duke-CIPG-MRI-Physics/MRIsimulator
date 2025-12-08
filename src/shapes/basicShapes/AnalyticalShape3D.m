@@ -366,22 +366,8 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                         'Time samples must be set before evaluating %s.', paramName);
                 end
 
-                cacheKey = paramName;
-                if param.cacheEnabled && isfield(obj.parameterCache, cacheKey)
-                    cacheEntry = obj.parameterCache.(cacheKey);
-                    if isequal(cacheEntry.time_s, obj.time_s)
-                        paramValue = cacheEntry.value;
-                        return;
-                    end
-                end
-
                 paramValue = param.handle(obj.time_s);
                 param.validator(paramValue);
-
-                if param.cacheEnabled
-                    obj.parameterCache.(cacheKey) = struct('time_s', obj.time_s, ...
-                                                           'value', paramValue);
-                end
             else
                 param.validator(param.value);
                 paramValue = param.value;
