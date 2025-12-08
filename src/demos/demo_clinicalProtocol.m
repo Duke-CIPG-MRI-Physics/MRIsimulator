@@ -129,9 +129,8 @@ end
 disp(['   Encoding          (f x ph x sl):' encodingFullStr])
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-context = PhantomContext(t_s);
-phantom = BreastPhantom(context);
-clear t_s context;
+phantom = BreastPhantom(t_s.');
+clear t_s;
 
 %% 3) Build WORLD k-space grid and map to the rectilinear ordering
 [kx_vec, ky_vec, kz_vec, ~, ~, ~] = computeKspaceGrid3D(FOV_oversampled, matrix_acq_os);

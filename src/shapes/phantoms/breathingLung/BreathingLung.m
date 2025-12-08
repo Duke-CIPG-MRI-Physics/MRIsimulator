@@ -4,11 +4,14 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
     %   geometry follows computeBreathingMotionEllipsoid.
     %
     %   Constructor:
-    %       obj = BreathingLung(provider, lungSeparation_mm, intensity, ...)
+    %       obj = BreathingLung(radiusFcn, heightFcn, lungSeparation_mm, ...
+    %                           time_s, intensity, center, rollPitchYaw)
     %
     %   Inputs:
-    %       provider         - PhantomContext supplying lung geometry
-    %       lungSeparation_mm- spacing between lungs [mm]
+    %       radiusFcn        - function handle returning lung radius [mm]
+    %       heightFcn        - function handle returning lung height [mm]
+    %       lungSeparation_mm- spacing between lungs [mm] (scalar or @(t))
+    %       time_s           - row vector of time samples [s]
     %       intensity        - shape intensity (handled by parent)
     %       center           - composite center [mm]
     %       rollPitchYaw     - optional composite orientation [deg]
@@ -21,19 +24,21 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
     end
 
     methods
-        function obj = BreathingLung(provider, lungSeparation_mm, intensity, center, rollPitchYaw)
+        function obj = BreathingLung(radiusFcn, heightFcn, lungSeparation_mm, time_s, intensity, center, rollPitchYaw)
             arguments
-                provider (1,1) PhantomContext
+                radiusFcn (1,1) function_handle
+                heightFcn (1,1) function_handle
                 lungSeparation_mm
+                time_s (1,:) double {mustBeFinite}
                 intensity double {mustBeFinite} = 0.1
                 center (1,3) double {mustBeFinite} = [0, 0, 0]
                 rollPitchYaw (1,3) double {mustBeFinite} = [0 0 0]
             end
 
-            obj.radiusFcn = provider.getLungRadiusMm();
-            obj.heightFcn = provider.getLungHeightMm();
+            obj.radiusFcn = radiusFcn;
+            obj.heightFcn = heightFcn;
             obj.separationFcn = obj.normalizeSeparation(lungSeparation_mm);
-            obj.time_s = provider.getTime();
+            obj.time_s = double(time_s(:).');
 
             lungPosition_mm = obj.radiusFcn(obj.time_s) + obj.separationFcn(obj.time_s);
 
@@ -43,14 +48,13 @@ classdef BreathingLung < SharedIntensityShapeGroup3D
             rightLung = AnalyticalEllipsoid3D([], [], [], [], rightCenter, [0, 0, 0]);
             leftLung = AnalyticalEllipsoid3D([], [], [], [], leftCenter, [0, 0, 0]);
 
-            opts = struct('Cache', false);
-            rightLung.setA(obj.radiusFcn, opts);
-            rightLung.setB(obj.radiusFcn, opts);
-            rightLung.setC(obj.heightFcn, opts);
+            rightLung.setA(obj.radiusFcn);
+            rightLung.setB(obj.radiusFcn);
+            rightLung.setC(obj.heightFcn);
 
-            leftLung.setA(obj.radiusFcn, opts);
-            leftLung.setB(obj.radiusFcn, opts);
-            leftLung.setC(obj.heightFcn, opts);
+            leftLung.setA(obj.radiusFcn);
+            leftLung.setB(obj.radiusFcn);
+            leftLung.setC(obj.heightFcn);
 
             rightLung.setTimeSamples(obj.time_s);
             leftLung.setTimeSamples(obj.time_s);

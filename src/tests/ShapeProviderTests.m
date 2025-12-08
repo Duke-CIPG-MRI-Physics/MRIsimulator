@@ -12,18 +12,21 @@ classdef ShapeProviderTests < matlab.unittest.TestCase
 
     methods (Test)
         function lungsFollowHeartExpansion(testCase)
-            t_s = linspace(0, 1, 6);
-            heart = BeatingHeart(t_s, 70 * ones(size(t_s)), ...
-                140 * ones(size(t_s)), 70 * ones(size(t_s)), 1);
+            t_s = linspace(0, 1, 6).';
 
-            lungSpacing_mm = heart.getA() + 8;  % mimic BreastPhantom coupling
-            lungs = BreathingLung(t_s, 12 * ones(size(t_s)), ...
-                0.4 * ones(size(t_s)), 0.8 * ones(size(t_s)), ...
-                1.5 * ones(size(t_s)), 0.6 * ones(size(t_s)), ...
-                0.4 * ones(size(t_s)), lungSpacing_mm, 0.1);
+            heartA = @(t) 70 * ones(size(t));
+            heartB = @(t) 140 * ones(size(t));
+            heartC = @(t) 70 * ones(size(t));
+
+            heart = BeatingHeart(heartA, heartB, heartC, t_s.');
+
+            lungSpacing_mm = @(t) heartA(t) + 8;  % mimic BreastPhantom coupling
+            radiusFcn = @(t) 12 * ones(size(t));
+            heightFcn = @(t) 0.4 * ones(size(t));
+            lungs = BreathingLung(radiusFcn, heightFcn, lungSpacing_mm, t_s.', 0.1);
 
             centers = lungs.getLungCenters();
-            expectedOffset = lungs.getLungRadiusMm().' + lungSpacing_mm(:);
+            expectedOffset = lungs.getLungRadiusMm(t_s.').' + lungSpacing_mm(t_s.').';
 
             testCase.verifyEqual(centers.right(:,1), expectedOffset, 'AbsTol', 1e-12);
             testCase.verifyEqual(centers.left(:,1), -expectedOffset, 'AbsTol', 1e-12);
