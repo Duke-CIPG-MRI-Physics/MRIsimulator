@@ -20,10 +20,16 @@ classdef BeatingHeart < AnalyticalEllipsoid3D
                 rollPitchYaw (1,3) double {mustBeReal, mustBeFinite} = [0 0 0]
             end
 
-            [a_mm, b_mm, c_mm] = provider.getHeartRadiiMm();
+            [aFcn, bFcn, cFcn] = provider.getHeartRadiiMm();
 
-            obj@AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, intensity, center, ...
+            obj@AnalyticalEllipsoid3D([], [], [], intensity, center, ...
                 rollPitchYaw);
+
+            opts = struct('Cache', false);
+            obj.setA(aFcn, opts);
+            obj.setB(bFcn, opts);
+            obj.setC(cFcn, opts);
+            obj.setTimeSamples(provider.getTime());
         end
     end
 end

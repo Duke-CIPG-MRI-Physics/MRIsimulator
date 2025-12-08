@@ -1,18 +1,12 @@
 classdef PhantomContext
     % PhantomContext
     %   Time base and shared waveform provider for the breast phantom
-    %   components. Stores the reference time vector and precomputes shape
-    %   parameters so downstream shapes can request full trajectories or
-    %   indexed slices without duplicating arrays.
+    %   components. Downstream shapes request geometry through function
+    %   handles so parameters are computed on demand rather than stored in
+    %   memory-heavy arrays.
 
     properties (Access = private)
         time_s (1,:) double {mustBeFinite}
-        heartA_mm (1,:) double {mustBeFinite, mustBeNonnegative}
-        heartB_mm (1,:) double {mustBeFinite, mustBeNonnegative}
-        heartC_mm (1,:) double {mustBeFinite, mustBeNonnegative}
-        lungRadius_mm (1,:) double {mustBeFinite, mustBeNonnegative}
-        lungHeight_mm (1,:) double {mustBeFinite, mustBeNonnegative}
-        vesselContrast_mm3 (:,1) double {mustBeFinite, mustBeNonnegative}
     end
 
     methods
@@ -40,68 +34,85 @@ classdef PhantomContext
             end
         end
 
-        function [a_mm, b_mm, c_mm] = getHeartRadiiMm(obj, idx)
+        function [aFcn, bFcn, cFcn] = getHeartRadiiMm(obj)
             % getHeartRadiiMm
-            %   Accessor for the semi-axes of the beating heart ellipsoid.
-            if nargin < 2 || isempty(idx)
-                a_mm = obj.heartA_mm;
-                b_mm = obj.heartB_mm;
-                c_mm = obj.heartC_mm;
-            else
-                a_mm = obj.heartA_mm(idx);
-                b_mm = obj.heartB_mm(idx);
-                c_mm = obj.heartC_mm(idx);
-            end
+            %   Return function handles that compute the semi-axes of the
+            %   beating heart ellipsoid for a requested time vector. Handles
+            %   accept a row vector of time samples and return matching
+            %   trajectories.
+
+            aFcn = @(t) obj.computeHeartComponent(t, 'a');
+            bFcn = @(t) obj.computeHeartComponent(t, 'b');
+            cFcn = @(t) obj.computeHeartComponent(t, 'c');
         end
 
-        function r_mm = getLungRadiusMm(obj, idx)
+        function radiusFcn = getLungRadiusMm(obj)
             % getLungRadiusMm
-            %   Accessor for lung radius over time.
-            if nargin < 2 || isempty(idx)
-                r_mm = obj.lungRadius_mm;
-            else
-                r_mm = obj.lungRadius_mm(idx);
-            end
+            %   Return a function handle that computes lung radius for a
+            %   given time vector.
+
+            radiusFcn = @(t) obj.computeLungGeometry(obj.normalizeTime(t), 'radius');
         end
 
-        function h_mm = getLungHeightMm(obj, idx)
+        function heightFcn = getLungHeightMm(obj)
             % getLungHeightMm
-            %   Accessor for lung height over time.
-            if nargin < 2 || isempty(idx)
-                h_mm = obj.lungHeight_mm;
-            else
-                h_mm = obj.lungHeight_mm(idx);
-            end
+            %   Return a function handle that computes lung height for a
+            %   given time vector.
+
+            heightFcn = @(t) obj.computeLungGeometry(obj.normalizeTime(t), 'height');
         end
 
-        function V_mm3 = getVesselContrastMm3(obj, idx)
+        function contrastFcn = getVesselContrastMm3(obj)
             % getVesselContrastMm3
-            %   Accessor for vessel contrast volume over time.
-            if nargin < 2 || isempty(idx)
-                V_mm3 = obj.vesselContrast_mm3;
-            else
-                V_mm3 = obj.vesselContrast_mm3(idx);
-            end
+            %   Return a function handle that computes vessel contrast
+            %   volume for a given time vector.
+
+            contrastFcn = @(t) obj.computeVesselContrast(obj.normalizeTime(t));
         end
     end
 
     methods (Access = private)
-        function [a_mm, b_mm, c_bm] = computeHeartGeometry(obj)
+        function tRow = normalizeTime(obj, t_s)
+            if nargin < 2 || isempty(t_s)
+                tRow = obj.time_s;
+            else
+                validateattributes(t_s, {'double'}, {'finite'});
+                tRow = t_s(:).';
+            end
+        end
+
+        function [a_mm, b_mm, c_mm] = computeHeartGeometry(obj, t_s)
             heartOpts = struct('systFrac', 0.35, ...
                 'q_ED', 50/27, ...
                 'GLS_peak', -0.20, ...
                 'GCS_peak', -0.25);
-            numSamples = numel(obj.time_s);
+            numSamples = numel(t_s);
             HR_bpm = 70 * ones(1, numSamples);
             EDV_ml = 150 * ones(1, numSamples);
             ESV_ml = 75  * ones(1, numSamples);
 
-            [~, c_mm, a_mm, b_mm] = cardiac_ellipsoid_waveform(obj.time_s, HR_bpm, ...
+            [~, c_mm, a_mm, b_mm] = cardiac_ellipsoid_waveform(t_s, HR_bpm, ...
                 EDV_ml, ESV_ml, heartOpts);
         end
 
-        function [R_mm, H_mm] = computeLungGeometry(obj)
-            numSamples = numel(obj.time_s);
+        function component = computeHeartComponent(obj, t_s, whichComponent)
+            [a_mm, b_mm, c_mm] = obj.computeHeartGeometry(obj.normalizeTime(t_s));
+
+            switch whichComponent
+                case 'a'
+                    component = a_mm;
+                case 'b'
+                    component = b_mm;
+                case 'c'
+                    component = c_mm;
+                otherwise
+                    error('PhantomContext:UnknownHeartComponent', ...
+                        'Unknown heart component: %s', whichComponent);
+            end
+        end
+
+        function geometry = computeLungGeometry(obj, t_s, whichComponent)
+            numSamples = numel(t_s);
             f_bpm = 12 * ones(1, numSamples);
             VT_L = 0.4 * ones(1, numSamples);
             Vres_L = 0.8 * ones(1, numSamples);
@@ -109,18 +120,26 @@ classdef PhantomContext
             bellyFrac = 0.6 * ones(1, numSamples);
             inspFrac = 0.4 * ones(1, numSamples);
 
-            [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(obj.time_s, f_bpm, VT_L, ...
+            [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(t_s, f_bpm, VT_L, ...
                 Vres_L, Vbase_L, bellyFrac, inspFrac);
+
+            switch whichComponent
+                case 'radius'
+                    geometry = R_mm;
+                case 'height'
+                    geometry = H_mm;
+                otherwise
+                    error('PhantomContext:UnknownLungComponent', ...
+                        'Unknown lung component: %s', whichComponent);
+            end
         end
 
-        function computeVesselContrast(obj)
+        function V_contrast_mm3 = computeVesselContrast(obj, t_s)
             vesselRadius_mm = 2.5;
             total_vessel_length_mm = 100;
 
             totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
-            V_contrast_mm3 = totalVolume_mm3 * ones(numel(obj.time_s), 1);
-
-            obj.vesselContrast_mm3 = V_contrast_mm3;
+            V_contrast_mm3 = totalVolume_mm3 * ones(numel(t_s), 1);
         end
     end
 end

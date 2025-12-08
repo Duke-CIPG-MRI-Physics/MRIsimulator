@@ -16,9 +16,9 @@ classdef AnalyticalBox3D < AnalyticalShape3D
 
     %% Private geometry parameters
     properties (Access = private)
-        Lx_mm double {mustBePositive} = 10;   % box length in x (mm)
-        Ly_mm double {mustBePositive} = 10;   % box length in y (mm)
-        Lz_mm double {mustBePositive} = 10;   % box length in z (mm)
+        Lx_mm = 10;   % box length in x (mm)
+        Ly_mm = 10;   % box length in y (mm)
+        Lz_mm = 10;   % box length in z (mm)
     end
 
     %% Constructor
@@ -49,49 +49,58 @@ classdef AnalyticalBox3D < AnalyticalShape3D
     %% Public geometry getters/setters
     methods
         function Lx = getLengthX(obj)
-            Lx = obj.Lx_mm;
+            Lx = obj.evaluateParameter(obj.Lx_mm, 'Lx');
         end
 
         function setLengthX(obj, newLx)
             arguments
                 obj
-                newLx double {mustBePositive}
+                newLx
             end
 
-            if ~isequal(obj.Lx_mm, newLx)
-                obj.Lx_mm = newLx;
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
+            LxSpec = obj.normalizeGeometryInput(newLx, validator, 'Lx');
+
+            if ~isequal(obj.Lx_mm, LxSpec)
+                obj.Lx_mm = LxSpec;
                 obj.markShapeChanged();
             end
         end
 
         function Ly = getLengthY(obj)
-            Ly = obj.Ly_mm;
+            Ly = obj.evaluateParameter(obj.Ly_mm, 'Ly');
         end
 
         function setLengthY(obj, newLy)
             arguments
                 obj
-                newLy double {mustBePositive}
+                newLy
             end
 
-            if ~isequal(obj.Ly_mm, newLy)
-                obj.Ly_mm = newLy;
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
+            LySpec = obj.normalizeGeometryInput(newLy, validator, 'Ly');
+
+            if ~isequal(obj.Ly_mm, LySpec)
+                obj.Ly_mm = LySpec;
                 obj.markShapeChanged();
             end
         end
 
         function Lz = getLengthZ(obj)
-            Lz = obj.Lz_mm;
+            Lz = obj.evaluateParameter(obj.Lz_mm, 'Lz');
         end
 
         function setLengthZ(obj, newLz)
             arguments
                 obj
-                newLz double {mustBePositive}
+                newLz
             end
 
-            if ~isequal(obj.Lz_mm, newLz)
-                obj.Lz_mm = newLz;
+            validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
+            LzSpec = obj.normalizeGeometryInput(newLz, validator, 'Lz');
+
+            if ~isequal(obj.Lz_mm, LzSpec)
+                obj.Lz_mm = LzSpec;
                 obj.markShapeChanged();
             end
         end
@@ -117,9 +126,9 @@ classdef AnalyticalBox3D < AnalyticalShape3D
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 
-            Lx = obj.requireScalarOrSize(obj.Lx_mm, kx_body, 'Lx');
-            Ly = obj.requireScalarOrSize(obj.Ly_mm, kx_body, 'Ly');
-            Lz = obj.requireScalarOrSize(obj.Lz_mm, kx_body, 'Lz');
+            Lx = obj.requireScalarOrSize(obj.getLengthX(), kx_body, 'Lx');
+            Ly = obj.requireScalarOrSize(obj.getLengthY(), kx_body, 'Ly');
+            Lz = obj.requireScalarOrSize(obj.getLengthZ(), kx_body, 'Lz');
 
             Sx = Lx .* sinc(kx_body .* Lx);
             Sy = Ly .* sinc(ky_body .* Ly);
@@ -132,9 +141,9 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             % percentInsideShape
             %   BODY-frame inside test for rectangular box.
 
-            Lx = obj.requireScalarOrSize(obj.Lx_mm, xb, 'Lx');
-            Ly = obj.requireScalarOrSize(obj.Ly_mm, xb, 'Ly');
-            Lz = obj.requireScalarOrSize(obj.Lz_mm, xb, 'Lz');
+            Lx = obj.requireScalarOrSize(obj.getLengthX(), xb, 'Lx');
+            Ly = obj.requireScalarOrSize(obj.getLengthY(), xb, 'Ly');
+            Lz = obj.requireScalarOrSize(obj.getLengthZ(), xb, 'Lz');
 
             inside = (abs(xb) <= Lx./2) & (abs(yb) <= Ly./2) & (abs(zb) <= Lz./2);
             frac = double(inside);
