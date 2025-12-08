@@ -52,7 +52,7 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             Lx = obj.evaluateParameter(obj.Lx_mm, 'Lx');
         end
 
-        function setLengthX(obj, newLx)
+        function setLengthX(obj, newLx, opts)
             arguments
                 obj
                 newLx
@@ -71,7 +71,7 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             Ly = obj.evaluateParameter(obj.Ly_mm, 'Ly');
         end
 
-        function setLengthY(obj, newLy)
+        function setLengthY(obj, newLy, opts)
             arguments
                 obj
                 newLy
@@ -90,7 +90,7 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             Lz = obj.evaluateParameter(obj.Lz_mm, 'Lz');
         end
 
-        function setLengthZ(obj, newLz)
+        function setLengthZ(obj, newLz, opts)
             arguments
                 obj
                 newLz
