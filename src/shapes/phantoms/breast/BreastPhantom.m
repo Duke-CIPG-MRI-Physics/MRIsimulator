@@ -22,32 +22,23 @@ classdef BreastPhantom < MultiIntensityShapeGroup3D
             heart = BeatingHeart(provider, 1, tempCenter, noRotation);
 
             % Lung
-            [heart_lr_mm, ~, ~] = provider.getHeartRadiiMm(); % Lungs get pushed L/R with cardiac cycle
+            [heartA, heartB, ~] = provider.getHeartRadiiMm(); % Lungs get pushed L/R with cardiac cycle
             heartThickness_mm = 8;
-            spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
+            spacingBetweenLungs = @(t) heartA(t) + heartThickness_mm;
             breathingLung = BreathingLung(provider, spacingBetweenLungs, ...
                 0.1, tempCenter, noRotation);
-
-            figure();
-            plot(t_row,heart.getA(),'-r');
-            hold on
-            plot(t_row,heart.getB(),'--k');
-            plot(t_row,heart.getC(),':r');
-
-            plot(t_row,breathingLung.getLungRadiusMm,'-b');
-            plot(t_row,breathingLung.getLungHeightMm,'--b');
-            legend('Heart A','Heart B','Heart C','Lung A','Lung B')
             
 
 
             % TODO - make this depend on breathing and cardiac motion
             bodyShift = -80;
-            heart_ap_mm = heart.getB();
-            lungRadius = breathingLung.getLungRadiusMm();
+            heart_ap_mm = heartB(t_row);
+            lungRadius = breathingLung.getLungRadiusMm(t_row);
             tissueGap_lr_mm = 20;
             tissueGap_lr_mm = 30;
             chest_ap_inner_mm = (max(heart_ap_mm,lungRadius) + tissueGap_lr_mm);
-            chest_lr_inner_mm = (2*lungRadius + spacingBetweenLungs + tissueGap_lr_mm);
+            spacingBetweenLungs_mm = spacingBetweenLungs(t_row);
+            chest_lr_inner_mm = (2*lungRadius + spacingBetweenLungs_mm + tissueGap_lr_mm);
             phantomDepth_mm = 300;
             bodyCenter = [0 bodyShift 0];
             fat_inner = AnalyticalEllipticalCylinder3D(chest_lr_inner_mm, ...
@@ -94,6 +85,7 @@ classdef BreastPhantom < MultiIntensityShapeGroup3D
 
             % Option 1: Contrast already present
             V_contrast_mm3 = provider.getVesselContrastMm3();
+            V_contrast_mm3 = V_contrast_mm3(t_row).';
             
             % Option 2: Contrast linear washin
             % V_contrast_mm3 = zeros(numel(t_row), 1);

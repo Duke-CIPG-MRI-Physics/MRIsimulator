@@ -46,7 +46,7 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
     %% Public geometry getters/setters
     methods
         function a = getA(obj)
-            a = obj.a_mm;
+            a = obj.evaluateParameter(obj.a_mm, 'a');
         end
 
         function setA(obj, newA, opts)
@@ -67,7 +67,7 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         end
 
         function b = getB(obj)
-            b = obj.b_mm;
+            b = obj.evaluateParameter(obj.b_mm, 'b');
         end
 
         function setB(obj, newB, opts)
@@ -88,7 +88,7 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         end
 
         function c = getC(obj)
-            c = obj.c_mm;
+            c = obj.evaluateParameter(obj.c_mm, 'c');
         end
 
         function setC(obj, newC, opts)
@@ -131,9 +131,9 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 
-            a = obj.requireScalarOrSize(obj.a_mm, kx_body, 'a');
-            b = obj.requireScalarOrSize(obj.b_mm, kx_body, 'b');
-            c = obj.requireScalarOrSize(obj.c_mm, kx_body, 'c');
+            a = obj.requireScalarOrSize(obj.getA(), kx_body, 'a');
+            b = obj.requireScalarOrSize(obj.getB(), kx_body, 'b');
+            c = obj.requireScalarOrSize(obj.getC(), kx_body, 'c');
 
             % "Effective" radial frequency in scaled coordinates
             kprime = sqrt((a .* kx_body).^2 + ...
@@ -161,9 +161,9 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             % percentInsideShape
             %   BODY-frame inside test for ellipsoid.
 
-            a = obj.requireScalarOrSize(obj.a_mm, xb, 'a');
-            b = obj.requireScalarOrSize(obj.b_mm, xb, 'b');
-            c = obj.requireScalarOrSize(obj.c_mm, xb, 'c');
+            a = obj.requireScalarOrSize(obj.getA(), xb, 'a');
+            b = obj.requireScalarOrSize(obj.getB(), xb, 'b');
+            c = obj.requireScalarOrSize(obj.getC(), xb, 'c');
 
             inside = (xb./a).^2 + (yb./b).^2 + (zb./c).^2 <= 1;
             frac = double(inside);

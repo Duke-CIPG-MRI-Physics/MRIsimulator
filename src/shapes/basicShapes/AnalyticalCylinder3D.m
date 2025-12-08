@@ -52,7 +52,7 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
     %% Public geometry getters/setters
     methods
         function R = getRadius(obj)
-            R = obj.R_mm;
+            R = obj.evaluateParameter(obj.R_mm, 'R');
         end
 
         function setRadius(obj, newRadius, opts)
@@ -76,7 +76,7 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         end
 
         function L = getLength(obj)
-            L = obj.L_mm;
+            L = obj.evaluateParameter(obj.L_mm, 'L');
         end
 
         function setLength(obj, newLength, opts)
@@ -117,8 +117,8 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
                 error('AnalyticalCylinder3D:SizeMismatch');
             end
 
-            R = obj.requireScalarOrSize(obj.R_mm, kx_body, 'R');
-            L = obj.requireScalarOrSize(obj.L_mm, kx_body, 'L');
+            R = obj.requireScalarOrSize(obj.getRadius(), kx_body, 'R');
+            L = obj.requireScalarOrSize(obj.getLength(), kx_body, 'L');
 
             % Degenerate cylinder (zero radius or length) has zero volume → zero-valued FT
             if all(R(:) == 0 | L(:) == 0)
@@ -152,8 +152,8 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         % ----------------- Inside test (BODY frame) ----------------------
         function frac = percentInsideShape(obj, xb, yb, zb)
             % 0/1 mask (upgradeable later to partial volume)
-            R = obj.requireScalarOrSize(obj.R_mm, xb, 'R');
-            L = obj.requireScalarOrSize(obj.L_mm, xb, 'L');
+            R = obj.requireScalarOrSize(obj.getRadius(), xb, 'R');
+            L = obj.requireScalarOrSize(obj.getLength(), xb, 'L');
 
             inside = (xb.^2 + yb.^2 <= R.^2) & (abs(zb) <= L./2);
             frac = double(inside);

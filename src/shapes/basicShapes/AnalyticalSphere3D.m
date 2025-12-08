@@ -56,7 +56,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
     %% Public geometry API
     methods
         function R = getRadius(obj)
-            R = obj.R_mm;
+            R = obj.evaluateParameter(obj.R_mm, 'R');
         end
 
         function setRadius(obj, newRadius, opts)
@@ -98,7 +98,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             end
 
             k = sqrt(kx_body.^2 + ky_body.^2 + kz_body.^2);
-            R = obj.requireScalarOrSize(obj.R_mm, kx_body, 'R');
+            R = obj.requireScalarOrSize(obj.getRadius(), kx_body, 'R');
             x = 2*pi .* R .* k;
 
             S = zeros(size(k));
@@ -133,7 +133,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
 
             %#ok<*INUSD>  % suppress unused varargin warning for now
 
-            R = obj.requireScalarOrSize(obj.R_mm, xb, 'R');
+            R = obj.requireScalarOrSize(obj.getRadius(), xb, 'R');
             inside = (xb.^2 + yb.^2 + zb.^2) <= R.^2;
 
             imageShape = double(inside);   % 0 or 1 (no partial volume yet)
