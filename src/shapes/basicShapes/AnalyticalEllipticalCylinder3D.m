@@ -48,7 +48,7 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
     %% Public geometry getters/setters
     methods
         function a = getA(obj)
-            a = obj.a_mm;
+            a = obj.evaluateParameter(obj.a_mm, 'a');
         end
 
         function setA(obj, newA, opts)
@@ -69,7 +69,7 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
         end
 
         function b = getB(obj)
-            b = obj.b_mm;
+            b = obj.evaluateParameter(obj.b_mm, 'b');
         end
 
         function setB(obj, newB, opts)
@@ -90,7 +90,7 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
         end
 
         function L = getLength(obj)
-            L = obj.L_mm;
+            L = obj.evaluateParameter(obj.L_mm, 'L');
         end
 
         function setLength(obj, newL, opts)
@@ -135,9 +135,9 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
                     'kx_body, ky_body, kz_body must have identical sizes.');
             end
 
-            a = obj.requireScalarOrSize(obj.a_mm, kx_body, 'a');
-            b = obj.requireScalarOrSize(obj.b_mm, kx_body, 'b');
-            L = obj.requireScalarOrSize(obj.L_mm, kx_body, 'L');
+            a = obj.requireScalarOrSize(obj.getA(), kx_body, 'a');
+            b = obj.requireScalarOrSize(obj.getB(), kx_body, 'b');
+            L = obj.requireScalarOrSize(obj.getLength(), kx_body, 'L');
 
             % Scaled radial frequency
             k_perp_prime = sqrt( (a .* kx_body).^2 + (b .* ky_body).^2 );
@@ -170,9 +170,9 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
             % percentInsideShape
             %   BODY-frame inside test for elliptical cylinder.
 
-            a = obj.requireScalarOrSize(obj.a_mm, xb, 'a');
-            b = obj.requireScalarOrSize(obj.b_mm, xb, 'b');
-            L = obj.requireScalarOrSize(obj.L_mm, xb, 'L');
+            a = obj.requireScalarOrSize(obj.getA(), xb, 'a');
+            b = obj.requireScalarOrSize(obj.getB(), xb, 'b');
+            L = obj.requireScalarOrSize(obj.getLength(), xb, 'L');
 
             inside = (xb./a).^2 + (yb./b).^2 <= 1 & (abs(zb) <= L./2);
             frac = double(inside);

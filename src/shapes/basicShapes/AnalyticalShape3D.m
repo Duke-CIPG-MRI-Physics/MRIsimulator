@@ -295,6 +295,14 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     end
 
     methods (Access = protected)
+        function paramValue = evaluateParameter(obj, paramSpec, paramName)
+            % evaluateParameter
+            %   Resolve a parameter that may be static or time-varying.
+            %   Function-handle parameters are evaluated against the current
+            %   time base; numeric parameters are returned as-is.
+            paramValue = obj.resolveTimeVariantParameter(paramSpec, paramName);
+        end
+
         function paramOut = requireScalarOrSize(obj, param, template, paramName)
             % requireScalarOrSize
             %   Enforce that a shape parameter is either scalar or matches the
