@@ -28,10 +28,6 @@ classdef PhantomContext
             end
 
             obj.time_s = t_s(:).';
-
-            obj.computeHeartGeometry();
-            obj.computeLungGeometry();
-            obj.computeVesselContrast();
         end
 
         function t = getTime(obj, idx)
@@ -90,7 +86,7 @@ classdef PhantomContext
     end
 
     methods (Access = private)
-        function computeHeartGeometry(obj)
+        function [a_mm, b_mm, c_bm] = computeHeartGeometry(obj)
             heartOpts = struct('systFrac', 0.35, ...
                 'q_ED', 50/27, ...
                 'GLS_peak', -0.20, ...
@@ -102,13 +98,9 @@ classdef PhantomContext
 
             [~, c_mm, a_mm, b_mm] = cardiac_ellipsoid_waveform(obj.time_s, HR_bpm, ...
                 EDV_ml, ESV_ml, heartOpts);
-
-            obj.heartA_mm = a_mm;
-            obj.heartB_mm = b_mm;
-            obj.heartC_mm = c_mm;
         end
 
-        function computeLungGeometry(obj)
+        function [R_mm, H_mm] = computeLungGeometry(obj)
             numSamples = numel(obj.time_s);
             f_bpm = 12 * ones(1, numSamples);
             VT_L = 0.4 * ones(1, numSamples);
@@ -119,9 +111,6 @@ classdef PhantomContext
 
             [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(obj.time_s, f_bpm, VT_L, ...
                 Vres_L, Vbase_L, bellyFrac, inspFrac);
-
-            obj.lungRadius_mm = R_mm;
-            obj.lungHeight_mm = H_mm;
         end
 
         function computeVesselContrast(obj)
