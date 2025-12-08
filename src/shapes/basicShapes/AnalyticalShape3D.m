@@ -37,7 +37,6 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
         shapeIntensity double = 1;              % dimensionless multiplier (scalar or grid-sized)
         rollPitchYaw (1,3) double = [0 0 0];    % [roll pitch yaw] in deg
         time_s (1,:) double {mustBeReal, mustBeFinite} = double.empty(1,0);
-        parameterCache struct = struct();
     end
 
     %% Constructor ----------------------------------------------------------
@@ -106,8 +105,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             % setTimeSamples  Assign the shared time base for time-varying parameters.
             %   t_s should be a row vector of time samples [s]. Time-dependent
             %   geometry functions (e.g., @(t) ...) are evaluated against this
-            %   vector when the shape is queried. Changing t_s clears cached
-            %   parameter evaluations.
+            %   vector when the shape is queried.
 
             arguments
                 obj
@@ -115,7 +113,6 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
 
             obj.time_s = double(t_s);
-            obj.parameterCache = struct();
             obj.markShapeChanged();
         end
 
@@ -331,27 +328,17 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     end
 
     methods (Access = protected)
-        function clearParameterCache(obj, paramName)
-            if isfield(obj.parameterCache, paramName)
-                obj.parameterCache = rmfield(obj.parameterCache, paramName);
-            end
-        end
-
-        function paramSpec = normalizeGeometryInput(obj, rawValue, validatorFcn, cacheResult, paramName)
+        function paramSpec = normalizeGeometryInput(obj, rawValue, validatorFcn, paramName)
             if isa(rawValue, 'function_handle')
                 paramSpec = struct('isFunction', true, ...
                                    'handle', rawValue, ...
-                                   'cacheEnabled', logical(cacheResult), ...
                                    'validator', validatorFcn);
             else
                 validatorFcn(rawValue);
                 paramSpec = struct('isFunction', false, ...
                                    'value', double(rawValue), ...
-                                   'cacheEnabled', logical(cacheResult), ...
                                    'validator', validatorFcn);
             end
-
-            obj.clearParameterCache(paramName);
         end
 
         function paramValue = resolveTimeVariantParameter(obj, param, paramName)

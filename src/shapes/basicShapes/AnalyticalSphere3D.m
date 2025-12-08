@@ -59,7 +59,7 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             R = obj.evaluateParameter(obj.R_mm, 'R');
         end
 
-        function setRadius(obj, newRadius, opts)
+        function setRadius(obj, newRadius)
             % setRadius  Accepts numeric radii or a function handle @(t) -> R_mm.
             %   When a function handle is provided, it will be evaluated using
             %   the object's time samples (set via setTimeSamples). The handle
@@ -68,11 +68,10 @@ classdef AnalyticalSphere3D < AnalyticalShape3D
             arguments
                 obj
                 newRadius
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            radiusSpec = obj.normalizeGeometryInput(newRadius, validator, opts.Cache, 'R');
+            radiusSpec = obj.normalizeGeometryInput(newRadius, validator, 'R');
 
             if ~isequal(obj.R_mm, radiusSpec)
                 obj.R_mm = radiusSpec;

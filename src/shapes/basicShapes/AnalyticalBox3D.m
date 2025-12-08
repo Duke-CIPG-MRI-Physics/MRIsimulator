@@ -56,11 +56,10 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             arguments
                 obj
                 newLx
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            LxSpec = obj.normalizeGeometryInput(newLx, validator, opts.Cache, 'Lx');
+            LxSpec = obj.normalizeGeometryInput(newLx, validator, 'Lx');
 
             if ~isequal(obj.Lx_mm, LxSpec)
                 obj.Lx_mm = LxSpec;
@@ -76,11 +75,10 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             arguments
                 obj
                 newLy
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            LySpec = obj.normalizeGeometryInput(newLy, validator, opts.Cache, 'Ly');
+            LySpec = obj.normalizeGeometryInput(newLy, validator, 'Ly');
 
             if ~isequal(obj.Ly_mm, LySpec)
                 obj.Ly_mm = LySpec;
@@ -96,11 +94,10 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             arguments
                 obj
                 newLz
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            LzSpec = obj.normalizeGeometryInput(newLz, validator, opts.Cache, 'Lz');
+            LzSpec = obj.normalizeGeometryInput(newLz, validator, 'Lz');
 
             if ~isequal(obj.Lz_mm, LzSpec)
                 obj.Lz_mm = LzSpec;

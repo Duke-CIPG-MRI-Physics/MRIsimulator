@@ -55,19 +55,17 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
             R = obj.evaluateParameter(obj.R_mm, 'R');
         end
 
-        function setRadius(obj, newRadius, opts)
+        function setRadius(obj, newRadius)
             % setRadius  Accepts numeric radii or @(t)->R_mm waveforms.
             %   Function handles are evaluated against the object's time
-            %   samples. Use the Cache flag to reuse evaluations when the same
-            %   time base is queried repeatedly.
+            %   samples.
             arguments
                 obj
                 newRadius
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            radiusSpec = obj.normalizeGeometryInput(newRadius, validator, opts.Cache, 'R');
+            radiusSpec = obj.normalizeGeometryInput(newRadius, validator, 'R');
 
             if ~isequal(obj.R_mm, radiusSpec)
                 obj.R_mm = radiusSpec;
@@ -79,19 +77,17 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
             L = obj.evaluateParameter(obj.L_mm, 'L');
         end
 
-        function setLength(obj, newLength, opts)
+        function setLength(obj, newLength)
             % setLength  Accepts numeric lengths or @(t)->L_mm waveforms.
             %   Function handles are evaluated against the object's time
-            %   samples. Use the Cache flag to reuse evaluations when the same
-            %   time base is queried repeatedly.
+            %   samples.
             arguments
                 obj
                 newLength
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'nonnegative'});
-            lengthSpec = obj.normalizeGeometryInput(newLength, validator, opts.Cache, 'L');
+            lengthSpec = obj.normalizeGeometryInput(newLength, validator, 'L');
 
             if ~isequal(obj.L_mm, lengthSpec)
                 obj.L_mm = lengthSpec;

@@ -49,16 +49,15 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             a = obj.evaluateParameter(obj.a_mm, 'a');
         end
 
-        function setA(obj, newA, opts)
+        function setA(obj, newA)
             % setA  Accepts numeric values or @(t)->a_mm waveforms.
             arguments
                 obj
                 newA
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            aSpec = obj.normalizeGeometryInput(newA, validator, opts.Cache, 'a');
+            aSpec = obj.normalizeGeometryInput(newA, validator, 'a');
 
             if ~isequal(obj.a_mm, aSpec)
                 obj.a_mm = aSpec;
@@ -70,16 +69,15 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             b = obj.evaluateParameter(obj.b_mm, 'b');
         end
 
-        function setB(obj, newB, opts)
+        function setB(obj, newB)
             % setB  Accepts numeric values or @(t)->b_mm waveforms.
             arguments
                 obj
                 newB
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            bSpec = obj.normalizeGeometryInput(newB, validator, opts.Cache, 'b');
+            bSpec = obj.normalizeGeometryInput(newB, validator, 'b');
 
             if ~isequal(obj.b_mm, bSpec)
                 obj.b_mm = bSpec;
@@ -91,16 +89,15 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             c = obj.evaluateParameter(obj.c_mm, 'c');
         end
 
-        function setC(obj, newC, opts)
+        function setC(obj, newC)
             % setC  Accepts numeric values or @(t)->c_mm waveforms.
             arguments
                 obj
                 newC
-                opts.Cache logical = true
             end
 
             validator = @(v) validateattributes(v, {'double'}, {'real', 'finite', 'positive'});
-            cSpec = obj.normalizeGeometryInput(newC, validator, opts.Cache, 'c');
+            cSpec = obj.normalizeGeometryInput(newC, validator, 'c');
 
             if ~isequal(obj.c_mm, cSpec)
                 obj.c_mm = cSpec;
