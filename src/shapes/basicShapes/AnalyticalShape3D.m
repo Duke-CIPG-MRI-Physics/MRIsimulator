@@ -5,10 +5,6 @@ classdef (Abstract) AnalyticalShape3D < handle
     %   BODY-frame Fourier transform (bodyKspace) and voxel occupancy
     %   (percentInsideBody) for their specific geometries.
 
-    events
-        shapeChanged
-    end
-
     properties (Access = protected)
         shapeIntensity (1,1) double = 1;
         center (1,3) double = [0 0 0];
@@ -30,22 +26,18 @@ classdef (Abstract) AnalyticalShape3D < handle
 
         function setIntensity(obj, newIntensity)
             obj.shapeIntensity = newIntensity;
-            obj.markShapeChanged();
         end
 
         function setCenter(obj, newCenter)
             obj.center = newCenter;
-            obj.markShapeChanged();
         end
 
         function setOrientation(obj, roll_deg, pitch_deg, yaw_deg)
             obj.rollPitchYaw_deg = [roll_deg, pitch_deg, yaw_deg];
-            obj.markShapeChanged();
         end
 
         function setRollPitchYaw(obj, rollPitchYaw)
             obj.rollPitchYaw_deg = rollPitchYaw;
-            obj.markShapeChanged();
         end
 
         function c = getCenter(obj)
@@ -166,17 +158,9 @@ classdef (Abstract) AnalyticalShape3D < handle
 
             percent = obj.percentInsideBody(xBody, yBody, zBody);
         end
-
-        function listenerHandle = addShapeChangedListener(obj, callback)
-            listenerHandle = addlistener(obj, 'shapeChanged', callback);
-        end
     end
 
     methods (Access = protected)
-        function markShapeChanged(obj)
-            notify(obj, 'shapeChanged');
-        end
-
         function R = calculateRotationMatrix(obj)
             r = deg2rad(obj.rollPitchYaw_deg(1));
             p = deg2rad(obj.rollPitchYaw_deg(2));

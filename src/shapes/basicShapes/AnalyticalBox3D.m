@@ -36,7 +36,6 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             obj.Lx_mm = Lx_mm;
             obj.Ly_mm = Ly_mm;
             obj.Lz_mm = Lz_mm;
-            obj.markShapeChanged();
         end
 
         function vol = calculateVolume(obj)

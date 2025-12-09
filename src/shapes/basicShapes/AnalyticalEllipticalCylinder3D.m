@@ -36,12 +36,10 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
         function setAxes(obj, a_mm, b_mm)
             obj.a_mm = a_mm;
             obj.b_mm = b_mm;
-            obj.markShapeChanged();
         end
 
         function setLength(obj, length_mm)
             obj.length_mm = length_mm;
-            obj.markShapeChanged();
         end
 
         function vol = calculateVolume(obj)
