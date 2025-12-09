@@ -37,10 +37,6 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             obj.b_mm = b_mm;
             obj.c_mm = c_mm;
         end
-
-        function vol = calculateVolume(obj)
-            vol = (4/3) * pi .* obj.a_mm .* obj.b_mm .* obj.c_mm;
-        end
     end
 
     methods (Access = protected)
@@ -52,8 +48,9 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             numerator = sin(arg) - arg .* cos(arg);
             denom = (arg).^3;
 
-            S_body = obj.calculateVolume() .* 3 .* numerator ./ denom;
-            S_body(kScaled == 0) = obj.calculateVolume();
+            vol = (4/3) * pi .* obj.a_mm .* obj.b_mm .* obj.c_mm;
+            S_body = vol .* 3 .* numerator ./ denom;
+            S_body(kScaled == 0) = vol;
         end
 
         function percent = percentInsideBody(obj, xb, yb, zb)

@@ -43,10 +43,6 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
         function L = getLength(obj)
             L = obj.length_mm;
         end
-
-        function vol = calculateVolume(obj)
-            vol = pi .* (obj.radius_mm.^2) .* obj.length_mm;
-        end
     end
 
     methods (Access = protected)

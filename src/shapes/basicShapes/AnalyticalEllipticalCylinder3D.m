@@ -41,10 +41,6 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
         function setLength(obj, length_mm)
             obj.length_mm = length_mm;
         end
-
-        function vol = calculateVolume(obj)
-            vol = pi .* obj.a_mm .* obj.b_mm .* obj.length_mm;
-        end
     end
 
     methods (Access = protected)

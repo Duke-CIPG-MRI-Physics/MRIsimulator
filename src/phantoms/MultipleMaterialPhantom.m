@@ -182,6 +182,20 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 S = S + obj.shapes(idx).kspace(kx_body, ky_body, kz_body);
             end
         end
+
+        
+        function percent = percentInsideBody(obj, xb, yb, zb)
+            if isempty(obj.shapes)
+                S = zeros(size(kx_body));
+                return;
+            end
+
+            S = zeros(size(kx_body));
+            for idx = 1:numel(obj.shapes)
+                S = S + obj.shapes(idx).percentInsideBody(kx, ky, kz);
+            end
+        end
+  
     end
 
     methods

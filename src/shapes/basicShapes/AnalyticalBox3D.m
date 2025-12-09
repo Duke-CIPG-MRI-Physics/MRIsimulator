@@ -37,15 +37,12 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             obj.Ly_mm = Ly_mm;
             obj.Lz_mm = Lz_mm;
         end
-
-        function vol = calculateVolume(obj)
-            vol = obj.Lx_mm .* obj.Ly_mm .* obj.Lz_mm;
-        end
     end
 
     methods (Access = protected)
         function S_body = kspaceBaseShape(obj, kx, ky, kz)
-            S_body = obj.calculateVolume() .* ...
+            vol = obj.Lx_mm .* obj.Ly_mm .* obj.Lz_mm;
+            S_body = vol .* ...
                 sinc(kx .* obj.Lx_mm) .* ...
                 sinc(ky .* obj.Ly_mm) .* ...
                 sinc(kz .* obj.Lz_mm);

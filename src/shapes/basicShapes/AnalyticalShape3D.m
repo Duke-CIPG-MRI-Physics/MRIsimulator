@@ -198,10 +198,6 @@ classdef (Abstract) AnalyticalShape3D < handle
         end
     end
 
-    methods (Abstract)
-        vol = calculateVolume(obj)
-    end
-
     methods (Abstract, Access = protected)
         % kspaceBaseShape  BODY-frame k-space (no rotation/translation/intensity).
         S_body = kspaceBaseShape(obj, kx_body, ky_body, kz_body)
