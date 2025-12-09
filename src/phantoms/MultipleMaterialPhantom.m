@@ -5,7 +5,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
     %   from each contained shape (each shape carries its own intensity).
 
     properties (Access = protected)
-        shapes (1,:) AnalyticalShape3D
+        shapes (1,:) AnalyticalShape3D = AnalyticalShape3D.empty(1, 0);
     end
 
     methods
@@ -186,13 +186,13 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
         
         function percent = percentInsideBody(obj, xb, yb, zb)
             if isempty(obj.shapes)
-                S = zeros(size(kx_body));
+                percent = zeros(size(xb));
                 return;
             end
 
-            S = zeros(size(kx_body));
+            percent = zeros(size(xb));
             for idx = 1:numel(obj.shapes)
-                S = S + obj.shapes(idx).percentInsideBody(kx, ky, kz);
+                percent = percent + obj.shapes(idx).percentInsideBody(xb, yb, zb);
             end
         end
   
