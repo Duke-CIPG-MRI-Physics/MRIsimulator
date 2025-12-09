@@ -2,8 +2,14 @@ classdef (Abstract) AnalyticalShape3D < handle
     % AnalyticalShape3D
     %   Abstract base class for analytic 3D shapes with configurable
     %   intensity, translation, and orientation. Subclasses implement the
-    %   BODY-frame Fourier transform (bodyKspace) and voxel occupancy
+    %   BODY-frame Fourier transform (kspaceBaseShape) and voxel occupancy
     %   (percentInsideBody) for their specific geometries.
+    %
+    %   Fourier transform workflow:
+    %     kspaceBaseShape   – BODY-frame, unshifted/unrotated, no intensity.
+    %     kspacePlacedShape – WORLD-frame, rotated/translated, no intensity.
+    %     kspace            – WORLD-frame, rotated/translated with intensity
+    %                          applied to the centered and oriented shape.
 
     properties (Access = protected)
         shapeIntensity (1,1) double = 1;
@@ -61,6 +67,10 @@ classdef (Abstract) AnalyticalShape3D < handle
         end
 
         function S = kspace(obj, kx, ky, kz)
+            % kspace  WORLD-frame k-space including center, orientation, and intensity.
+            %   S = kspace(obj, kx, ky, kz)
+            %   Applies rotation from roll/pitch/yaw, translation to obj.center,
+            %   and then intensity scaling for the posed shape.
             arguments
                 obj
                 kx double
@@ -68,11 +78,14 @@ classdef (Abstract) AnalyticalShape3D < handle
                 kz double
             end
 
-            S_body = obj.kspace_shapeOnly(kx, ky, kz);
-            S = S_body .* obj.shapeIntensity;
+            S_shape = obj.kspacePlacedShape(kx, ky, kz);
+            S = S_shape .* obj.shapeIntensity;
         end
 
-        function S = kspace_shapeOnly(obj, kx, ky, kz)
+        function S = kspacePlacedShape(obj, kx, ky, kz)
+            % kspacePlacedShape  WORLD-frame k-space of posed shape (no intensity).
+            %   S = kspacePlacedShape(obj, kx, ky, kz)
+            %   Applies rotation and translation to the BODY-frame k-space.
             arguments
                 obj
                 kx double
@@ -81,7 +94,7 @@ classdef (Abstract) AnalyticalShape3D < handle
             end
 
             if ~isequal(size(kx), size(ky), size(kz))
-                error('AnalyticalShape3D:kspace_shapeOnly:SizeMismatch', ...
+                error('AnalyticalShape3D:kspacePlacedShape:SizeMismatch', ...
                     'kx, ky, kz must have identical sizes.');
             end
 
@@ -103,12 +116,12 @@ classdef (Abstract) AnalyticalShape3D < handle
                 kzb = reshape(K_body(3,:), inputSize);
             end
 
-            S_body = obj.bodyKspace(kxb, kyb, kzb);
+            S_body = obj.kspaceBaseShape(kxb, kyb, kzb);
 
             c = obj.getCenter();
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                    error('AnalyticalShape3D:kspacePlacedShape:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
@@ -190,7 +203,8 @@ classdef (Abstract) AnalyticalShape3D < handle
     end
 
     methods (Abstract, Access = protected)
-        S_body = bodyKspace(obj, kx_body, ky_body, kz_body)
+        % kspaceBaseShape  BODY-frame k-space (no rotation/translation/intensity).
+        S_body = kspaceBaseShape(obj, kx_body, ky_body, kz_body)
         percent = percentInsideBody(obj, xb, yb, zb)
     end
 end

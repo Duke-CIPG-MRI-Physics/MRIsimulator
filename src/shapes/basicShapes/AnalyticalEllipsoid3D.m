@@ -44,7 +44,7 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
     end
 
     methods (Access = protected)
-        function S_body = bodyKspace(obj, kx, ky, kz)
+        function S_body = kspaceBaseShape(obj, kx, ky, kz)
             kScaled = sqrt((obj.a_mm .* kx).^2 + (obj.b_mm .* ky).^2 + (obj.c_mm .* kz).^2);
             arg = 2 * pi .* kScaled;
 
