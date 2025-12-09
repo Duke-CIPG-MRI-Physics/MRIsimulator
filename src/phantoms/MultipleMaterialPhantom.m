@@ -182,8 +182,9 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 S = S + obj.shapes(idx).kspace(kx_body, ky_body, kz_body);
             end
         end
+    end
 
-
+    methods
         function percent = percentInsideShape(obj, xb, yb, zb)
             % percentInsideShape  Fraction of each voxel occupied by the
             % composite phantom (0–1). Overlaps are handled by computing the
