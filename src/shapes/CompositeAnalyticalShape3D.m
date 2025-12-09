@@ -72,11 +72,11 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
 
             S_body = zeros(size(kx));
             for idx = 1:numel(obj.additiveComponents)
-                S_body = S_body + obj.additiveComponents(idx).kspacePlacedShape(kx, ky, kz);
+                S_body = S_body + obj.additiveComponents(idx).kspaceWorldPlacedShape(kx, ky, kz);
             end
 
             for idx = 1:numel(obj.subtractiveComponents)
-                S_body = S_body - obj.subtractiveComponents(idx).kspacePlacedShape(kx, ky, kz);
+                S_body = S_body - obj.subtractiveComponents(idx).kspaceWorldPlacedShape(kx, ky, kz);
             end
         end
 

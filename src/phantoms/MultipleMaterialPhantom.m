@@ -86,7 +86,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             c = obj.getCenter();
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspacePlacedShape:CenterSizeMismatch', ...
+                    error('AnalyticalShape3D:kspaceWorldPlacedShape:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
@@ -104,9 +104,9 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
         end
 
-        function S = kspacePlacedShape(obj, kx, ky, kz)
-            % kspacePlacedShape  Sum geometry-only k-space for all materials.
-            %   S = kspacePlacedShape(obj, kx, ky, kz)
+        function S = kspaceWorldPlacedShape(obj, kx, ky, kz)
+            % kspaceWorldPlacedShape  Sum geometry-only k-space for all materials.
+            %   S = kspaceWorldPlacedShape(obj, kx, ky, kz)
             %
             %   Inputs:
             %       kx, ky, kz : WORLD frequencies [cycles/mm], same size.
@@ -140,14 +140,14 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
 
             S_body = zeros(size(kxb));
             for idx = 1:numel(obj.shapes)
-                S_body = S_body + obj.shapes(idx).kspacePlacedShape(kxb, kyb, kzb);
+                S_body = S_body + obj.shapes(idx).kspaceWorldPlacedShape(kxb, kyb, kzb);
             end
 
             % WORLD translation phase
             c = obj.getCenter();
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspacePlacedShape:CenterSizeMismatch', ...
+                    error('AnalyticalShape3D:kspaceWorldPlacedShape:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
