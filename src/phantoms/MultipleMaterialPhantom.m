@@ -5,7 +5,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
     %   from each contained shape (each shape carries its own intensity).
 
     properties (Access = protected)
-        shapes (1,:) AnalyticalShape3D = AnalyticalShape3D.empty; % Type constraint without size, initialized in constructor
+        shapes  % No type constraint - validated in setShapes() method
     end
 
     methods

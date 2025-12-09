@@ -1,4 +1,4 @@
-classdef (Abstract) AnalyticalShape3D < handle
+classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     % AnalyticalShape3D
     %   Abstract base class for analytic 3D shapes with configurable
     %   intensity, translation, and orientation. Subclasses implement the

@@ -19,8 +19,8 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     %       subtractComponent(shape) % append to subtractiveComponents
 
     properties (Access = protected)
-        additiveComponents AnalyticalShape3D = AnalyticalShape3D.empty;
-        subtractiveComponents AnalyticalShape3D = AnalyticalShape3D.empty;
+        additiveComponents  % No type constraint
+        subtractiveComponents  % No type constraint
     end
 
     methods
