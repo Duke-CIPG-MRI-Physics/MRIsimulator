@@ -83,8 +83,10 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 chest_ap_inner_mm, 0.9 * phantomDepth_mm, [], [0, 0, 0], [0, 0, 0]);
 
             fatThickness_mm = 10;
-            chest_ap_outer_mm = chest_ap_inner_mm + fatThickness_mm;
-            chest_lr_outer_mm = chest_lr_inner_mm + fatThickness_mm;
+            chestApOuterFcn = @(time) chestApInnerFcn(time) + fatThickness_mm;
+            chestLrOuterFcn = @(time) chestLrInnerFcn(time) + fatThickness_mm;
+            chest_ap_outer_mm = chestApOuterFcn(t_row);
+            chest_lr_outer_mm = chestLrOuterFcn(t_row);
             fat_outer = AnalyticalEllipticalCylinder3D(chest_lr_outer_mm, ...
                 chest_ap_outer_mm, 0.9 * phantomDepth_mm, [], [0, 0, 0], [0, 0, 0]);
 
@@ -109,6 +111,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 right_breast_center, [0, 90, 90]);
             breast_left = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, [], ...
                 left_breast_center, [0, 90, 90]);
+            BreastPhantom.assignParameterFunctions(breast_left, struct(...
+                'radius', breastRadiusFcn, 'height', breastDepthFcn));
 
             breastCenter = [0, 0.5 * breast_depth_mm, 0];
         end
@@ -123,6 +127,33 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...
                 vesselRadius_mm, V_contrast_mm3, rightBreastCenter, rollPitchYaw);
+        end
+    end
+
+    methods (Static, Access = private)
+        function parameterFcn = buildParameterFunction(timeSamples, parameterValues)
+            arguments
+                timeSamples (1,:) double {mustBeFinite}
+                parameterValues (1,:) double {mustBeFinite}
+            end
+
+            parameterFcn = @(queryTime) interp1(timeSamples(:), parameterValues(:), ...
+                queryTime, 'linear', 'extrap');
+        end
+
+        function assignParameterFunctions(shape, parameterFunctions)
+            if isempty(parameterFunctions)
+                return;
+            end
+
+            if ismethod(shape, 'setShapeParameterFunctions')
+                shape.setShapeParameterFunctions(parameterFunctions);
+            elseif isprop(shape, 'shapeParameterFunctions')
+                shape.shapeParameterFunctions = parameterFunctions;
+            elseif isa(shape, 'dynamicprops')
+                newProp = addprop(shape, 'shapeParameterFunctions'); %#ok<NASGU>
+                shape.shapeParameterFunctions = parameterFunctions;
+            end
         end
     end
 end
