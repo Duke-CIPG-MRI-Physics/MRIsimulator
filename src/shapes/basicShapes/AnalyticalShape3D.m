@@ -6,10 +6,10 @@ classdef (Abstract) AnalyticalShape3D < handle
     %   (percentInsideBody) for their specific geometries.
     %
     %   Fourier transform workflow:
-    %     kspaceBaseShape   – BODY-frame, unshifted/unrotated, no intensity.
-    %     kspacePlacedShape – WORLD-frame, rotated/translated, no intensity.
-    %     kspace            – WORLD-frame, rotated/translated with intensity
-    %                          applied to the centered and oriented shape.
+    %     kspaceBaseShape        – BODY-frame, unshifted/unrotated, no intensity.
+    %     kspaceWorldPlacedShape – WORLD-frame, rotated/translated, no intensity.
+    %     kspace                 – WORLD-frame, rotated/translated with intensity
+    %                               applied to the centered and oriented shape.
 
     properties (Access = protected)
         shapeIntensity (1,1) double = 1;
@@ -78,13 +78,13 @@ classdef (Abstract) AnalyticalShape3D < handle
                 kz double
             end
 
-            S_shape = obj.kspacePlacedShape(kx, ky, kz);
+            S_shape = obj.kspaceWorldPlacedShape(kx, ky, kz);
             S = S_shape .* obj.shapeIntensity;
         end
 
-        function S = kspacePlacedShape(obj, kx, ky, kz)
-            % kspacePlacedShape  WORLD-frame k-space of posed shape (no intensity).
-            %   S = kspacePlacedShape(obj, kx, ky, kz)
+        function S = kspaceWorldPlacedShape(obj, kx, ky, kz)
+            % kspaceWorldPlacedShape  WORLD-frame k-space of posed shape (no intensity).
+            %   S = kspaceWorldPlacedShape(obj, kx, ky, kz)
             %   Applies rotation and translation to the BODY-frame k-space.
             arguments
                 obj
@@ -94,7 +94,7 @@ classdef (Abstract) AnalyticalShape3D < handle
             end
 
             if ~isequal(size(kx), size(ky), size(kz))
-                error('AnalyticalShape3D:kspacePlacedShape:SizeMismatch', ...
+                error('AnalyticalShape3D:kspaceWorldPlacedShape:SizeMismatch', ...
                     'kx, ky, kz must have identical sizes.');
             end
 
@@ -121,7 +121,7 @@ classdef (Abstract) AnalyticalShape3D < handle
             c = obj.getCenter();
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspacePlacedShape:CenterSizeMismatch', ...
+                    error('AnalyticalShape3D:kspaceWorldPlacedShape:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
