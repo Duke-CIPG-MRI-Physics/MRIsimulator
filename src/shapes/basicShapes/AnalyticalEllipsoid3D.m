@@ -36,7 +36,6 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             obj.a_mm = a_mm;
             obj.b_mm = b_mm;
             obj.c_mm = c_mm;
-            obj.markShapeChanged();
         end
 
         function vol = calculateVolume(obj)

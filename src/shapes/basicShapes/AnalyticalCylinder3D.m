@@ -30,12 +30,10 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
 
         function setRadius(obj, radius_mm)
             obj.radius_mm = radius_mm;
-            obj.markShapeChanged();
         end
 
         function setLength(obj, length_mm)
             obj.length_mm = length_mm;
-            obj.markShapeChanged();
         end
 
         function r = getRadius(obj)
