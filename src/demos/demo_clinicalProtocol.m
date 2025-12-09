@@ -88,6 +88,7 @@ if(~all(matrix_acq_os == ceil(matrix_acq_os)))
     disp(['   Adjusted slice_resolution_pct=' num2str(slice_resolution_pct) '%'])
 end
 
+
 % Derived voxel sizes (ignoring percent slice/phase resolution)
 voxel_size_mm = FOV_oversampled./matrix_full_os;
 
