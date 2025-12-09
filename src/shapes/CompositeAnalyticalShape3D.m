@@ -19,14 +19,18 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     %       subtractComponent(shape) % append to subtractiveComponents
 
     properties (Access = protected)
-        additiveComponents (1,:) AnalyticalShape3D = AnalyticalShape3D.empty;
-        subtractiveComponents (1,:) AnalyticalShape3D = AnalyticalShape3D.empty;
+        additiveComponents (1,:) AnalyticalShape3D
+        subtractiveComponents (1,:) AnalyticalShape3D
     end
 
     methods
         function obj = CompositeAnalyticalShape3D(additiveComponents, subtractiveComponents, ...
                 intensity, center, rollPitchYaw)
             obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
+            
+            % Initialize component arrays as empty
+            obj.additiveComponents = AnalyticalShape3D.empty(1,0);
+            obj.subtractiveComponents = AnalyticalShape3D.empty(1,0);
 
             if nargin >= 1 && ~isempty(additiveComponents)
                 obj.addComponent(additiveComponents);

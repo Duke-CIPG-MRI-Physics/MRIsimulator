@@ -5,7 +5,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
     %   from each contained shape (each shape carries its own intensity).
 
     properties (Access = protected)
-        shapes (1,:) AnalyticalShape3D = AnalyticalShape3D.empty(1, 0);
+        shapes (1,:) AnalyticalShape3D % Default value in constructor
     end
 
     methods
@@ -18,6 +18,9 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
 
             obj@AnalyticalShape3D(1, center, rollPitchYaw);
+            
+            % Initialize shapes as empty array of the abstract class
+            obj.shapes = AnalyticalShape3D.empty(1,0);
 
             if nargin >= 1 && ~isempty(shapes)
                 obj.setShapes(shapes);
