@@ -43,7 +43,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
         end
 
         function S = kspace(obj, kx, ky, kz)
-            % kspace  Sum analytic k-space over all materials.
+            % kspace  Sum placed-and-scaled k-space over all materials.
             %   S = kspace(obj, kx, ky, kz)
             %
             %   Inputs:
@@ -86,7 +86,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             c = obj.getCenter();
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                    error('AnalyticalShape3D:kspacePlacedShape:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
@@ -104,9 +104,9 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
         end
 
-        function S = kspace_shapeOnly(obj, kx, ky, kz)
-            % kspace_shapeOnly  Sum geometry-only k-space for all materials.
-            %   S = kspace_shapeOnly(obj, kx, ky, kz)
+        function S = kspacePlacedShape(obj, kx, ky, kz)
+            % kspacePlacedShape  Sum geometry-only k-space for all materials.
+            %   S = kspacePlacedShape(obj, kx, ky, kz)
             %
             %   Inputs:
             %       kx, ky, kz : WORLD frequencies [cycles/mm], same size.
@@ -140,14 +140,14 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
 
             S_body = zeros(size(kxb));
             for idx = 1:numel(obj.shapes)
-                S_body = S_body + obj.shapes(idx).kspace_shapeOnly(kxb, kyb, kzb);
+                S_body = S_body + obj.shapes(idx).kspacePlacedShape(kxb, kyb, kzb);
             end
 
             % WORLD translation phase
-            c = obj.getCenter;
+            c = obj.getCenter();
             if any(c(:) ~= 0)
                 if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspace_shapeOnly:CenterSizeMismatch', ...
+                    error('AnalyticalShape3D:kspacePlacedShape:CenterSizeMismatch', ...
                         'Center must have 3 columns for x, y, z.');
                 end
 
@@ -166,8 +166,8 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
         end
     end
     methods (Access = protected)
-        function S = bodyKspace(obj, kx_body, ky_body, kz_body)
-            % bodyKspace  BODY-frame analytic FT (no intensity scaling).
+        function S = kspaceBaseShape(obj, kx_body, ky_body, kz_body)
+            % kspaceBaseShape  BODY-frame analytic FT (no intensity scaling).
             %   Implemented as the sum of each contained shape's WORLD-frame
             %   k-space because the phantom itself does not apply any
             %   additional transform beyond the individual shapes.

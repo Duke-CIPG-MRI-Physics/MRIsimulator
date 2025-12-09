@@ -50,7 +50,7 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
     end
 
     methods (Access = protected)
-        function S_body = bodyKspace(obj, kx, ky, kz)
+        function S_body = kspaceBaseShape(obj, kx, ky, kz)
             kr = sqrt(kx.^2 + ky.^2);
             arg = 2*pi*obj.radius_mm .* kr;
 

@@ -57,7 +57,7 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     end
 
     methods (Access = protected)
-        function S_body = bodyKspace(obj, kx, ky, kz)
+        function S_body = kspaceBaseShape(obj, kx, ky, kz)
             arguments
                 obj
                 kx double
@@ -66,17 +66,17 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
             end
 
             if ~isequal(size(kx), size(ky), size(kz))
-                error('CompositeAnalyticalShape3D:bodyKspace:SizeMismatch', ...
+                error('CompositeAnalyticalShape3D:kspaceBaseShape:SizeMismatch', ...
                     'kx, ky, kz must have identical sizes.');
             end
-   
+
             S_body = zeros(size(kx));
             for idx = 1:numel(obj.additiveComponents)
-                S_body = S_body + obj.additiveComponents(idx).kspace_shapeOnly(kx, ky, kz);
+                S_body = S_body + obj.additiveComponents(idx).kspacePlacedShape(kx, ky, kz);
             end
 
             for idx = 1:numel(obj.subtractiveComponents)
-                S_body = S_body - obj.subtractiveComponents(idx).kspace_shapeOnly(kx, ky, kz);
+                S_body = S_body - obj.subtractiveComponents(idx).kspacePlacedShape(kx, ky, kz);
             end
         end
 

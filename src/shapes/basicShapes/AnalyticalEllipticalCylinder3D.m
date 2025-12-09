@@ -48,7 +48,7 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
     end
 
     methods (Access = protected)
-        function S_body = bodyKspace(obj, kx, ky, kz)
+        function S_body = kspaceBaseShape(obj, kx, ky, kz)
             kr = sqrt((obj.a_mm .* kx).^2 + (obj.b_mm .* ky).^2);
             arg = 2 * pi .* kr;
 
