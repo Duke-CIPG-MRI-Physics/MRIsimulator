@@ -40,7 +40,6 @@ ellipCyl = AnalyticalEllipticalCylinder3D(ellipCylParams, [], center_cyl, [roll_
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of elliptical cylinder...\n');
 K = ellipCyl.kspace(kx, ky, kz);
-volV = ellipCyl.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing inverse FFT...\n');
@@ -59,8 +58,8 @@ z_ax  = z_vec(midVol(3)) * ones(size(x_ax));
 [x_cor, z_cor] = ndgrid(x_vec, z_vec);
 y_cor = y_vec(midVol(2)) * ones(size(x_cor));
 
-frac_ax  = ellipCyl.estimateImageShape(x_ax, y_ax, z_ax);
-frac_cor = ellipCyl.estimateImageShape(x_cor, y_cor, z_cor);
+frac_ax  = ellipCyl.estimateImage(x_ax, y_ax, z_ax);
+frac_cor = ellipCyl.estimateImage(x_cor, y_cor, z_cor);
 
 %% 8) Visualization: *four* images
 figure('Name','Elliptical Cylinder: FFT vs Image-Space Shape Rendering','Color','w');

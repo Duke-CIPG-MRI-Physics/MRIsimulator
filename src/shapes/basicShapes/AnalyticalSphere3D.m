@@ -20,7 +20,8 @@ classdef AnalyticalSphere3D < AnalyticalEllipsoid3D
             end
 
             obj@AnalyticalEllipsoid3D([], intensity, center, rollPitchYaw);
-            obj.setShapeParameters(shapeParameters);
+            obj.setShapeParameters(obj.radiusStructToAxes(shapeParameters));
+            
         end
 
         function setShapeParameters(obj, shapeParameters)

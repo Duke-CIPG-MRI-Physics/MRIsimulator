@@ -40,7 +40,6 @@ box = AnalyticalBox3D(boxParams, [], center_box, [roll_deg, pitch_deg, yaw_deg])
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of box...\n');
 K = box.kspace(kx, ky, kz);
-volV = box.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing inverse FFT...\n');
@@ -59,8 +58,8 @@ z_ax  = z_vec(midVol(3)) * ones(size(x_ax));
 [x_cor, z_cor] = ndgrid(x_vec, z_vec);
 y_cor = y_vec(midVol(2)) * ones(size(x_cor));
 
-frac_ax  = box.estimateImageShape(x_ax, y_ax, z_ax);
-frac_cor = box.estimateImageShape(x_cor, y_cor, z_cor);
+frac_ax  = box.estimateImage(x_ax, y_ax, z_ax);
+frac_cor = box.estimateImage(x_cor, y_cor, z_cor);
 
 %% 8) Visualization: *four* images
 figure('Name','Box: FFT vs Image-Space Shape Rendering','Color','w');

@@ -15,11 +15,11 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             if nargin < 2 || isempty(intensity)
                 intensity = 1;
             end
+            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
+            
             if nargin < 1 || isempty(shapeParameters)
                 shapeParameters = obj.defaultEllipsoidParameters();
             end
-
-            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
             obj.setShapeParameters(shapeParameters);
         end
     end

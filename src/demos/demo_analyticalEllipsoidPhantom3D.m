@@ -40,7 +40,6 @@ ellip = AnalyticalEllipsoid3D(ellipParams, [], center_ellip, [roll_deg, pitch_de
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of ellipsoid...\n');
 K = ellip.kspace(kx, ky, kz);
-volV = ellip.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing inverse FFT...\n');
@@ -59,8 +58,8 @@ z_ax  = z_vec(midVol(3)) * ones(size(x_ax));
 [x_cor, z_cor] = ndgrid(x_vec, z_vec);
 y_cor = y_vec(midVol(2)) * ones(size(x_cor));
 
-frac_ax  = ellip.estimateImageShape(x_ax, y_ax, z_ax);
-frac_cor = ellip.estimateImageShape(x_cor, y_cor, z_cor);
+frac_ax  = ellip.estimateImage(x_ax, y_ax, z_ax);
+frac_cor = ellip.estimateImage(x_cor, y_cor, z_cor);
 
 %% 8) Visualization: *four* images
 figure('Name','Ellipsoid: FFT vs Image-Space Shape Rendering','Color','w');

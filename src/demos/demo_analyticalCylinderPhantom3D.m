@@ -53,7 +53,6 @@ cyl = AnalyticalCylinder3D(cylParams, [], center_cyl, [roll_deg, pitch_deg, yaw_
 %% 4) Compute analytic k-space for the cylinder
 fprintf('Evaluating analytic k-space...\n');
 K = cyl.kspace(kx, ky, kz);
-volV = cyl.calculateVolume()
 
 %% 5) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
