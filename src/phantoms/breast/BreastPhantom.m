@@ -3,7 +3,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
     %   Preconfigured collection of AnalyticalShape3D objects approximating
     %   a thoracic slice with lungs, heart, peripheral fat, breasts, and a
     %   simple vessel. Geometry and intensities follow the original
-    %   demo_analyticalBreastPhantom.m setup.
+    %   demo_analyticalBreastPhantom.m setup. Heart geometry leverages
+    %   cardiac_ellipsoid_waveform, which evaluates long time vectors in
+    %   ~0.001 Gb, 15,625-sample chunks to keep memory usage minimal.
 
     properties (Access = private)
         time_s (:,1) double {mustBeFinite}

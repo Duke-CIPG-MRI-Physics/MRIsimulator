@@ -1,5 +1,7 @@
 % demo_cardiac_waveform.m
 % Demo of time-varying LV ellipsoid geometry + volume + strain visualization
+% The core waveform model now evaluates long time vectors in 15,625-sample
+% chunks (~0.001 Gb of temporaries) to limit memory use.
 %
 % Requires:
 %   - cardiac_ellipsoid_waveform.m
