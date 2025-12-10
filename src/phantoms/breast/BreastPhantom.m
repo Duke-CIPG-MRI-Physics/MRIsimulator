@@ -30,7 +30,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             EDV_ml = 150; % Can also be a vector
             ESV_ml = 75;  % Can also be a vector
 
-            [~, c_mm, a_mm, b_mm] = cardiac_ellipsoid_waveform(obj.time_s, HR_bpm, ...
+            [c_mm, a_mm, ~] = cardiac_ellipsoid_waveform(obj.time_s, HR_bpm, ...
                 EDV_ml, ESV_ml, heartOpts);
 
             heart = AnalyticalEllipsoid3D();

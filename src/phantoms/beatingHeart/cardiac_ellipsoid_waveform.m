@@ -1,4 +1,4 @@
-function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
+function [a_mm, b_mm, phase] = ...
     cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml, ESV_ml, opts)
 %CARDIAC_ELLIPSOID_WAVEFORM  LV volume + ellipsoid semi-axes vs time.
 %
@@ -71,11 +71,11 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     % ---------------------------------------------------------------------
     % Basic checks
     % ---------------------------------------------------------------------
-    t_s = t_s(:)';
-    N = numel(t_s);
-    if any(diff(t_s) < 0)
+    dt = diff(t_s(:)');
+    if any(dt < 0)
         error('t_s must be strictly increasing.');
     end
+    N = numel(dt);
 
     HR_bpm = validateLengthOrScalar(HR_bpm, N, 'HR_bpm');
     EDV_ml = validateLengthOrScalar(EDV_ml, N, 'EDV_ml');
@@ -89,7 +89,6 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     % 1) Build cumulative phase from HR(t)
     % ---------------------------------------------------------------------
     f_Hz = HR_bpm / 60;     % [Hz]
-    dt = diff(t_s);         % N-1 intervals for N samples
 
     % Use HR samples per interval (N-1). For scalar HR, MATLAB broadcasts the
     % multiplication; for vectors we trim the unused last element to match dt.
@@ -98,40 +97,23 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
         f_interval = f_interval(1:end-1);
     end
 
-    incrementalPhase = 2*pi .* f_interval .* dt;
-    phase = [0 cumsum(incrementalPhase)];
-    % for k = 2:N
-    %     phase(k) = phase(k-1) + 2*pi*f_Hz(k-1)*dt(k-1);
-    % end
-
-    % Within-cycle phase φ in [0,1)
-    phi_cycle = mod(phase, 2*pi) / (2*pi);   % dimensionless
-
+    phase = mod([0 cumsum(2*pi .* f_interval .* dt)], 2*pi) / (2*pi);
+    clear dt;
+    
     % ---------------------------------------------------------------------
     % 2) Volume waveform via piecewise half-cosines
     % ---------------------------------------------------------------------
-    V_ml = zeros(1, N);
-    SV_ml = EDV_ml - ESV_ml;
-
-    systMask = (phi_cycle < beta);
+    systMask = (phase < beta);
     diasMask = ~systMask;
 
-    % Systole: EDV -> ESV (volume falls)
-    s_syst = phi_cycle(systMask) / beta;       % [0,1]
-    h_syst = 0.5*(1 + cos(pi*s_syst));         % 1 -> 0
-
-    % Diastole: ESV -> EDV (volume rises)
-    s_dias = (phi_cycle(diasMask) - beta) / (1 - beta);  % [0,1]
-    h_dias = 0.5*(1 - cos(pi*s_dias));                   % 0 -> 1
-
     waveform = zeros(1, N);
-    waveform(systMask) = h_syst;
-    waveform(diasMask) = h_dias;
-
-    V_ml = ESV_ml + SV_ml .* waveform;
+    waveform(systMask) = 0.5*(1 + cos(pi*phase(systMask) / beta));
+    waveform(diasMask) = 0.5*(1 - cos(pi*(phase(diasMask) - beta) / (1 - beta)));
 
     % Convert volume to m^3
-    V_m3 = V_ml * 1e-6;
+    SV_ml = EDV_ml - ESV_ml;
+    V_m3 = ESV_ml + SV_ml .* waveform * 1e-6;
+    clear waveform;
 
     % ---------------------------------------------------------------------
     % 3) Baseline ED ellipsoid from EDV and aspect ratio q = a0/b0
@@ -151,26 +133,23 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     eps_L = zeros(1, N);   % longitudinal strain
     eps_C = zeros(1, N);   % circumferential strain
 
-    % Reuse systolic/diastolic masks
-    systMask = (phi_cycle < beta);
-    diasMask = ~systMask;
-
     % Systolic part: 0→beta
-    s_syst = phi_cycle(systMask) / beta;            % [0,1]
-    f_syst = 0.5*(1 - cos(pi*s_syst));              % 0 -> 1
+    f_syst = 0.5*(1 - cos(pi*phase(systMask) / beta));              % 0 -> 1
     eps_L(systMask) = GLS_peak * f_syst;
     eps_C(systMask) = GCS_peak * f_syst;
+    clear systMask f_syst; 
 
     % Diastolic part: beta→1
-    s_dias = (phi_cycle(diasMask) - beta) / (1 - beta);  % [0,1]
-    f_dias = 0.5*(1 + cos(pi*s_dias));                   % 1 -> 0
+    f_dias = 0.5*(1 + cos(pi*(phase(diasMask) - beta) / (1 - beta)));                   % 1 -> 0
     eps_L(diasMask) = GLS_peak * f_dias;
     eps_C(diasMask) = GCS_peak * f_dias;
+    clear diasMask f_dias; 
 
     % Template semi-axes (before volume correction)
     a_hat = a0 * (1 + eps_L);
+    clear eps_L;
     b_hat = b0 * (1 + eps_C);
-    c_hat = b_hat;                % rotationally symmetric short axes
+    clear eps_C;
 
     % Template volume
     V_hat_m3 = (4/3)*pi .* a_hat .* b_hat.^2;
@@ -182,22 +161,13 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
         error('Template ellipsoid volume became non-positive; check strain settings.');
     end
     lambda = (V_m3 ./ V_hat_m3).^(1/3);
+    clear V_m3 V_hat_m3;
 
-    % Final semi-axes (meters)
-    a_m = lambda .* a_hat;
-    b_m = lambda .* b_hat;
-    c_m = lambda .* c_hat;
-
-    % Convert to millimeters for output
-    a_mm = 1000 .* a_m;
-    b_mm = 1000 .* b_m;
-    c_mm = 1000 .* c_m;
-
-    % Optional internal check (commented out)
-    % V_check = (4/3)*pi .* a_m .* b_m.^2;
-    % maxRelErr = max(abs(V_check - V_m3)./max(V_m3, eps));
-    % fprintf('Max relative volume error = %.3g\n', maxRelErr);
-
+    % Final semi-axes (millimeters)
+    a_mm = 1000 .* lambda .* a_hat;
+    clear a_hat;
+    b_mm = 1000 .* lambda .* b_hat;
+    clear lambda b_hat;
 end
 
 % -------------------------------------------------------------------------
