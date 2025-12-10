@@ -5,7 +5,7 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
 %   [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
 %       cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml, ESV_ml, opts)
 %
-%   Inputs (1xN vectors):
+%   Inputs (1xN vectors or scalars used directly):
 %       t_s     - time [s], strictly increasing
 %       HR_bpm  - heart rate [beats/min] at each time
 %       EDV_ml  - LV end-diastolic volume [mL] at each time (max volume)
@@ -71,11 +71,16 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     % ---------------------------------------------------------------------
     % Basic checks
     % ---------------------------------------------------------------------
+    t_s = t_s(:)';
     N = numel(t_s);
     if any(diff(t_s) < 0)
         error('t_s must be strictly increasing.');
     end
-    
+
+    HR_bpm = validateLengthOrScalar(HR_bpm, N, 'HR_bpm');
+    EDV_ml = validateLengthOrScalar(EDV_ml, N, 'EDV_ml');
+    ESV_ml = validateLengthOrScalar(ESV_ml, N, 'ESV_ml');
+
     if any(ESV_ml >= EDV_ml)
         error('ESV_ml must be < EDV_ml at all time points.');
     end
@@ -84,10 +89,16 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     % 1) Build cumulative phase from HR(t)
     % ---------------------------------------------------------------------
     f_Hz = HR_bpm / 60;     % [Hz]
-    phase = zeros(1, N);    % [rad]
-    dt = diff(t_s);
+    dt = diff(t_s);         % N-1 intervals for N samples
 
-    incrementalPhase = 2*pi*f_Hz.*dt;
+    % Use HR samples per interval (N-1). For scalar HR, MATLAB broadcasts the
+    % multiplication; for vectors we trim the unused last element to match dt.
+    f_interval = f_Hz;
+    if ~isscalar(f_interval)
+        f_interval = f_interval(1:end-1);
+    end
+
+    incrementalPhase = 2*pi .* f_interval .* dt;
     phase = [0 cumsum(incrementalPhase)];
     % for k = 2:N
     %     phase(k) = phase(k-1) + 2*pi*f_Hz(k-1)*dt(k-1);
@@ -108,12 +119,16 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     % Systole: EDV -> ESV (volume falls)
     s_syst = phi_cycle(systMask) / beta;       % [0,1]
     h_syst = 0.5*(1 + cos(pi*s_syst));         % 1 -> 0
-    V_ml(systMask) = ESV_ml(systMask) + SV_ml(systMask).*h_syst;
 
     % Diastole: ESV -> EDV (volume rises)
     s_dias = (phi_cycle(diasMask) - beta) / (1 - beta);  % [0,1]
     h_dias = 0.5*(1 - cos(pi*s_dias));                   % 0 -> 1
-    V_ml(diasMask) = ESV_ml(diasMask) + SV_ml(diasMask).*h_dias;
+
+    waveform = zeros(1, N);
+    waveform(systMask) = h_syst;
+    waveform(diasMask) = h_dias;
+
+    V_ml = ESV_ml + SV_ml .* waveform;
 
     % Convert volume to m^3
     V_m3 = V_ml * 1e-6;
@@ -183,4 +198,14 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     % maxRelErr = max(abs(V_check - V_m3)./max(V_m3, eps));
     % fprintf('Max relative volume error = %.3g\n', maxRelErr);
 
+end
+
+% -------------------------------------------------------------------------
+function vec = validateLengthOrScalar(vec, N, name)
+%VALIDATELENGTHORSCALAR  Ensure input is a row vector with numel 1 or N.
+
+    vec = vec(:)';
+    if ~(isscalar(vec) || numel(vec) == N)
+        error('%s must be scalar or have the same number of elements as t_s.', name);
+    end
 end
