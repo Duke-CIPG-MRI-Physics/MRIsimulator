@@ -46,8 +46,8 @@ classdef BeatingHeart < AnalyticalEllipsoid3D
             [~, c_mm, a_mm, b_mm] = cardiac_ellipsoid_waveform(t_s, HR_bpm, ...
                 EDV_ml, ESV_ml, opts);
 
-            obj@AnalyticalEllipsoid3D(a_mm, b_mm, c_mm, intensity, center, ...
-                rollPitchYaw);
+            heartParams = struct('a_mm', a_mm, 'b_mm', b_mm, 'c_mm', c_mm);
+            obj@AnalyticalEllipsoid3D(heartParams, intensity, center, rollPitchYaw);
 
             obj.t_s = t_s;
             obj.HR_bpm = HR_bpm;

@@ -1,65 +1,88 @@
 classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
     % AnalyticalEllipticalCylinder3D
     %   Finite cylinder with an elliptical cross section aligned to BODY
-    %   axes.
-
-    properties (Access = protected)
-        a_mm double {mustBeNonnegative} = 1; % semi-axis along x
-        b_mm double {mustBeNonnegative} = 1; % semi-axis along y
-        length_mm double {mustBeNonnegative} = 1;
-    end
+    %   axes. Semi-axes/length can be static scalars/vectors, provided as a
+    %   struct, or computed via a function handle returning such a struct for
+    %   time-varying geometry.
 
     methods
-        function obj = AnalyticalEllipticalCylinder3D(a_mm, b_mm, length_mm, intensity, center, rollPitchYaw)
-            if nargin < 6
+        function obj = AnalyticalEllipticalCylinder3D(shapeParameters, intensity, center, rollPitchYaw)
+            if nargin < 4 || isempty(rollPitchYaw)
                 rollPitchYaw = [0 0 0];
             end
-            if nargin < 5
+            if nargin < 3 || isempty(center)
                 center = [0 0 0];
             end
-            if nargin < 4
+            if nargin < 2 || isempty(intensity)
                 intensity = 1;
+            end
+            if nargin < 1 || isempty(shapeParameters)
+                shapeParameters = obj.defaultEllipticalCylinderParameters();
             end
 
             obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
-            if nargin >= 1 && ~isempty(a_mm)
-                obj.a_mm = a_mm;
-            end
-            if nargin >= 2 && ~isempty(b_mm)
-                obj.b_mm = b_mm;
-            end
-            if nargin >= 3 && ~isempty(length_mm)
-                obj.length_mm = length_mm;
-            end
-        end
-
-        function setAxes(obj, a_mm, b_mm)
-            obj.a_mm = a_mm;
-            obj.b_mm = b_mm;
-        end
-
-        function setLength(obj, length_mm)
-            obj.length_mm = length_mm;
+            obj.setShapeParameters(shapeParameters);
         end
     end
 
     methods (Access = protected)
+        function params = validateParameters(~, params)
+            if ~isstruct(params)
+                error('AnalyticalEllipticalCylinder3D:ShapeParameters:InvalidType', ...
+                    'Shape parameters must be provided as a struct.');
+            end
+
+            required = {'a_mm', 'b_mm', 'length_mm'};
+            for idx = 1:numel(required)
+                if ~isfield(params, required{idx})
+                    error('AnalyticalEllipticalCylinder3D:ShapeParameters:MissingField', ...
+                        'Field %s is required for elliptical cylinder dimensions.', required{idx});
+                end
+            end
+
+            vectorLength = [];
+            for idx = 1:numel(required)
+                value = params.(required{idx});
+                validateattributes(value, {'numeric'}, {'real', 'nonnegative'});
+                if ~(isscalar(value) || isvector(value))
+                    error('AnalyticalEllipticalCylinder3D:ShapeParameters:InvalidShape', ...
+                        '%s must be scalar or vector-valued.', required{idx});
+                end
+
+                if ~isscalar(value)
+                    thisLength = numel(value);
+                    if isempty(vectorLength)
+                        vectorLength = thisLength;
+                    elseif thisLength ~= vectorLength
+                        error('AnalyticalEllipticalCylinder3D:ShapeParameters:LengthMismatch', ...
+                            'Vector-valued semi-axes and length must share the same length.');
+                    end
+                end
+            end
+        end
+
         function S_body = kspaceBaseShape(obj, kx, ky, kz)
-            kr = sqrt((obj.a_mm .* kx).^2 + (obj.b_mm .* ky).^2);
+            params = obj.getShapeParameters();
+            kr = sqrt((params.a_mm .* kx).^2 + (params.b_mm .* ky).^2);
             arg = 2 * pi .* kr;
 
-            radial = (obj.a_mm .* obj.b_mm .* besselj(1, arg)) ./ kr;
-            radial(kr == 0) = pi .* obj.a_mm .* obj.b_mm;
+            radial = (params.a_mm .* params.b_mm .* besselj(1, arg)) ./ kr;
+            radial(kr == 0) = pi .* params.a_mm .* params.b_mm;
 
-            axial = obj.length_mm .* sinc(obj.length_mm .* kz);
+            axial = params.length_mm .* sinc(params.length_mm .* kz);
 
             S_body = radial .* axial;
         end
 
         function percent = percentInsideBody(obj, xb, yb, zb)
-            inEllipse = (xb ./ obj.a_mm).^2 + (yb ./ obj.b_mm).^2 <= 1;
-            inHeight = abs(zb) <= obj.length_mm ./ 2;
+            params = obj.getShapeParameters();
+            inEllipse = (xb ./ params.a_mm).^2 + (yb ./ params.b_mm).^2 <= 1;
+            inHeight = abs(zb) <= params.length_mm ./ 2;
             percent = double(inEllipse & inHeight);
+        end
+
+        function params = defaultEllipticalCylinderParameters(~)
+            params = struct('a_mm', 1, 'b_mm', 1, 'length_mm', 1);
         end
     end
 end

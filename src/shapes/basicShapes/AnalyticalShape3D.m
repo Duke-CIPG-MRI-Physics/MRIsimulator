@@ -1,9 +1,13 @@
 classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     % AnalyticalShape3D
     %   Abstract base class for analytic 3D shapes with configurable
-    %   intensity, translation, and orientation. Subclasses implement the
-    %   BODY-frame Fourier transform (kspaceBaseShape) and voxel occupancy
-    %   (percentInsideBody) for their specific geometries.
+    %   intensity, translation, orientation, and time-varying geometry. Shape
+    %   parameters can be set with static scalars/vectors or a function handle
+    %   that produces a parameter struct when evaluated (e.g., with time).
+    %   Subclasses implement the BODY-frame Fourier transform (kspaceBaseShape)
+    %   and voxel occupancy (percentInsideBody) for their specific geometries
+    %   while mapping their dimensions into the common setShapeParameters
+    %   /getShapeParameters API.
     %
     %   Fourier transform workflow:
     %     kspaceBaseShape        – BODY-frame, unshifted/unrotated, no intensity.
@@ -15,6 +19,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
         shapeIntensity (1,1) double = 1;
         center (1,3) double = [0 0 0];
         rollPitchYaw_deg (1,3) double = [0 0 0];
+        shapeParameters = struct();
     end
 
     methods
@@ -28,6 +33,36 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             if nargin >= 3 && ~isempty(rollPitchYaw)
                 obj.rollPitchYaw_deg = rollPitchYaw;
             end
+        end
+
+
+        function setShapeParameters(obj, shapeParameters)
+            % setShapeParameters  Store shape parameters or a generating function handle.
+            %   setShapeParameters(obj, shapeParameters) validates a struct
+            %   definition via validateParameters and stores it, or stores a
+            %   function handle that returns such a struct when invoked (e.g.,
+            %   time-varying geometries).
+            if isa(shapeParameters, 'function_handle')
+                obj.shapeParameters = shapeParameters;
+                return;
+            end
+
+            validated = obj.validateParameters(shapeParameters);
+            obj.shapeParameters = validated;
+        end
+
+        function params = getShapeParameters(obj, varargin)
+            % getShapeParameters  Retrieve the current shape parameters.
+            %   params = getShapeParameters(obj, ...) returns the stored struct
+            %   directly or evaluates the stored function handle with any
+            %   provided arguments before validation.
+            if isa(obj.shapeParameters, 'function_handle')
+                params = obj.shapeParameters(varargin{:});
+            else
+                params = obj.shapeParameters;
+            end
+
+            params = obj.validateParameters(params);
         end
 
         function setIntensity(obj, newIntensity)
@@ -196,11 +231,13 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                     'Values must be scalar or match the reference array size.');
             end
         end
+        
     end
 
     methods (Abstract, Access = protected)
         % kspaceBaseShape  BODY-frame k-space (no rotation/translation/intensity).
         S_body = kspaceBaseShape(obj, kx_body, ky_body, kz_body)
         percent = percentInsideBody(obj, xb, yb, zb)
+        params = validateParameters(obj, params)
     end
 end

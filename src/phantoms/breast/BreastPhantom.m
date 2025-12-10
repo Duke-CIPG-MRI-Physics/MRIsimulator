@@ -24,30 +24,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
          
 
             % Create heart
-            heartOpts = struct('systFrac', 0.35, ...
-                'q_ED', 50/27, ...
-                'GLS_peak', -0.20, ...
-                'GCS_peak', -0.25);
-            HR_bpm = 70;  % Can also be a vector
-            EDV_ml = 150; % Can also be a vector
-            ESV_ml = 75;  % Can also be a vector
+            heart = obj.createHeart();
 
-            [c_mm, a_mm, ~] = cardiac_ellipsoid_waveform(obj.time_s, HR_bpm, ...
-                EDV_ml, ESV_ml, heartOpts);
-
-            heart = AnalyticalEllipsoid3D();
-
-
-            obj.t_s = t_s;
-            obj.HR_bpm = HR_bpm;
-            obj.EDV_ml = EDV_ml;
-            obj.ESV_ml = ESV_ml;
-
-
-
-
-
-            breathingLung = obj.createBreathingLung(obj.time_s, heart);
+            breathingLung = obj.createBreathingLung(heart);
             thorax = obj.createThorax(heart, breathingLung);
 
             [breastLeft, breastRight, breastCenter, rightBreastCenter] = obj.createBreastGeometry();
@@ -85,7 +64,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
             bellyFrac = 0.6 * ones(1, numel(obj.time_s));
             inspFrac = 0.4 * ones(1, numel(obj.time_s));
 
-            heart_lr_mm = heart.getA();
+            heartParams = heart.getShapeParameters();
+            heart_lr_mm = heartParams.a_mm;
             heartThickness_mm = 8;
             spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
             breathingLung = BreathingLung(obj.time_s, f_bpm, VT_L, Vres_L, ...
@@ -95,10 +75,11 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
         function thorax = createThorax(~, heart, breathingLung)
             bodyShift = -80;
-            heart_ap_mm = heart.getB();
+            heartParams = heart.getShapeParameters();
+            heart_ap_mm = heartParams.b_mm;
             lungRadius = breathingLung.getLungRadiusMm();
             tissueGap_lr_mm = 30;
-            heart_lr_mm = heart.getA();
+            heart_lr_mm = heartParams.a_mm;
             heartThickness_mm = 8;
             spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
 
@@ -106,16 +87,16 @@ classdef BreastPhantom < MultipleMaterialPhantom
             chest_lr_inner_mm = 2 * lungRadius + spacingBetweenLungs + tissueGap_lr_mm;
             phantomDepth_mm = 300;
 
-            fat_inner = AnalyticalEllipticalCylinder3D(chest_lr_inner_mm, ...
-                chest_ap_inner_mm, 0.9 * phantomDepth_mm, [], [0, 0, 0], [0, 0, 0]);
+            fatInnerParams = struct('a_mm', chest_lr_inner_mm, ...
+                'b_mm', chest_ap_inner_mm, 'length_mm', 0.9 * phantomDepth_mm);
+            fat_inner = AnalyticalEllipticalCylinder3D(fatInnerParams, [], [0, 0, 0], [0, 0, 0]);
 
             fatThickness_mm = 10;
-            chestApOuterFcn = @(time) chestApInnerFcn(time) + fatThickness_mm;
-            chestLrOuterFcn = @(time) chestLrInnerFcn(time) + fatThickness_mm;
-            chest_ap_outer_mm = chestApOuterFcn(obj.time_s);
-            chest_lr_outer_mm = chestLrOuterFcn(obj.time_s);
-            fat_outer = AnalyticalEllipticalCylinder3D(chest_lr_outer_mm, ...
-                chest_ap_outer_mm, 0.9 * phantomDepth_mm, [], [0, 0, 0], [0, 0, 0]);
+            chest_ap_outer_mm = chest_ap_inner_mm + fatThickness_mm;
+            chest_lr_outer_mm = chest_lr_inner_mm + fatThickness_mm;
+            fatOuterParams = struct('a_mm', chest_lr_outer_mm, ...
+                'b_mm', chest_ap_outer_mm, 'length_mm', 0.9 * phantomDepth_mm);
+            fat_outer = AnalyticalEllipticalCylinder3D(fatOuterParams, [], [0, 0, 0], [0, 0, 0]);
 
             fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2, [], []);
             tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, breathingLung], ...
@@ -134,12 +115,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
             right_breast_center = [breast_radius_mm + 0.5 * breast_gap_mm, 0, 0];
             left_breast_center = [-right_breast_center(1), right_breast_center(2:3)];
 
-            breast_right = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, [], ...
-                right_breast_center, [0, 90, 90]);
-            breast_left = AnalyticalCylinder3D(breast_radius_mm, breast_depth_mm, [], ...
-                left_breast_center, [0, 90, 90]);
-            BreastPhantom.assignParameterFunctions(breast_left, struct(...
-                'radius', breastRadiusFcn, 'height', breastDepthFcn));
+            breastParams = struct('radius_mm', breast_radius_mm, 'length_mm', breast_depth_mm);
+            breast_right = AnalyticalCylinder3D(breastParams, [], right_breast_center, [0, 90, 90]);
+            breast_left = AnalyticalCylinder3D(breastParams, [], left_breast_center, [0, 90, 90]);
 
             breastCenter = [0, 0.5 * breast_depth_mm, 0];
         end
@@ -157,30 +135,4 @@ classdef BreastPhantom < MultipleMaterialPhantom
         end
     end
 
-    methods (Static, Access = private)
-        function parameterFcn = buildParameterFunction(timeSamples, parameterValues)
-            arguments
-                timeSamples (1,:) double {mustBeFinite}
-                parameterValues (1,:) double {mustBeFinite}
-            end
-
-            parameterFcn = @(queryTime) interp1(timeSamples(:), parameterValues(:), ...
-                queryTime, 'linear', 'extrap');
-        end
-
-        function assignParameterFunctions(shape, parameterFunctions)
-            if isempty(parameterFunctions)
-                return;
-            end
-
-            if ismethod(shape, 'setShapeParameterFunctions')
-                shape.setShapeParameterFunctions(parameterFunctions);
-            elseif isprop(shape, 'shapeParameterFunctions')
-                shape.shapeParameterFunctions = parameterFunctions;
-            elseif isa(shape, 'dynamicprops')
-                newProp = addprop(shape, 'shapeParameterFunctions'); %#ok<NASGU>
-                shape.shapeParameterFunctions = parameterFunctions;
-            end
-        end
-    end
 end

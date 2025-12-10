@@ -34,7 +34,8 @@ roll_deg   = 0;
 pitch_deg  = 15;
 yaw_deg    = 25;
 
-box = AnalyticalBox3D(Lx_mm, Ly_mm, Lz_mm, [], center_box, [roll_deg, pitch_deg, yaw_deg]);
+boxParams = struct('Lx_mm', Lx_mm, 'Ly_mm', Ly_mm, 'Lz_mm', Lz_mm);
+box = AnalyticalBox3D(boxParams, [], center_box, [roll_deg, pitch_deg, yaw_deg]);
 
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of box...\n');

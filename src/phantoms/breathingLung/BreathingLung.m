@@ -65,8 +65,9 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             leftCenter = [-lungPosition_mm(:), zeros(size(lungPosition_mm(:))), zeros(size(lungPosition_mm(:)))];
 
 
-            rightLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], rightCenter, [0, 0, 0]);
-            leftLung = AnalyticalEllipsoid3D(R_mm, R_mm, H_mm, [], leftCenter, [0, 0, 0]);
+            lungParams = struct('a_mm', R_mm, 'b_mm', R_mm, 'c_mm', H_mm);
+            rightLung = AnalyticalEllipsoid3D(lungParams, [], rightCenter, [0, 0, 0]);
+            leftLung = AnalyticalEllipsoid3D(lungParams, [], leftCenter, [0, 0, 0]);
 
             obj@CompositeAnalyticalShape3D([leftLung, rightLung], ...
                 AnalyticalShape3D.empty, intensity, center, rollPitchYaw);

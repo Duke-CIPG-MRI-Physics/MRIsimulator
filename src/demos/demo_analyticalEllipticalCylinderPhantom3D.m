@@ -34,7 +34,8 @@ roll_deg   = 0;
 pitch_deg  = 20;
 yaw_deg    = 30;
 
-ellipCyl = AnalyticalEllipticalCylinder3D(a_mm, b_mm, L_mm, [], center_cyl, [roll_deg, pitch_deg, yaw_deg]);
+ellipCylParams = struct('a_mm', a_mm, 'b_mm', b_mm, 'length_mm', L_mm);
+ellipCyl = AnalyticalEllipticalCylinder3D(ellipCylParams, [], center_cyl, [roll_deg, pitch_deg, yaw_deg]);
 
 %% 4) Compute analytic k-space
 fprintf('Evaluating analytic k-space of elliptical cylinder...\n');
