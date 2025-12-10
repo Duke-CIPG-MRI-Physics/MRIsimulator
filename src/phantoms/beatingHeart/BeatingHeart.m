@@ -18,7 +18,9 @@ classdef BeatingHeart < AnalyticalEllipsoid3D
     %                      GLS_peak, GCS_peak (see cardiac_ellipsoid_waveform)
     %
     %   The constructor computes the semi-axes using cardiac_ellipsoid_waveform
-    %   and initializes the parent AnalyticalEllipsoid3D with those axes.
+    %   (which processes long signals in 15,625-sample chunks, ~0.001 Gb of
+    %   temporaries) and initializes the parent AnalyticalEllipsoid3D with those
+    %   axes.
 
     properties (Access = private)
         t_s (1,:) double {mustBeReal, mustBeFinite}
