@@ -17,15 +17,39 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             obj@MultipleMaterialPhantom();
 
-            t_row = t_s(:).';
-            obj.time_s = t_row;
+            obj.time_s = t_s(:).';
 
-            heart = obj.createHeart(t_row);
-            breathingLung = obj.createBreathingLung(t_row, heart);
+         
+
+            % Create heart
+            heartOpts = struct('systFrac', 0.35, ...
+                'q_ED', 50/27, ...
+                'GLS_peak', -0.20, ...
+                'GCS_peak', -0.25);
+            HR_bpm = 70;  % Can also be a vector
+            EDV_ml = 150; % Can also be a vector
+            ESV_ml = 75;  % Can also be a vector
+
+            [~, c_mm, a_mm, b_mm] = cardiac_ellipsoid_waveform(obj.time_s, HR_bpm, ...
+                EDV_ml, ESV_ml, heartOpts);
+
+            heart = AnalyticalEllipsoid3D();
+
+
+            obj.t_s = t_s;
+            obj.HR_bpm = HR_bpm;
+            obj.EDV_ml = EDV_ml;
+            obj.ESV_ml = ESV_ml;
+
+
+
+
+
+            breathingLung = obj.createBreathingLung(obj.time_s, heart);
             thorax = obj.createThorax(heart, breathingLung);
 
             [breastLeft, breastRight, breastCenter, rightBreastCenter] = obj.createBreastGeometry();
-            enhancingVessel = obj.createEnhancingVessel(t_row, rightBreastCenter);
+            enhancingVessel = obj.createEnhancingVessel(obj.time_s, rightBreastCenter);
 
             leftAndRightBreastTissue = CompositeAnalyticalShape3D([breastRight, breastLeft], enhancingVessel, ...
                 0.5, [0, 0, 0], [0, 0, 0]);
@@ -38,30 +62,31 @@ classdef BreastPhantom < MultipleMaterialPhantom
     end
 
     methods (Access = private)
-        function heart = createHeart(~, t_row)
+        function heart = createHeart(obj)
             heartOpts = struct('systFrac', 0.35, ...
                 'q_ED', 50/27, ...
                 'GLS_peak', -0.20, ...
                 'GCS_peak', -0.25);
-            HR_bpm = 70 * ones(1, numel(t_row));
-            EDV_ml = 150 * ones(1, numel(t_row));
-            ESV_ml = 75  * ones(1, numel(t_row));
+            HR_bpm = 70 * ones(1, numel(obj.time_s));
+            EDV_ml = 150 * ones(1, numel(obj.time_s));
+            ESV_ml = 75  * ones(1, numel(obj.time_s));
 
-            heart = BeatingHeart(t_row, HR_bpm, EDV_ml, ESV_ml, 1, [0, 0, 0], [0, 0, 0], heartOpts);
+
+            heart = BeatingHeart(obj.time_s, HR_bpm, EDV_ml, ESV_ml, 1, [0, 0, 0], [0, 0, 0], heartOpts);
         end
 
-        function breathingLung = createBreathingLung(~, t_row, heart)
-            f_bpm = 12 * ones(1, numel(t_row));
-            VT_L = 0.4 * ones(1, numel(t_row));
-            Vres_L = 0.8 * ones(1, numel(t_row));
-            Vbase_L = 1.5 * ones(1, numel(t_row));
-            bellyFrac = 0.6 * ones(1, numel(t_row));
-            inspFrac = 0.4 * ones(1, numel(t_row));
+        function breathingLung = createBreathingLung(obj, heart)
+            f_bpm = 12 * ones(1, numel(obj.time_s));
+            VT_L = 0.4 * ones(1, numel(obj.time_s));
+            Vres_L = 0.8 * ones(1, numel(obj.time_s));
+            Vbase_L = 1.5 * ones(1, numel(obj.time_s));
+            bellyFrac = 0.6 * ones(1, numel(obj.time_s));
+            inspFrac = 0.4 * ones(1, numel(obj.time_s));
 
             heart_lr_mm = heart.getA();
             heartThickness_mm = 8;
             spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
-            breathingLung = BreathingLung(t_row, f_bpm, VT_L, Vres_L, ...
+            breathingLung = BreathingLung(obj.time_s, f_bpm, VT_L, Vres_L, ...
                 Vbase_L, bellyFrac, inspFrac, spacingBetweenLungs, ...
                 0.1, [0, 0, 0], [0, 0, 0]);
         end
@@ -85,8 +110,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
             fatThickness_mm = 10;
             chestApOuterFcn = @(time) chestApInnerFcn(time) + fatThickness_mm;
             chestLrOuterFcn = @(time) chestLrInnerFcn(time) + fatThickness_mm;
-            chest_ap_outer_mm = chestApOuterFcn(t_row);
-            chest_lr_outer_mm = chestLrOuterFcn(t_row);
+            chest_ap_outer_mm = chestApOuterFcn(obj.time_s);
+            chest_lr_outer_mm = chestLrOuterFcn(obj.time_s);
             fat_outer = AnalyticalEllipticalCylinder3D(chest_lr_outer_mm, ...
                 chest_ap_outer_mm, 0.9 * phantomDepth_mm, [], [0, 0, 0], [0, 0, 0]);
 
@@ -117,15 +142,15 @@ classdef BreastPhantom < MultipleMaterialPhantom
             breastCenter = [0, 0.5 * breast_depth_mm, 0];
         end
 
-        function enhancingVessel = createEnhancingVessel(~, t_row, rightBreastCenter)
+        function enhancingVessel = createEnhancingVessel(obj, rightBreastCenter)
             vesselRadius_mm = 2.5;
             total_vessel_length_mm = 100;
             rollPitchYaw = [0, 90, 90];
 
             totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
-            V_contrast_mm3 = totalVolume_mm3 * ones(numel(t_row), 1);
+            V_contrast_mm3 = totalVolume_mm3 * ones(numel(obj.time_s), 1);
 
-            enhancingVessel = EnhancingVessel(t_row.', total_vessel_length_mm, 2.5, 0.4, ...
+            enhancingVessel = EnhancingVessel(obj.time_s.', total_vessel_length_mm, 2.5, 0.4, ...
                 vesselRadius_mm, V_contrast_mm3, rightBreastCenter, rollPitchYaw);
         end
     end

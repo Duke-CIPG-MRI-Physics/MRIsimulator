@@ -75,9 +75,7 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     if any(diff(t_s) < 0)
         error('t_s must be strictly increasing.');
     end
-    if any([numel(HR_bpm), numel(EDV_ml), numel(ESV_ml)] ~= N)
-        error('All input vectors must have the same length.');
-    end
+    
     if any(ESV_ml >= EDV_ml)
         error('ESV_ml must be < EDV_ml at all time points.');
     end
@@ -89,9 +87,11 @@ function [V_ml, a_mm, b_mm, c_mm, phase, eps_L, eps_C] = ...
     phase = zeros(1, N);    % [rad]
     dt = diff(t_s);
 
-    for k = 2:N
-        phase(k) = phase(k-1) + 2*pi*f_Hz(k-1)*dt(k-1);
-    end
+    incrementalPhase = 2*pi*f_Hz.*dt;
+    phase = [0 cumsum(incrementalPhase)];
+    % for k = 2:N
+    %     phase(k) = phase(k-1) + 2*pi*f_Hz(k-1)*dt(k-1);
+    % end
 
     % Within-cycle phase φ in [0,1)
     phi_cycle = mod(phase, 2*pi) / (2*pi);   % dimensionless
