@@ -54,8 +54,8 @@ z_ax  = z_vec(midVol(3)) * ones(size(x_ax));
 y_cor = y_vec(midVol(2)) * ones(size(x_cor));
 
 % Get fractional volumes (0–1)
-frac_ax  = sph.estimateImageShape(x_ax, y_ax, z_ax);
-frac_cor = sph.estimateImageShape(x_cor, y_cor, z_cor);
+frac_ax  = sph.estimateImage(x_ax, y_ax, z_ax);
+frac_cor = sph.estimateImage(x_cor, y_cor, z_cor);
 
 % Normalize (optional, matches FFT-range)
 frac_ax  = frac_ax / max(frac_ax(:));

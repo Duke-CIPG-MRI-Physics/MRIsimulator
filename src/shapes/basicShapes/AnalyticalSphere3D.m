@@ -51,7 +51,9 @@ classdef AnalyticalSphere3D < AnalyticalEllipsoid3D
                     'Sphere shape expects radius_mm or matching ellipsoid fields.');
             end
 
-            params = obj.validateParameters@AnalyticalEllipsoid3D(ellipsoidParams);
+            % Don't return the ellipsoid parameters, return the sphere
+            % parameters
+            ellipsoidParams = obj.validateParameters@AnalyticalEllipsoid3D(ellipsoidParams);
         end
         
         function params = getAxesParameters(obj, varargin)
