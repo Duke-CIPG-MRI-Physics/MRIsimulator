@@ -15,8 +15,6 @@ clc;
 clear all;
 close all
 
-profile on;
-
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [300 300 300];               % 300 mm cube
 N      = [150 150 80];                % [Nx Ny Nz]
@@ -98,7 +96,6 @@ for iShape = 1:nShapes
     sgtitle([thisClassName ': k-space rendered over time'],'FontSize',16);
 
 end
-profile viewer
 
     function boxParams = calcBoxParams(t)
         boxParams = struct('Lx_mm', 60 - 10*t/max(t(:)), ...

@@ -23,39 +23,41 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
          
 
-            % Create heart
-            heart = obj.createHeart();
+            %% Create heart
+            cardiacOpts = struct('HR_bpm', 70, ...
+                'EDV_ml', 150,...
+                'ESV_ml', 75,...
+                'systFrac', 0.35, ...
+                'q_ED', 50/27, ...
+                'GLS_peak', -0.20, ...
+                'GCS_peak', -0.25);
+            heartIntensity = 1;
+            centered = [0, 0, 0];
+            notRotated = [0, 0, 0];
 
-            breathingLung = obj.createBreathingLung(heart);
-            thorax = obj.createThorax(heart, breathingLung);
+            cardiacParams = @()cardiac_ellipsoid_waveform(t_s, cardiacOpts);
+            heart = AnalyticalEllipsoid3D(cardiacParams, heartIntensity, centered, notRotated);
 
-            [breastLeft, breastRight, breastCenter, rightBreastCenter] = obj.createBreastGeometry();
-            enhancingVessel = obj.createEnhancingVessel(obj.time_s, rightBreastCenter);
 
-            leftAndRightBreastTissue = CompositeAnalyticalShape3D([breastRight, breastLeft], enhancingVessel, ...
-                0.5, [0, 0, 0], [0, 0, 0]);
+            % heart = obj.createHeart();
+            % 
+            % breathingLung = obj.createBreathingLung(heart);
+            % thorax = obj.createThorax(heart, breathingLung);
+            % 
+            % [breastLeft, breastRight, breastCenter, rightBreastCenter] = obj.createBreastGeometry();
+            % enhancingVessel = obj.createEnhancingVessel(obj.time_s, rightBreastCenter);
+            % 
+            % leftAndRightBreastTissue = CompositeAnalyticalShape3D([breastRight, breastLeft], enhancingVessel, ...
+            %     0.5, [0, 0, 0], [0, 0, 0]);
+            % 
+            % bothBreasts = MultipleMaterialPhantom([leftAndRightBreastTissue, enhancingVessel], ...
+            %     breastCenter, [0, 0, 0]);
 
-            bothBreasts = MultipleMaterialPhantom([leftAndRightBreastTissue, enhancingVessel], ...
-                breastCenter, [0, 0, 0]);
-
-            obj.setShapes([thorax, bothBreasts]);
+            obj.setShapes([heart]);
         end
     end
 
     methods (Access = private)
-        function heart = createHeart(obj)
-            heartOpts = struct('systFrac', 0.35, ...
-                'q_ED', 50/27, ...
-                'GLS_peak', -0.20, ...
-                'GCS_peak', -0.25);
-            HR_bpm = 70 * ones(1, numel(obj.time_s));
-            EDV_ml = 150 * ones(1, numel(obj.time_s));
-            ESV_ml = 75  * ones(1, numel(obj.time_s));
-
-
-            heart = BeatingHeart(obj.time_s, HR_bpm, EDV_ml, ESV_ml, 1, [0, 0, 0], [0, 0, 0], heartOpts);
-        end
-
         function breathingLung = createBreathingLung(obj, heart)
             f_bpm = 12 * ones(1, numel(obj.time_s));
             VT_L = 0.4 * ones(1, numel(obj.time_s));
