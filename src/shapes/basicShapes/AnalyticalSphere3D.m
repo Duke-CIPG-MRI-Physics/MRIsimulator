@@ -19,41 +19,64 @@ classdef AnalyticalSphere3D < AnalyticalEllipsoid3D
                 shapeParameters = struct('radius_mm', 1);
             end
 
-            obj@AnalyticalEllipsoid3D(shapeParameters, intensity, center, rollPitchYaw);            
-        end
-
-        % function setShapeParameters(obj, shapeParameters)
-        %     if isa(shapeParameters, 'function_handle')
-        %         radiusFunction = shapeParameters;
-        %         axesFunction = @(varargin) obj.radiusFunctionToAxes(radiusFunction, varargin{:});
-        %         obj.setShapeParameters@AnalyticalShape3D(axesFunction);
-        %         return;
-        %     end
-        % 
-        %     if ~isstruct(shapeParameters)
-        %         shapeParameters = struct('radius_mm', shapeParameters);
-        %     end
-        % 
-        %     axesStruct = obj.radiusStructToAxes(shapeParameters);
-        %     obj.setShapeParameters@AnalyticalShape3D(axesStruct);
-        % end
-
-        function params = getShapeParameters(obj, varargin)
-            axesParams = obj.getShapeParameters@AnalyticalShape3D(varargin{:});
-            params = struct('radius_mm', axesParams.a_mm);
+            obj@AnalyticalEllipsoid3D(shapeParameters, intensity, center, rollPitchYaw);
         end
     end
 
     methods (Access = protected)
+        function params = validateParameters(obj, params)
+            % validateParameters  Accept radius-based parameters and map to axes.
+            %   Supports numeric radii, structs with radius_mm, or ellipsoid
+            %   axis structs with equal components.
+
+            if ~isstruct(params)
+                validateattributes(params, {'numeric'}, {'real', 'nonnegative'});
+                params = struct('radius_mm', params);
+            end
+
+            if isfield(params, 'radius_mm')
+                ellipsoidParams = obj.radiusStructToAxes(params);
+            elseif all(isfield(params, {'a_mm', 'b_mm', 'c_mm'}))
+                if ~(isequal(params.a_mm, params.b_mm) && isequal(params.a_mm, params.c_mm))
+                    error('AnalyticalSphere3D:ShapeParameters:AxesMustMatch', ...
+                        'Sphere parameters must have equal a_mm, b_mm, and c_mm values.');
+                end
+            else
+                error('AnalyticalSphere3D:ShapeParameters:MissingRadius', ...
+                    'Sphere shape expects radius_mm or matching ellipsoid fields.');
+            end
+
+            params = obj.validateParameters@AnalyticalEllipsoid3D(ellipsoidParams);
+        end
+        
         function params = getAxesParameters(obj, varargin)
-            params = obj.radiusFunctionToAxes(obj.getShapeParameters(varargin{:}));
+            if isa(obj.shapeParameters, 'function_handle')
+                params = obj.radiusFunctionToAxes(obj.shapeParameters, varargin{:});
+            else
+                params = obj.radiusStructToAxes(obj.shapeParameters);
+            end
+
+            params = obj.validateParameters(params);
         end
 
-        function params = radiusFunctionToAxes(~, radiusFunction, varargin)
-            radiusValues = radiusFunction(varargin{:});
-            if isstruct(radiusValues) && isfield(radiusValues, 'radius_mm')
-                radiusValues = radiusValues.radius_mm;
+        function params = radiusFunctionToAxes(~, radiusInput, varargin)
+            if isa(radiusInput, 'function_handle')
+                radiusValues = radiusInput(varargin{:});
+            else
+                radiusValues = radiusInput;
             end
+
+            if isstruct(radiusValues)
+                if isfield(radiusValues, 'radius_mm')
+                    radiusValues = radiusValues.radius_mm;
+                elseif all(isfield(radiusValues, {'a_mm', 'b_mm', 'c_mm'}))
+                    radiusValues = radiusValues.a_mm;
+                else
+                    error('AnalyticalSphere3D:ShapeParameters:MissingRadius', ...
+                        'Sphere shape expects radius_mm or matching ellipsoid fields.');
+                end
+            end
+
             params = struct('a_mm', radiusValues, 'b_mm', radiusValues, 'c_mm', radiusValues);
         end
 
