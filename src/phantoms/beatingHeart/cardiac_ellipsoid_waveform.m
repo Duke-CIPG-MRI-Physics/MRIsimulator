@@ -1,23 +1,23 @@
-function [a_mm, b_mm, phase] = ...
-    cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml, ESV_ml, opts)
+function [a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, opts)
 %CARDIAC_ELLIPSOID_WAVEFORM  LV ellipsoid semi-axes driven by volume + strain.
 %
-%   [a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml,
-%       ESV_ml, opts)
+%   [a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, opts)
 %
-%   Inputs (1xN vectors or scalars broadcasted to length N):
-%       t_s     - time [s], strictly increasing (length N)
-%       HR_bpm  - heart rate [beats/min] at each time sample
-%       EDV_ml  - LV end-diastolic volume [mL] at each time (max volume)
-%       ESV_ml  - LV end-systolic volume [mL] at each time (min volume)
+%   Inputs:
+%       t_s   - time [s], strictly increasing (length N)
+%       opts  - struct with required fields HR_bpm, EDV_ml, ESV_ml. Each can be
+%               a scalar, vector (length N), or matrix with N columns. For
+%               matrices, rows correspond to independent cardiac waveforms. The
+%               following optional fields set model parameters:
+%                   .systFrac  - systolic fraction of R-R interval (0<beta<1),
+%                                default 0.35
+%                   .q_ED      - ED aspect ratio a0/b0 (long/short), default 2.5
+%                   .GLS_peak  - peak global longitudinal strain (negative),
+%                                default -0.20
+%                   .GCS_peak  - peak global circumferential strain (negative),
+%                                default -0.25
 %
-%   opts (struct, optional fields):
-%       .systFrac  - systolic fraction of R-R interval (0<beta<1), default 0.35
-%       .q_ED      - ED aspect ratio a0/b0 (long/short), default 2.5
-%       .GLS_peak  - peak global longitudinal strain (negative), default -0.20
-%       .GCS_peak  - peak global circumferential strain (negative), default -0.25
-%
-%   Outputs:
+%   Outputs (matching the number of waveform rows in opts inputs):
 %       a_mm   - ellipsoid semi-axis (radius) along LV long-axis [mm] vs time
 %       b_mm   - ellipsoid short semi-axis (radius) [mm] vs time
 %       phase  - cumulative cardiac phase [cycles], built from HR(t)
@@ -38,11 +38,16 @@ function [a_mm, b_mm, phase] = ...
 %       chunking so the chunk calculations minimally affect memory use.
 
     arguments
-        t_s    (1,:) double {mustBeReal, mustBeFinite}
-        HR_bpm (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-        EDV_ml (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
-        ESV_ml (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
+        t_s (1,:) double {mustBeReal, mustBeFinite}
         opts struct = struct()
+    end
+
+    requiredFields = {'HR_bpm', 'EDV_ml', 'ESV_ml'};
+    for idxField = 1:numel(requiredFields)
+        if ~isfield(opts, requiredFields{idxField}) || isempty(opts.(requiredFields{idxField}))
+            error('cardiac_ellipsoid_waveform:MissingField', ...
+                'opts.%s is required and cannot be empty.', requiredFields{idxField});
+        end
     end
 
     % ---------------------------------------------------------------------
@@ -66,6 +71,10 @@ function [a_mm, b_mm, phase] = ...
     GLS_peak = opts.GLS_peak;
     GCS_peak = opts.GCS_peak;
 
+    HR_bpm = opts.HR_bpm;
+    EDV_ml = opts.EDV_ml;
+    ESV_ml = opts.ESV_ml;
+
     if beta <= 0 || beta >= 1
         error('opts.systFrac must be in (0,1).');
     end
@@ -79,11 +88,19 @@ function [a_mm, b_mm, phase] = ...
         error('t_s must be strictly increasing.');
     end
 
-    HR_bpm = validateLengthOrScalar(HR_bpm, numSamples, 'HR_bpm', numSamples - 1);
-    EDV_ml = validateLengthOrScalar(EDV_ml, numSamples, 'EDV_ml');
-    ESV_ml = validateLengthOrScalar(ESV_ml, numSamples, 'ESV_ml');
+    [HR_bpm, HR_rows] = validateLengthOrScalar(HR_bpm, numSamples, 'opts.HR_bpm', numSamples - 1);
+    [EDV_ml, EDV_rows] = validateLengthOrScalar(EDV_ml, numSamples, 'opts.EDV_ml');
+    [ESV_ml, ESV_rows] = validateLengthOrScalar(ESV_ml, numSamples, 'opts.ESV_ml');
 
-    if any(ESV_ml >= EDV_ml)
+    numChannels = max([1, HR_rows, EDV_rows, ESV_rows]);
+
+    ensureChannelCompatibility(HR_rows, numChannels, 'opts.HR_bpm');
+    ensureChannelCompatibility(EDV_rows, numChannels, 'opts.EDV_ml');
+    ensureChannelCompatibility(ESV_rows, numChannels, 'opts.ESV_ml');
+
+    EDV_full = extractParamSlice(EDV_ml, 1:numSamples, numChannels);
+    ESV_full = extractParamSlice(ESV_ml, 1:numSamples, numChannels);
+    if any(ESV_full >= EDV_full, 'all')
         error('ESV_ml must be < EDV_ml at all time points.');
     end
 
@@ -92,12 +109,11 @@ function [a_mm, b_mm, phase] = ...
     % ---------------------------------------------------------------------
     f_Hz = HR_bpm / 60;     % [Hz]
 
-    % Use HR samples per interval (N-1). For scalar HR, MATLAB broadcasts the
-    % multiplication; for vectors we trim the unused last element to match dt.
-    f_interval = buildIntervalFrequencies(f_Hz, numel(dt), numSamples);
+    f_interval = buildIntervalFrequencies(f_Hz, numel(dt), numSamples, numChannels);
 
-    phase = mod([0 cumsum(2*pi .* f_interval .* dt)], 2*pi) / (2*pi);
-    clear dt f_interval;
+    phaseIncrement = 2*pi .* f_interval .* dt;
+    phase = mod([zeros(numChannels, 1), cumsum(phaseIncrement, 2)], 2*pi) / (2*pi);
+    clear dt f_interval phaseIncrement;
     
     % ---------------------------------------------------------------------
     % 2) Volume waveform via piecewise half-cosines
@@ -105,26 +121,24 @@ function [a_mm, b_mm, phase] = ...
     % Chunk calculations to ~0.001 Gb of temporary data so memory impact is
     % minimal.
     chunkSize = 15625;
-    V_ED = -Inf;
+    V_ED = -Inf(numChannels, 1);
 
     for idxStart = 1:chunkSize:numSamples
         idxEnd = min(idxStart + chunkSize - 1, numSamples);
         idx = idxStart:idxEnd;
 
-        waveformChunk = zeros(1, numel(idx));
-        eps_L_chunk = zeros(1, numel(idx));
-        eps_C_chunk = zeros(1, numel(idx));
+        waveformChunk = zeros(numChannels, numel(idx));
+        eps_L_chunk = zeros(numChannels, numel(idx));
+        eps_C_chunk = zeros(numChannels, numel(idx));
 
         [waveformChunk, eps_L_chunk, eps_C_chunk] = buildWaveformAndStrain( ...
-            phase(idx), beta, GLS_peak, GCS_peak, waveformChunk, ...
+            phase(:, idx), beta, GLS_peak, GCS_peak, waveformChunk, ...
             eps_L_chunk, eps_C_chunk);
 
-        V_chunk = computeVolumeChunk(EDV_ml, ESV_ml, idx, waveformChunk);
+        V_chunk = computeVolumeChunk(EDV_ml, ESV_ml, idx, waveformChunk, numChannels);
 
-        V_chunk_max = max(V_chunk);
-        if V_chunk_max > V_ED
-            V_ED = V_chunk_max;
-        end
+        V_chunk_max = max(V_chunk, [], 2);
+        V_ED = max(V_ED, V_chunk_max);
     end
 
     % ---------------------------------------------------------------------
@@ -133,32 +147,32 @@ function [a_mm, b_mm, phase] = ...
 
     % Prolate spheroid: a0 = q * b0, c0 = b0
     % V_ED = (4/3)*pi*a0*b0^2 = (4/3)*pi*q*b0^3  =>  solve for b0
-    b0 = ((3*V_ED) / (4*pi*q))^(1/3);
-    a0 = q * b0;
+    b0 = ((3*V_ED) / (4*pi*q)).^(1/3);
+    a0 = q .* b0;
     % c0 = b0;  % implied
 
     % ---------------------------------------------------------------------
     % 4-5) Strain-driven axes + isotropic scale factor (chunked)
     % ---------------------------------------------------------------------
-    a_mm = zeros(1, numSamples);
-    b_mm = zeros(1, numSamples);
+    a_mm = zeros(numChannels, numSamples);
+    b_mm = zeros(numChannels, numSamples);
 
     for idxStart = 1:chunkSize:numSamples
         idxEnd = min(idxStart + chunkSize - 1, numSamples);
         idx = idxStart:idxEnd;
 
-        waveformChunk = zeros(1, numel(idx));
-        eps_L_chunk = zeros(1, numel(idx));
-        eps_C_chunk = zeros(1, numel(idx));
+        waveformChunk = zeros(numChannels, numel(idx));
+        eps_L_chunk = zeros(numChannels, numel(idx));
+        eps_C_chunk = zeros(numChannels, numel(idx));
 
         [waveformChunk, eps_L_chunk, eps_C_chunk] = buildWaveformAndStrain( ...
-            phase(idx), beta, GLS_peak, GCS_peak, waveformChunk, ...
+            phase(:, idx), beta, GLS_peak, GCS_peak, waveformChunk, ...
             eps_L_chunk, eps_C_chunk);
 
-        V_chunk = computeVolumeChunk(EDV_ml, ESV_ml, idx, waveformChunk);
+        V_chunk = computeVolumeChunk(EDV_ml, ESV_ml, idx, waveformChunk, numChannels);
 
-        a_hat_chunk = a0 * (1 + eps_L_chunk);
-        b_hat_chunk = b0 * (1 + eps_C_chunk);
+        a_hat_chunk = a0 .* (1 + eps_L_chunk);
+        b_hat_chunk = b0 .* (1 + eps_C_chunk);
         V_hat_chunk = (4/3)*pi .* a_hat_chunk .* b_hat_chunk.^2;
 
         if any(V_hat_chunk <= 0)
@@ -173,52 +187,94 @@ function [a_mm, b_mm, phase] = ...
 end
 
 % -------------------------------------------------------------------------
-function vec = validateLengthOrScalar(vec, primaryLength, name, altLength)
-%VALIDATELENGTHORSCALAR  Ensure input is a row vector with accepted lengths.
+function [vec, numRows] = validateLengthOrScalar(vec, primaryLength, name, altLength)
+%VALIDATELENGTHORSCALAR  Ensure input is scalar, vector, or 2D with time in columns.
 
     if nargin < 4
         altLength = [];
     end
 
-    vec = vec(:)';
+    if isscalar(vec)
+        numRows = 0;
+        return;
+    end
+
     validLengths = [primaryLength, altLength];
     validLengths = validLengths(validLengths > 0);
-    if ~(isscalar(vec) || any(numel(vec) == validLengths))
-        if isempty(altLength)
-            error('%s must be scalar or have %d elements.', name, primaryLength);
-        else
-            error('%s must be scalar or have %d elements (or %d if specified per interval).', ...
-                name, primaryLength, primaryLength - 1);
+
+    if isvector(vec)
+        vec = reshape(vec, 1, numel(vec));
+        if ~ismember(numel(vec), validLengths)
+            if isempty(altLength)
+                error('%s must be scalar or have %d elements.', name, primaryLength);
+            else
+                error('%s must be scalar or have %d elements (or %d if specified per interval).', ...
+                    name, primaryLength, primaryLength - 1);
+            end
         end
+        numRows = 1;
+        return;
+    end
+
+    if ndims(vec) > 2
+        error('%s must be scalar, a vector, or a 2D matrix with time along one dimension.', name);
+    end
+
+    sz = size(vec);
+    if ismember(sz(2), validLengths)
+        numRows = sz(1);
+    elseif ismember(sz(1), validLengths) && sz(2) ~= sz(1)
+        vec = vec.';
+        numRows = size(vec, 1);
+    else
+        error('%s must have %d columns (or rows) matching t_s.', name, primaryLength);
     end
 end
 
 % -------------------------------------------------------------------------
-function f_interval = buildIntervalFrequencies(f_Hz, numIntervals, numSamples)
+function ensureChannelCompatibility(numRows, numChannels, name)
+%ENSURECHANNELCOMPATIBILITY  Verify channels align or can be broadcast.
+
+    if numRows > 1 && numRows ~= numChannels
+        error('%s must have %d rows (channels) or be scalar/1-row for broadcasting.', ...
+            name, numChannels);
+    end
+end
+
+% -------------------------------------------------------------------------
+function f_interval = buildIntervalFrequencies(f_Hz, numIntervals, numSamples, numChannels)
 %BUILDINTERVALFREQUENCIES  Align heart rate waveform with interval durations.
 
     if isscalar(f_Hz)
-        f_interval = f_Hz * ones(1, numIntervals);
+        f_interval = f_Hz * ones(numChannels, numIntervals);
         return;
     end
 
-    numSamplesProvided = numel(f_Hz);
+    hrRows = size(f_Hz, 1);
+    numSamplesProvided = size(f_Hz, 2);
     if numSamplesProvided == numIntervals
         f_interval = f_Hz;
     elseif numSamplesProvided == numSamples
-        f_interval = f_Hz(1:end-1);
+        f_interval = f_Hz(:, 1:end-1);
     else
         error(['HR_bpm must be scalar or have the same length as t_s or diff(t_s). ', ...
             'Received %d samples.'], numSamplesProvided);
     end
+
+    if hrRows == 1 && numChannels > 1
+        f_interval = repmat(f_interval, numChannels, 1);
+    elseif hrRows > 1 && hrRows ~= numChannels
+        error('opts.HR_bpm must have %d rows (channels) or be scalar/1-row for broadcasting.', ...
+            numChannels);
+    end
 end
 
 % -------------------------------------------------------------------------
-function V_chunk = computeVolumeChunk(EDV_ml, ESV_ml, idx, waveformChunk)
+function V_chunk = computeVolumeChunk(EDV_ml, ESV_ml, idx, waveformChunk, numChannels)
 %COMPUTEVOLUMECHUNK  Volume waveform in cubic meters for a chunk of indices.
 
-    EDV_slice = extractParamSlice(EDV_ml, idx);
-    ESV_slice = extractParamSlice(ESV_ml, idx);
+    EDV_slice = extractParamSlice(EDV_ml, idx, numChannels);
+    ESV_slice = extractParamSlice(ESV_ml, idx, numChannels);
     SV_ml = EDV_slice - ESV_slice;
     V_chunk = (ESV_slice + SV_ml .* waveformChunk) * 1e-6;
 end
@@ -232,14 +288,14 @@ function [waveformChunk, eps_L_chunk, eps_C_chunk] = buildWaveformAndStrain( ...
     systMask = (phaseChunk < beta);
     diasMask = ~systMask;
 
-    if any(systMask)
+    if any(systMask, 'all')
         f_syst = 0.5*(1 - cos(pi*phaseChunk(systMask) / beta));              % 0 -> 1
         waveformChunk(systMask) = 0.5*(1 + cos(pi*phaseChunk(systMask) / beta));
         eps_L_chunk(systMask) = GLS_peak * f_syst;
         eps_C_chunk(systMask) = GCS_peak * f_syst;
     end
 
-    if any(diasMask)
+    if any(diasMask, 'all')
         shiftedPhase = phaseChunk(diasMask) - beta;
         f_dias = 0.5*(1 + cos(pi * shiftedPhase / (1 - beta)));                   % 1 -> 0
         waveformChunk(diasMask) = 0.5*(1 - cos(pi * shiftedPhase / (1 - beta)));
@@ -249,12 +305,23 @@ function [waveformChunk, eps_L_chunk, eps_C_chunk] = buildWaveformAndStrain( ...
 end
 
 % -------------------------------------------------------------------------
-function slice = extractParamSlice(param, idx)
-%EXTRACTPARAMSLICE  Slice scalars or row vectors for the provided indices.
+function slice = extractParamSlice(param, idx, numChannels)
+%EXTRACTPARAMSLICE  Slice scalars or matrices for the provided indices.
 
     if isscalar(param)
-        slice = repmat(param, size(idx));
+        slice = repmat(param, numChannels, numel(idx));
+        return;
+    end
+
+    paramRows = size(param, 1);
+    baseSlice = param(:, idx);
+
+    if paramRows == 1 && numChannels > 1
+        slice = repmat(baseSlice, numChannels, 1);
+    elseif paramRows == numChannels
+        slice = baseSlice;
     else
-        slice = param(idx);
+        error('Parameter must have %d rows (channels) or be scalar/1-row for broadcasting.', ...
+            numChannels);
     end
 end
