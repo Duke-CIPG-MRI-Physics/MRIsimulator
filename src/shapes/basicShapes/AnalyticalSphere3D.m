@@ -29,6 +29,10 @@ classdef AnalyticalSphere3D < AnalyticalEllipsoid3D
             %   Supports numeric radii, structs with radius_mm, or ellipsoid
             %   axis structs with equal components.
 
+            if isa(params, 'function_handle')
+                params = params();
+            end
+
             if ~isstruct(params)
                 validateattributes(params, {'numeric'}, {'real', 'nonnegative'});
                 params = struct('radius_mm', params);
@@ -41,6 +45,7 @@ classdef AnalyticalSphere3D < AnalyticalEllipsoid3D
                     error('AnalyticalSphere3D:ShapeParameters:AxesMustMatch', ...
                         'Sphere parameters must have equal a_mm, b_mm, and c_mm values.');
                 end
+                ellipsoidParams = params;
             else
                 error('AnalyticalSphere3D:ShapeParameters:MissingRadius', ...
                     'Sphere shape expects radius_mm or matching ellipsoid fields.');

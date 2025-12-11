@@ -27,6 +27,10 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
 
     methods (Access = protected)
         function params = validateParameters(~, params)
+            if isa(params, 'function_handle')
+                params = params();
+            end
+
             if ~isstruct(params)
                 error('AnalyticalCylinder3D:ShapeParameters:InvalidType', ...
                     'Shape parameters must be provided as a struct.');
@@ -40,7 +44,7 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
                 end
             end
 
-            vectorLength = [];
+            vectorSize = [];
             for idx = 1:numel(required)
                 value = params.(required{idx});
                 validateattributes(value, {'numeric'}, {'real', 'nonnegative'});
@@ -50,12 +54,12 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
                 end
 
                 if ~isscalar(value)
-                    thisLength = numel(value);
-                    if isempty(vectorLength)
-                        vectorLength = thisLength;
-                    elseif thisLength ~= vectorLength
+                    thisSize = size(value);
+                    if isempty(vectorSize)
+                        vectorSize = thisSize;
+                    elseif ~isequal(thisSize, vectorSize)
                         error('AnalyticalCylinder3D:ShapeParameters:LengthMismatch', ...
-                            'Vector-valued radius/length must share the same length.');
+                            'Vector-valued radius/length must share the same size.');
                     end
                 end
             end
