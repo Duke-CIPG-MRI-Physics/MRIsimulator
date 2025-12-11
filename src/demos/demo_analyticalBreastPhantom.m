@@ -17,11 +17,7 @@ fprintf('Grid size : %d x %d x %d\n', N(1), N(2), N(3));
 
 %% 2) Configure acquisition ordering and timing
 freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
-dt = 4e-6;   % dwell time between frequency-encode samples [s]
-TR = 5e-3;   % time between starts of successive frequency-encode lines [s]
-
-[kOrderedIdx, tSamp] = orderRectilinearKspace(N, freq_phase_slice, dt, TR);
-t_s = 0*tSamp(:); % use sampling timestamps as the phantom time base
+[kOrderedIdx, ~] = orderRectilinearKspace(N, freq_phase_slice, 1, 1);
 
 encodingDimStr = {'freq:',', phase:',', slice:'};
 encodingFullStr = '';
@@ -51,7 +47,7 @@ ordKsx_ky = ky_vec(ky_orderedIdx)';
 ordKsx_kz = kz_vec(kz_orderedIdx)';
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-phantom = BreastPhantom(t_s);
+phantom = BreastPhantom(0);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
