@@ -1,6 +1,6 @@
 % demo_cardiac_waveform.m
 % Demo of time-varying LV ellipsoid geometry using the simplified interface
-%   of cardiac_ellipsoid_waveform (returns a, b, and phase only).
+%   of cardiac_ellipsoid_waveform (returns ellipsoidParams only).
 % The core waveform model now evaluates long time vectors in 15,625-sample
 % chunks (~0.001 Gb of temporaries) to limit memory use.
 %
@@ -30,8 +30,10 @@ EF    = SV_ml ./ cardiacOpts.EDV_ml;
 fprintf('Demo EF = %.1f %% (SV = %.1f mL, EDV = %.1f mL)\n', ...
     100 * EF(1), SV_ml(1), cardiacOpts.EDV_ml(1));
 
-%% 3) Run ellipsoid waveform model (new interface: a, b, phase)
-[a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, cardiacOpts); %#ok<NASGU>
+%% 3) Run ellipsoid waveform model (new interface: ellipsoid params)
+ellipsoidParams = cardiac_ellipsoid_waveform(t_s, cardiacOpts);
+a_mm = ellipsoidParams.a_mm;
+b_mm = ellipsoidParams.b_mm;
 
 %% 4) Visualization: ellipse outline + semi-axes vs time
 frameStep = 4;             % subsample frames to speed up animation (~N/4 frames)

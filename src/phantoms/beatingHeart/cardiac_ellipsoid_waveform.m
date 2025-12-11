@@ -1,7 +1,7 @@
-function [a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, opts)
+function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
 %CARDIAC_ELLIPSOID_WAVEFORM  LV ellipsoid semi-axes driven by volume + strain.
 %
-%   [a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, opts)
+%   ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
 %
 %   Inputs:
 %       t_s   - time [s], strictly increasing (length N)
@@ -18,9 +18,8 @@ function [a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, opts)
 %                                default -0.25
 %
 %   Outputs (matching the number of waveform rows in opts inputs):
-%       a_mm   - ellipsoid semi-axis (radius) along LV long-axis [mm] vs time
-%       b_mm   - ellipsoid short semi-axis (radius) [mm] vs time
-%       phase  - cumulative cardiac phase [cycles], built from HR(t)
+%       ellipsoidParams - struct with fields a_mm (long-axis radius),
+%                         b_mm (short-axis radius), c_mm (equal to b_mm) [mm]
 %
 %   Model:
 %       1) Build cumulative phase from instantaneous HR(t).
@@ -184,6 +183,9 @@ function [a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, opts)
         a_mm(idx) = 1000 .* lambda_chunk .* a_hat_chunk;
         b_mm(idx) = 1000 .* lambda_chunk .* b_hat_chunk;
     end
+
+    c_mm = b_mm;
+    ellipsoidParams = struct('a_mm', a_mm, 'b_mm', b_mm, 'c_mm', c_mm);
 end
 
 % -------------------------------------------------------------------------
