@@ -38,9 +38,23 @@ classdef BreastPhantom < MultipleMaterialPhantom
             cardiacParams = @()cardiac_ellipsoid_waveform(t_s, cardiacOpts);
             heart = AnalyticalEllipsoid3D(cardiacParams, heartIntensity, centered, notRotated);
 
+            %% Create lungs
+            f_bpm = 12;
+            VT_L = 0.4;
+            Vres_L = 0.8;
+            Vbase_L = 1.5;
+            bellyFrac = 0.6;
+            inspFrac = 0.4;
 
-            % heart = obj.createHeart();
-            % 
+            heartParams = heart.getShapeParameters();
+            heart_lr_mm = heartParams.a_mm;
+            heartThickness_mm = 8;
+            spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
+            breathingLung = BreathingLung(obj.time_s, f_bpm, VT_L, Vres_L, ...
+                Vbase_L, bellyFrac, inspFrac, spacingBetweenLungs, ...
+                0.1, [0, 0, 0], [0, 0, 0]);
+
+            
             % breathingLung = obj.createBreathingLung(heart);
             % thorax = obj.createThorax(heart, breathingLung);
             % 
