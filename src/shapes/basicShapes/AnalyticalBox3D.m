@@ -49,10 +49,6 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             for idx = 1:numel(required)
                 value = params.(required{idx});
                 validateattributes(value, {'numeric'}, {'real', 'nonnegative'});
-                if ~(isscalar(value) || isvector(value))
-                    error('AnalyticalBox3D:ShapeParameters:InvalidShape', ...
-                        '%s must be scalar or vector-valued.', required{idx});
-                end
 
                 if ~isscalar(value)
                     thisSize = size(value);
@@ -68,8 +64,7 @@ classdef AnalyticalBox3D < AnalyticalShape3D
 
         function S_body = kspaceBaseShape(obj, kx, ky, kz)
             params = obj.getShapeParameters();
-            vol = params.Lx_mm .* params.Ly_mm .* params.Lz_mm;
-            S_body = vol .* ...
+            S_body = params.Lx_mm .* params.Ly_mm .* params.Lz_mm .* ... % volume
                 sinc(kx .* params.Lx_mm) .* ...
                 sinc(ky .* params.Ly_mm) .* ...
                 sinc(kz .* params.Lz_mm);

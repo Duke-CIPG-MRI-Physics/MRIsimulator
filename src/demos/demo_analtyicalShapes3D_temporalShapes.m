@@ -47,7 +47,7 @@ center = [0 0 0];
 roll_pitch_yaw = [0, 15, 35];
 intensity = 1;
 
-t = 1:numel(kx);
+t_samples = reshape(1:numel(kx),size(kx));
 
 % boxParams = struct('Lx_mm', 60, 'Ly_mm', 40, 'Lz_mm', 20); % [mm];
 cylParams = struct('radius_mm', 60, 'length_mm', 80);
@@ -55,7 +55,7 @@ ellipParams = struct('a_mm', 140, 'b_mm', 100, 'c_mm', 70);
 ellipCylParams = struct('a_mm', 140, 'b_mm', 100, 'length_mm', 70);
 sphereParams = struct('radius_mm', 60);
 
-shapes = [AnalyticalBox3D(@()calcBoxParams(t), intensity, center, roll_pitch_yaw),...
+shapes = [AnalyticalBox3D(@()calcBoxParams(t_samples), intensity, center, roll_pitch_yaw),...
     AnalyticalCylinder3D(cylParams, intensity, center, roll_pitch_yaw),...
     AnalyticalEllipsoid3D(ellipParams, intensity, center, roll_pitch_yaw),...
     AnalyticalEllipticalCylinder3D(ellipCylParams, intensity, center, roll_pitch_yaw),...
@@ -77,51 +77,32 @@ for iShape = 1:nShapes
     fprintf('Performing inverse FFT...\n');
     img_viaKspace = fftshift(ifftn(ifftshift(K)));
 
-    % 7c) Calculate image using estimateImage
-    frac_ax  = thisShape.estimateImage(x_ax, y_ax, z_ax);
-    frac_cor = thisShape.estimateImage(x_cor, y_cor, z_cor);
-
     % 8) Visualization: *four* images
-    figure('Name',[thisClassName ': k-space rendered vs Rasterized'],'Color','w');
+    figure('Name',[thisClassName ': k-space rendered over time'],'Color','w');
 
     % --- Axial, FFT ---
-    subplot(2,2,1);
+    subplot(1,2,1);
     imagesc(x_vec, y_vec, abs(squeeze(img_viaKspace(:,:,midVol(3)))).');
     axis image; colormap gray; colorbar;
     set(gca,'YDir','normal');
     xlabel('x (mm)'); ylabel('y (mm)');
     title('Axial (k-space rendered)');
 
-    % --- Axial, Shape-rendered ---
-    subplot(2,2,2);
-    imagesc(x_vec, y_vec, frac_ax.');
-    axis image; colormap gray; colorbar;
-    set(gca,'YDir','normal');
-    xlabel('x (mm)'); ylabel('y (mm)');
-    title('Axial (Rasterized)');
-
     % --- Coronal, FFT ---
-    subplot(2,2,3);
+    subplot(1,2,2);
     imagesc(y_vec, z_vec, abs(squeeze(img_viaKspace(midVol(1),:,:))).');
     axis image; colormap gray; colorbar;
     set(gca,'YDir','normal');
     xlabel('y (mm)'); ylabel('z (mm)');
     title('Coronal (k-space rendered)');
 
-    % --- Coronal, Shape-rendered ---
-    subplot(2,2,4);
-    imagesc(y_vec, z_vec, frac_cor.');
-    axis image; colormap gray; colorbar;
-    set(gca,'YDir','normal');
-    xlabel('y (mm)'); ylabel('z (mm)');
-    title('Coronal (Rasterized)');
-
-    sgtitle([thisClassName ': k-space rendered vs Rasterized'],'FontSize',16);
+    sgtitle([thisClassName ': k-space rendered over time'],'FontSize',16);
 
 end
 
 
+
     function boxParams = calcBoxParams(t)
-        boxParams = struct('Lx_mm', 60 + 10*t/max(t(:)), 'Ly_mm', 40-10*t/max(t(:)), 'Lz_mm', 20*ones(size(t))); % [mm];
+        boxParams = struct('Lx_mm', 60 - 10*t/max(t(:)), 'Ly_mm', 40+70*t/max(t(:)), 'Lz_mm', 20*ones(size(t))); % [mm];
     end
 end
