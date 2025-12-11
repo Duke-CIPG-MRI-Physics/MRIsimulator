@@ -1,7 +1,7 @@
-function visualize_lung_ellipsoid_waveform(t_s, V_L, R_mm, H_mm, B_phase, visOpts)
-%VISUALIZE_LUNG_ELLIPSOID_WAVEFORM  Animate simple lung ellipsoids + circles + V(t).
+function displayBreathingMotion(t_s, V_L, R_mm, H_mm, B_phase, visOpts)
+%DISPLAYBREATHINGMOTION  Animate simple lung ellipsoids + circles + V(t).
 %
-%   visualize_lung_ellipsoid_waveform(t_s, V_L, R_mm, H_mm, B_phase, visOpts)
+%   displayBreathingMotion(t_s, V_L, R_mm, H_mm, B_phase, visOpts)
 %
 %   Inputs:
 %       t_s     - time [s], 1xN

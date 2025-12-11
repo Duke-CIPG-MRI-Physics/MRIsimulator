@@ -36,6 +36,63 @@ opts.GCS_peak  = -0.25;   % peak circumferential strain (GCS)
 %% 3) Run ellipsoid waveform model (new interface: a, b, phase)
 [a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml, ESV_ml, opts); %#ok<NASGU>
 
-%% 4) Visualization via helper
-visOpts.frameStep = 4;    % subsample frames to speed up animation (~N/4 frames)
-visualize_cardiac_ellipsoid_waveform(t_s, a_mm, b_mm, visOpts);
+%% 4) Visualization: ellipse outline + semi-axes vs time
+frameStep = 4;             % subsample frames to speed up animation (~N/4 frames)
+nTheta    = 200;           % angular resolution for ellipse
+
+a_cm = a_mm / 10;          % convert to cm for plotting
+b_cm = b_mm / 10;
+
+theta = linspace(0, 2*pi, nTheta);
+
+% Axis limits
+maxA = max(a_cm);
+maxB = max(b_cm);
+pad = 1.2;
+
+figure('Name','Cardiac ellipsoid (simplified)','Color','w');
+tlo = tiledlayout(2,1,'TileSpacing','compact','Padding','compact');
+
+% (1) Coronal ellipse outline (x = b, y = a)
+axEll = nexttile(tlo, 1);
+hold(axEll, 'on');
+x0 = b_cm(1) * cos(theta);
+y0 = a_cm(1) * sin(theta);
+hEll = plot(axEll, x0, y0, 'b', 'LineWidth', 2);
+axis(axEll, 'equal');
+xlim(axEll, pad * [-maxB, maxB]);
+ylim(axEll, pad * [-maxA, maxA]);
+xlabel(axEll, 'Left–Right [cm]');
+ylabel(axEll, 'Long-axis [cm]');
+title(axEll, 'Ellipsoid cross-section');
+grid(axEll, 'on');
+
+% (2) Semi-axes vs time with moving cursor
+axAxes = nexttile(tlo, 2);
+hold(axAxes, 'on');
+plot(axAxes, t_s, a_cm, 'LineWidth', 1.5, 'DisplayName', 'a (long)');
+plot(axAxes, t_s, b_cm, 'LineWidth', 1.5, 'DisplayName', 'b (short)');
+hPointA = plot(axAxes, t_s(1), a_cm(1), 'ok', 'MarkerFaceColor', 'k', ...
+    'MarkerSize', 6, 'DisplayName', 'Cursor a');
+hPointB = plot(axAxes, t_s(1), b_cm(1), 'or', 'MarkerFaceColor', 'r', ...
+    'MarkerSize', 6, 'DisplayName', 'Cursor b');
+xlabel(axAxes, 'Time [s]');
+ylabel(axAxes, 'Semi-axis [cm]');
+title(axAxes, 'Semi-axes vs time');
+legend(axAxes, 'Location', 'best');
+grid(axAxes, 'on');
+
+% Animation loop
+for k = 1:frameStep:numel(t_s)
+    ak = a_cm(k);
+    bk = b_cm(k);
+
+    xk = bk * cos(theta);
+    yk = ak * sin(theta);
+    set(hEll, 'XData', xk, 'YData', yk);
+
+    set(hPointA, 'XData', t_s(k), 'YData', ak);
+    set(hPointB, 'XData', t_s(k), 'YData', bk);
+
+    drawnow;
+end

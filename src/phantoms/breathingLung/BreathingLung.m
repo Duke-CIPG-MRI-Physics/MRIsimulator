@@ -1,7 +1,7 @@
 classdef BreathingLung < CompositeAnalyticalShape3D
     % BreathingLung
     %   Composite of two breathing lungs modeled as ellipsoids whose
-    %   geometry follows lung_ellipsoid_waveform.
+    %   geometry follows computeBreathingMotionEllipsoid.
     %
     %   Constructor:
     %       obj = BreathingLung(t_s, f_bpm, VT_L, Vres_L, Vbase_L, ...
@@ -55,7 +55,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
                 rollPitchYaw (1,3) double {mustBeFinite} = [0 0 0]
             end
 
-            [~, R_mm, H_mm] = lung_ellipsoid_waveform(t_s, f_bpm, VT_L, ...
+            [~, R_mm, H_mm] = computeBreathingMotionEllipsoid(t_s, f_bpm, VT_L, ...
                 Vres_L, Vbase_L, bellyFrac, inspFrac);
 
 
