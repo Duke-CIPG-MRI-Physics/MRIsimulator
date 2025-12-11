@@ -198,6 +198,15 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 percent = percent + obj.shapes(idx).percentInsideBody(xb, yb, zb);
             end
         end
+
+        function params = validateParameters(~, params)
+            % validateParameters  MultipleMaterialPhantom has no tunable
+            % shape parameters; ensure a struct is always returned.
+            if isempty(params)
+                params = struct();
+                return;
+            end
+        end
   
     end
 
