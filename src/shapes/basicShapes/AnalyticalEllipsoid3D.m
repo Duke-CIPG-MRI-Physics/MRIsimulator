@@ -47,10 +47,6 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
             for idx = 1:numel(required)
                 value = params.(required{idx});
                 validateattributes(value, {'numeric'}, {'real', 'nonnegative'});
-                if ~(isscalar(value) || isvector(value))
-                    error('AnalyticalEllipsoid3D:ShapeParameters:InvalidShape', ...
-                        '%s must be scalar or vector-valued.', required{idx});
-                end
 
                 if ~isscalar(value)
                     thisSize = size(value);
@@ -75,7 +71,12 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
 
             vol = (4/3) * pi .* params.a_mm .* params.b_mm .* params.c_mm;
             S_body = vol .* 3 .* numerator ./ denom;
-            S_body(kScaled == 0) = vol;
+            if(isscalar(vol))
+                S_body(kScaled == 0) = vol;
+            else
+                S_body(kScaled == 0) = vol(kScaled == 0);
+            end
+
         end
 
         function percent = percentInsideBody(obj, xb, yb, zb)

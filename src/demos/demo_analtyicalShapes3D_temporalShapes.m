@@ -11,6 +11,11 @@
 %          (B) Geometry-based “exact shape” rendering
 %
 function demo_analtyicalShapes3D_temporalShapes()
+clc; 
+clear all;
+close all
+
+profile on;
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [300 300 300];               % 300 mm cube
@@ -49,17 +54,11 @@ intensity = 1;
 
 t_samples = reshape(1:numel(kx),size(kx));
 
-% boxParams = struct('Lx_mm', 60, 'Ly_mm', 40, 'Lz_mm', 20); % [mm];
-cylParams = struct('radius_mm', 60, 'length_mm', 80);
-ellipParams = struct('a_mm', 140, 'b_mm', 100, 'c_mm', 70);
-ellipCylParams = struct('a_mm', 140, 'b_mm', 100, 'length_mm', 70);
-sphereParams = struct('radius_mm', 60);
-
 shapes = [AnalyticalBox3D(@()calcBoxParams(t_samples), intensity, center, roll_pitch_yaw),...
-    AnalyticalCylinder3D(cylParams, intensity, center, roll_pitch_yaw),...
-    AnalyticalEllipsoid3D(ellipParams, intensity, center, roll_pitch_yaw),...
-    AnalyticalEllipticalCylinder3D(ellipCylParams, intensity, center, roll_pitch_yaw),...
-    AnalyticalSphere3D(sphereParams, intensity, center, roll_pitch_yaw)];
+    AnalyticalCylinder3D(@()calcCylinderParams(t_samples), intensity, center, roll_pitch_yaw),...
+    AnalyticalEllipsoid3D(@()calcEllipsoidParams(t_samples), intensity, center, roll_pitch_yaw),...
+    AnalyticalEllipticalCylinder3D(@()calcEllipticalCylinderParams(t_samples), intensity, center, roll_pitch_yaw),...
+    AnalyticalSphere3D(@()calcSphereParams(t_samples), intensity, center, roll_pitch_yaw)];
 
 %% 7) Loop through shapes
 nShapes = length(shapes);
@@ -99,10 +98,34 @@ for iShape = 1:nShapes
     sgtitle([thisClassName ': k-space rendered over time'],'FontSize',16);
 
 end
-
-
+profile viewer
 
     function boxParams = calcBoxParams(t)
-        boxParams = struct('Lx_mm', 60 - 10*t/max(t(:)), 'Ly_mm', 40+70*t/max(t(:)), 'Lz_mm', 20*ones(size(t))); % [mm];
+        boxParams = struct('Lx_mm', 60 - 10*t/max(t(:)), ...
+            'Ly_mm', 40+70*t/max(t(:)), ...
+            'Lz_mm', 20*ones(size(t))); % [mm];
+    end
+
+    function params = calcCylinderParams(t)
+        params = struct('radius_mm', 60 - 20*(t/max(t(:))), ... % linearly taper radius
+            'length_mm', 80 + 20*(t/max(t(:)))); % extend length over time
+    end
+
+    function params = calcEllipsoidParams(t)
+        growth = -0.5 * sin(2*pi*t/max(t(:)));
+        params = struct('a_mm', 140 .* (1 + growth), ...
+            'b_mm', 100 .* (1 - 0.3*growth), ...
+            'c_mm', 70 .* (1 + 0.2*growth));
+    end
+
+    function params = calcEllipticalCylinderParams(t)
+        oscillation = 0.4 * sin(2*pi*t/max(t(:)));
+        params = struct('a_mm', 140 .* (1 + oscillation), ...
+            'b_mm', 100 .* (1 - oscillation), ...
+            'length_mm', 70 .* (1 + 0.25*oscillation));
+    end
+
+    function params = calcSphereParams(t)
+        params = struct('radius_mm', 60 + 15 * sin(2*pi*t/max(t(:))));
     end
 end

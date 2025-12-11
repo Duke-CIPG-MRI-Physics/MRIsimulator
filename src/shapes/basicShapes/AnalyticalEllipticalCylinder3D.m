@@ -48,10 +48,6 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
             for idx = 1:numel(required)
                 value = params.(required{idx});
                 validateattributes(value, {'numeric'}, {'real', 'nonnegative'});
-                if ~(isscalar(value) || isvector(value))
-                    error('AnalyticalEllipticalCylinder3D:ShapeParameters:InvalidShape', ...
-                        '%s must be scalar or vector-valued.', required{idx});
-                end
 
                 if ~isscalar(value)
                     thisSize = size(value);
@@ -71,8 +67,12 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
             arg = 2 * pi .* kr;
 
             radial = (params.a_mm .* params.b_mm .* besselj(1, arg)) ./ kr;
-            radial(kr == 0) = pi .* params.a_mm .* params.b_mm;
-
+            if(isscalar(params.a_mm) & isscalar(params.b_mm))
+                radial(kr == 0) = pi .* params.a_mm .* params.b_mm;
+            else
+                radial(kr == 0) = pi .* params.a_mm(kr == 0) .* params.b_mm(kr == 0);
+            end
+            
             axial = params.length_mm .* sinc(params.length_mm .* kz);
 
             S_body = radial .* axial;
