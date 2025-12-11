@@ -47,8 +47,8 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                 return;
             end
 
-            validated = obj.validateParameters(shapeParameters);
-            obj.shapeParameters = validated;
+            % Validate that the parameters are valid
+            obj.shapeParameters = obj.validateParameters(shapeParameters);
         end
 
         function params = getShapeParameters(obj, varargin)

@@ -61,7 +61,7 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         end
 
         function S_body = kspaceBaseShape(obj, kx, ky, kz)
-            params = obj.getShapeParameters();
+            params = obj.getAxesParameters();
             kScaled = sqrt((params.a_mm .* kx).^2 + (params.b_mm .* ky).^2 + (params.c_mm .* kz).^2);
             arg = 2 * pi .* kScaled;
 
@@ -75,9 +75,13 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         end
 
         function percent = percentInsideBody(obj, xb, yb, zb)
-            params = obj.getShapeParameters();
+            params = obj.getAxesParameters();
             scaled = (xb ./ params.a_mm).^2 + (yb ./ params.b_mm).^2 + (zb ./ params.c_mm).^2;
             percent = double(scaled <= 1);
+        end
+
+        function params = getAxesParameters(obj, varargin)
+            params = obj.getShapeParameters(varargin{:});
         end
 
         function params = defaultEllipsoidParameters(~)

@@ -19,26 +19,24 @@ classdef AnalyticalSphere3D < AnalyticalEllipsoid3D
                 shapeParameters = struct('radius_mm', 1);
             end
 
-            obj@AnalyticalEllipsoid3D([], intensity, center, rollPitchYaw);
-            obj.setShapeParameters(obj.radiusStructToAxes(shapeParameters));
-            
+            obj@AnalyticalEllipsoid3D(shapeParameters, intensity, center, rollPitchYaw);            
         end
 
-        function setShapeParameters(obj, shapeParameters)
-            if isa(shapeParameters, 'function_handle')
-                radiusFunction = shapeParameters;
-                axesFunction = @(varargin) obj.radiusFunctionToAxes(radiusFunction, varargin{:});
-                obj.setShapeParameters@AnalyticalShape3D(axesFunction);
-                return;
-            end
-
-            if ~isstruct(shapeParameters)
-                shapeParameters = struct('radius_mm', shapeParameters);
-            end
-
-            axesStruct = obj.radiusStructToAxes(shapeParameters);
-            obj.setShapeParameters@AnalyticalShape3D(axesStruct);
-        end
+        % function setShapeParameters(obj, shapeParameters)
+        %     if isa(shapeParameters, 'function_handle')
+        %         radiusFunction = shapeParameters;
+        %         axesFunction = @(varargin) obj.radiusFunctionToAxes(radiusFunction, varargin{:});
+        %         obj.setShapeParameters@AnalyticalShape3D(axesFunction);
+        %         return;
+        %     end
+        % 
+        %     if ~isstruct(shapeParameters)
+        %         shapeParameters = struct('radius_mm', shapeParameters);
+        %     end
+        % 
+        %     axesStruct = obj.radiusStructToAxes(shapeParameters);
+        %     obj.setShapeParameters@AnalyticalShape3D(axesStruct);
+        % end
 
         function params = getShapeParameters(obj, varargin)
             axesParams = obj.getShapeParameters@AnalyticalShape3D(varargin{:});
@@ -47,6 +45,10 @@ classdef AnalyticalSphere3D < AnalyticalEllipsoid3D
     end
 
     methods (Access = protected)
+        function params = getAxesParameters(obj, varargin)
+            params = obj.radiusFunctionToAxes(obj.getShapeParameters(varargin{:}));
+        end
+
         function params = radiusFunctionToAxes(~, radiusFunction, varargin)
             radiusValues = radiusFunction(varargin{:});
             if isstruct(radiusValues) && isfield(radiusValues, 'radius_mm')
