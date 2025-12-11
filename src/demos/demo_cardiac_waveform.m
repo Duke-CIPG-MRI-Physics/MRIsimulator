@@ -14,28 +14,31 @@ T_total_s = 6;                    % total simulation time [s]
 N         = 2001;                 % number of time samples
 t_s       = linspace(0, T_total_s, N);
 
-
-fprintf('Demo EF = %.1f %% (SV = %.1f mL, EDV = %.1f mL)\n', 100*EF, SV_ml, EDV_ml(1));
-
 %% 2) Waveform + geometry options
 cardiacOpts = struct();
 cardiacOpts.systFrac  = 0.35;    % systolic fraction of cycle
 cardiacOpts.q_ED      = 2.5;     % ED aspect ratio a0/b0 (long/short)
 cardiacOpts.GLS_peak  = -0.20;   % peak longitudinal strain (GLS)
 cardiacOpts.GCS_peak  = -0.25;   % peak circumferential strain (GCS)
-cardiacOpts.HR_bpm = 70; % Heart rate: 70 bpm
-cardiacOpts.EDV_ml = 120;        % end-diastolic volume [mL]
-cardiacOpts.ESV_ml = 50;        % end-systolic volume [mL]
+cardiacOpts.HR_bpm    = 70;      % Heart rate: 70 bpm
+cardiacOpts.EDV_ml    = 120;     % end-diastolic volume [mL]
+cardiacOpts.ESV_ml    = 50;      % end-systolic volume [mL]
+
+SV_ml = cardiacOpts.EDV_ml - cardiacOpts.ESV_ml;
+EF    = SV_ml ./ cardiacOpts.EDV_ml;
+
+fprintf('Demo EF = %.1f %% (SV = %.1f mL, EDV = %.1f mL)\n', ...
+    100 * EF(1), SV_ml(1), cardiacOpts.EDV_ml(1));
 
 %% 3) Run ellipsoid waveform model (new interface: a, b, phase)
-[a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, HR_bpm, EDV_ml, ESV_ml, cardiacOpts); %#ok<NASGU>
+[a_mm, b_mm, phase] = cardiac_ellipsoid_waveform(t_s, cardiacOpts); %#ok<NASGU>
 
 %% 4) Visualization: ellipse outline + semi-axes vs time
 frameStep = 4;             % subsample frames to speed up animation (~N/4 frames)
 nTheta    = 200;           % angular resolution for ellipse
 
-a_cm = a_mm / 10;          % convert to cm for plotting
-b_cm = b_mm / 10;
+a_cm = a_mm(1, :) / 10;          % convert to cm for plotting (visualize first waveform)
+b_cm = b_mm(1, :) / 10;
 
 theta = linspace(0, 2*pi, nTheta);
 
