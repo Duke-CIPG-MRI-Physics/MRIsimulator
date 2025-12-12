@@ -1,5 +1,5 @@
 function ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
-%LUNG_ELLIPSOID_WAVEFORM  Lung volume + ellipsoid geometry vs time.
+%LUNG_ELLIPSOID_WAVEFORM  Lung ellipsoid geometry vs time.
 %
 %   ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
 %
@@ -14,15 +14,11 @@ function ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
 %           inspFrac         - inspiratory fraction of cycle in (0,1)
 %           lungSeparation_mm- spacing added to the lung radius [mm]
 %
-%   Output:
+%   Outputs:
 %       ellipsoidParams - struct with fields:
-%           .axes            - struct('a_mm', R_mm, 'b_mm', R_mm, 'c_mm', H_mm)
-%           .rightCenter_mm  - Nx3 centers for right lung
-%           .leftCenter_mm   - Nx3 centers for left lung
-%           .volume_L        - total lung volume [L] (both lungs combined)
-%           .phase_rad       - cumulative breathing phase [rad]
-%           .radius_mm       - effective semi-axis radius [mm] (LR/AP)
-%           .height_mm       - semi-axis height [mm] (SI)
+%           .R_mm             - effective semi-axis radius [mm] (LR/AP)
+%           .H_mm             - semi-axis height [mm] (SI)
+%           .lungPosition_mm  - center position offset along LR [mm]
 %
 %   Model details:
 %       - Breathing phase is built from instantaneous f_bpm(t).
@@ -175,17 +171,10 @@ function ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
 
     lungPosition_mm = R_mm + lungSeparation_mm;
 
-    rightCenter = [lungPosition_mm(:), zeros(size(lungPosition_mm(:))), zeros(size(lungPosition_mm(:)))];
-    leftCenter  = [-lungPosition_mm(:), zeros(size(lungPosition_mm(:))), zeros(size(lungPosition_mm(:)))];
-
     ellipsoidParams = struct( ...
-        'axes', struct('a_mm', R_mm, 'b_mm', R_mm, 'c_mm', H_mm), ...
-        'rightCenter_mm', rightCenter, ...
-        'leftCenter_mm', leftCenter, ...
-        'volume_L', V_L, ...
-        'phase_rad', B_phase, ...
-        'radius_mm', R_mm, ...
-        'height_mm', H_mm);
+        'R_mm', R_mm, ...
+        'H_mm', H_mm, ...
+        'lungPosition_mm', lungPosition_mm);
 
     % Optional sanity check:
     % V_check = (4/3)*pi.*R_m.^2.*H_m;

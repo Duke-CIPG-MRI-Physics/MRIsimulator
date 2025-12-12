@@ -29,12 +29,10 @@ lungParameters = struct( ...
 
 % Compute breathing motion + ellipsoid geometry
 ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters);
-V_L = ellipsoidParams.volume_L;
-B_phase = ellipsoidParams.phase_rad;
 
 % Visualization options
 visOpts.frameStep = 4;        % skip frames for speed
 visOpts.nTheta    = 200;
 
 % Display breathing motion
-visualize_lung_motion(t_s, V_L, ellipsoidParams, B_phase, visOpts);
+visualize_lung_motion(t_s, ellipsoidParams, visOpts);

@@ -66,9 +66,13 @@ classdef BreathingLung < CompositeAnalyticalShape3D
 
             ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters);
 
-            lungParams = ellipsoidParams.axes;
-            rightLung = AnalyticalEllipsoid3D(lungParams, [], ellipsoidParams.rightCenter_mm, [0, 0, 0]);
-            leftLung = AnalyticalEllipsoid3D(lungParams, [], ellipsoidParams.leftCenter_mm, [0, 0, 0]);
+            lungParams = struct('a_mm', ellipsoidParams.R_mm, ...
+                'b_mm', ellipsoidParams.R_mm, ...
+                'c_mm', ellipsoidParams.H_mm);
+            rightCenter_mm = [ellipsoidParams.lungPosition_mm(:), zeros(numel(ellipsoidParams.lungPosition_mm), 1), zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
+            leftCenter_mm = [-ellipsoidParams.lungPosition_mm(:), zeros(numel(ellipsoidParams.lungPosition_mm), 1), zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
+            rightLung = AnalyticalEllipsoid3D(lungParams, [], rightCenter_mm, [0, 0, 0]);
+            leftLung = AnalyticalEllipsoid3D(lungParams, [], leftCenter_mm, [0, 0, 0]);
 
             obj@CompositeAnalyticalShape3D([leftLung, rightLung], ...
                 AnalyticalShape3D.empty, intensity, center, rollPitchYaw);
@@ -80,8 +84,8 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             obj.Vbase_L = Vbase_L;
             obj.bellyFrac = bellyFrac;
             obj.inspFrac = inspFrac;
-            obj.R_mm = ellipsoidParams.radius_mm;
-            obj.H_mm = ellipsoidParams.height_mm;
+            obj.R_mm = ellipsoidParams.R_mm;
+            obj.H_mm = ellipsoidParams.H_mm;
         end
 
         function lungRadius = getLungRadiusMm(obj)

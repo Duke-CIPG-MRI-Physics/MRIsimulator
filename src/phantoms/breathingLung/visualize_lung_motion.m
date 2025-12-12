@@ -1,16 +1,14 @@
-function displayBreathingMotion(t_s, V_L, ellipsoidParams, B_phase, visOpts)
+function displayBreathingMotion(t_s, ellipsoidParams, visOpts)
 %DISPLAYBREATHINGMOTION  Animate simple lung ellipsoids + circles + V(t).
 %
-%   displayBreathingMotion(t_s, V_L, ellipsoidParams, B_phase, visOpts)
+%   displayBreathingMotion(t_s, ellipsoidParams, visOpts)
 %
 %   Inputs:
 %       t_s     - time [s], 1xN
-%       V_L     - total lung volume [L], 1xN
 %       ellipsoidParams - struct with fields:
-%           .axes            - struct('a_mm', R_mm, 'b_mm', R_mm, 'c_mm', H_mm)
-%           .leftCenter_mm   - Nx3 centers for left lung
-%           .rightCenter_mm  - Nx3 centers for right lung
-%       B_phase - breathing phase [rad], 1xN (for consistency; not used)
+%           .R_mm             - semi-axis radius [mm]
+%           .H_mm             - semi-axis height [mm]
+%           .lungPosition_mm  - center position offset along LR [mm]
 %       visOpts - (optional struct)
 %                 .frameStep - frame stride for animation
 %                 .nTheta    - number of points for ellipse/circle
@@ -22,9 +20,7 @@ function displayBreathingMotion(t_s, V_L, ellipsoidParams, B_phase, visOpts)
 
     arguments
         t_s     (1,:) double {mustBeReal, mustBeFinite}
-        V_L     (1,:) double {mustBeReal, mustBeFinite}
         ellipsoidParams struct
-        B_phase (1,:) double {mustBeReal, mustBeFinite}
         visOpts struct = struct()   % <- visOpts is a struct positional arg
     end
 
@@ -32,11 +28,8 @@ function displayBreathingMotion(t_s, V_L, ellipsoidParams, B_phase, visOpts)
     if any(diff(t_s) <= 0)
         error('t_s must be strictly increasing.');
     end
-    if any([numel(V_L), numel(B_phase)] ~= N)
-        error('All input vectors must have the same length as t_s.');
-    end
 
-    requiredFields = {'axes', 'leftCenter_mm', 'rightCenter_mm'};
+    requiredFields = {'R_mm', 'H_mm', 'lungPosition_mm'};
     for idxField = 1:numel(requiredFields)
         if ~isfield(ellipsoidParams, requiredFields{idxField})
             error('visualize_lung_motion:MissingField', ...
@@ -44,29 +37,22 @@ function displayBreathingMotion(t_s, V_L, ellipsoidParams, B_phase, visOpts)
         end
     end
 
-    axesParams = ellipsoidParams.axes;
-    for axisField = {'a_mm', 'b_mm', 'c_mm'}
-        if ~isfield(axesParams, axisField{1})
-            error('visualize_lung_motion:MissingAxisField', ...
-                'ellipsoidParams.axes.%s is required.', axisField{1});
-        end
-    end
+    R_mm = ellipsoidParams.R_mm;
+    H_mm = ellipsoidParams.H_mm;
+    lungPosition_mm = ellipsoidParams.lungPosition_mm;
 
-    validateattributes(axesParams.a_mm, {'numeric'}, {'real', 'positive'});
-    validateattributes(axesParams.b_mm, {'numeric'}, {'real', 'positive'});
-    validateattributes(axesParams.c_mm, {'numeric'}, {'real', 'positive'});
+    validateattributes(R_mm, {'numeric'}, {'real', 'positive'});
+    validateattributes(H_mm, {'numeric'}, {'real', 'positive'});
+    validateattributes(lungPosition_mm, {'numeric'}, {'real', 'finite'});
 
-    if ~isequal(size(axesParams.a_mm), size(axesParams.b_mm), size(axesParams.c_mm))
+    if ~isequal(size(R_mm), size(H_mm), size(lungPosition_mm))
         error('visualize_lung_motion:AxisLengthMismatch', ...
-            'ellipsoidParams.axes fields must share the same size.');
+            'ellipsoidParams fields must share the same size.');
     end
-
-    R_mm = axesParams.a_mm;
-    H_mm = axesParams.c_mm;
 
     if ~isscalar(R_mm) && numel(R_mm) ~= N
         error('visualize_lung_motion:RadiusLengthMismatch', ...
-            'ellipsoidParams.axes values must be scalar or length N.');
+            'ellipsoidParams values must be scalar or length N.');
     end
 
     % Defaults for visualization options
@@ -80,19 +66,17 @@ function displayBreathingMotion(t_s, V_L, ellipsoidParams, B_phase, visOpts)
     frameStep = visOpts.frameStep;
     nTheta    = visOpts.nTheta;
 
-    leftCenter_mm = ellipsoidParams.leftCenter_mm;
-    rightCenter_mm = ellipsoidParams.rightCenter_mm;
-
-    if size(leftCenter_mm, 1) ~= N || size(rightCenter_mm, 1) ~= N
-        error('visualize_lung_motion:CenterLengthMismatch', ...
-            'Center arrays must have N rows.');
-    end
+    leftCenter_mm = [-lungPosition_mm(:), zeros(numel(lungPosition_mm), 1), zeros(numel(lungPosition_mm), 1)];
+    rightCenter_mm = [lungPosition_mm(:), zeros(numel(lungPosition_mm), 1), zeros(numel(lungPosition_mm), 1)];
 
     % Work in cm for display
     R_cm = R_mm / 10;
     H_cm = H_mm / 10;
     leftCenter_cm = leftCenter_mm / 10;
     rightCenter_cm = rightCenter_mm / 10;
+
+    % Compute volume from geometry for display (both lungs combined)
+    V_L = (4/3) * pi .* R_cm.^2 .* H_cm / 1000;
 
     % Angular sampling for circles/ellipses
     theta = linspace(0, 2*pi, nTheta);
