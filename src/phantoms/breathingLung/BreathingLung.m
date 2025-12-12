@@ -39,38 +39,30 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     end
 
     methods
-        function obj = BreathingLung(t_s, f_bpm, VT_L, Vres_L, Vbase_L, ...
-                bellyFrac, inspFrac, lungSeparation_mm, intensity, center, rollPitchYaw)
+        function obj = BreathingLung(t_s, pulmonaryOpts, lungSeparation_mm, intensity, center, rollPitchYaw)
             arguments
                 t_s (1,:) double {mustBeReal, mustBeFinite}
-                f_bpm (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-                VT_L (1,:) double {mustBeReal, mustBeFinite}
-                Vres_L (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-                Vbase_L (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
-                bellyFrac (1,:) double {mustBeReal, mustBeFinite}
-                inspFrac (1,:) double {mustBeReal, mustBeFinite}
+                pulmonaryOpts
                 lungSeparation_mm (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
                 intensity double {mustBeFinite} = 0.1
                 center (1,3) double {mustBeFinite} = [0, 0, 0]
                 rollPitchYaw (1,3) double {mustBeFinite} = [0 0 0]
             end
 
-            lungParameters = struct( ...
-                'f_bpm', f_bpm, ...
-                'VT_L', VT_L, ...
-                'Vres_L', Vres_L, ...
-                'Vbase_L', Vbase_L, ...
-                'bellyFrac', bellyFrac, ...
-                'inspFrac', inspFrac, ...
-                'lungSeparation_mm', lungSeparation_mm);
-
+            % Calculate breathing waveform
             ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters);
+
 
             lungParams = struct('a_mm', ellipsoidParams.R_mm, ...
                 'b_mm', ellipsoidParams.R_mm, ...
                 'c_mm', ellipsoidParams.H_mm);
-            rightCenter_mm = [ellipsoidParams.lungPosition_mm(:), zeros(numel(ellipsoidParams.lungPosition_mm), 1), zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
-            leftCenter_mm = [-ellipsoidParams.lungPosition_mm(:), zeros(numel(ellipsoidParams.lungPosition_mm), 1), zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
+            
+            rightCenter_mm = [ellipsoidParams.lungPosition_mm(:), ...
+                zeros(numel(ellipsoidParams.lungPosition_mm), 1), ...
+                zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
+            leftCenter_mm = [-ellipsoidParams.lungPosition_mm(:), ...
+                zeros(numel(ellipsoidParams.lungPosition_mm), 1), ...
+                zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
             rightLung = AnalyticalEllipsoid3D(lungParams, [], rightCenter_mm, [0, 0, 0]);
             leftLung = AnalyticalEllipsoid3D(lungParams, [], leftCenter_mm, [0, 0, 0]);
 
