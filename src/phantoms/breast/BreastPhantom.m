@@ -40,20 +40,24 @@ classdef BreastPhantom < MultipleMaterialPhantom
             heart = AnalyticalEllipsoid3D(heartIntensity, cardiacParams);
 
             %% Create lungs
-            pulmonaryOpts = struct('f_bpm', 12, ...
-                'VT_L', 0.4,...
-                'Vres_L', 0.8, ...
-                'Vbase_L', 1.5, ...
-                'bellyFrac', 0.6, ...
-                'GCS_peak', 0.4);
-            lungIntensity = 0.1; 
+            pulmonaryOpts = struct('f_bpm', 12 * ones(size(obj.time_s)), ...
+                'VT_L', 0.4 * ones(size(obj.time_s)),...
+                'Vres_L', 0.8 * ones(size(obj.time_s)), ...
+                'Vbase_L', 1.5 * ones(size(obj.time_s)), ...
+                'bellyFrac', 0.6 * ones(size(obj.time_s)), ...
+                'inspFrac', (1/3) * ones(size(obj.time_s)), ...
+                'GCS_peak', 0.4 * ones(size(obj.time_s)));
+            lungIntensity = 0.1;
 
             heartParams = heart.getShapeParameters();
             heart_lr_mm = heartParams.a_mm;
             heartThickness_mm = 8;
             spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
+            pulmonaryOpts.lungSeparation_mm = spacingBetweenLungs * ones(size(obj.time_s));
+
+            lungPose = BreastPhantom.addPoseToParameters(struct(), centered, notRotated);
             breathingLung = BreathingLung(obj.time_s, pulmonaryOpts, spacingBetweenLungs, ...
-                lungIntensity, centered, notRotated);
+                lungIntensity, lungPose);
 
             % breathingLung = obj.createBreathingLung(heart);
             % thorax = obj.createThorax(heart, breathingLung);
@@ -100,9 +104,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
             fatOuterParams = BreastPhantom.addPoseToParameters(fatOuterParams, [0, 0, 0], [0, 0, 0]);
             fat_outer = AnalyticalEllipticalCylinder3D([], fatOuterParams);
 
-            fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2, [], []);
+            fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2);
             tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, breathingLung], ...
-                0.5, [0, 0, 0], [0, 0, 0]);
+                0.5);
 
             thoraxCenter = [zeros(size(chest_ap_outer_mm(:))), -chest_ap_outer_mm(:), zeros(size(chest_ap_outer_mm(:)))];
             thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0, bodyShift, 0], [0, 0, 0]));

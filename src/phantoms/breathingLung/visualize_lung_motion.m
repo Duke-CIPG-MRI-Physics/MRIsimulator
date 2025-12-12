@@ -1,14 +1,13 @@
-function displayBreathingMotion(t_s, ellipsoidParams, visOpts)
+function displayBreathingMotion(t_s, leftEllipsoidParams, rightEllipsoidParams, visOpts)
 %DISPLAYBREATHINGMOTION  Animate simple lung ellipsoids + circles + V(t).
 %
-%   displayBreathingMotion(t_s, ellipsoidParams, visOpts)
+%   displayBreathingMotion(t_s, leftEllipsoidParams, rightEllipsoidParams, visOpts)
 %
 %   Inputs:
 %       t_s     - time [s], 1xN
-%       ellipsoidParams - struct with fields:
-%           .R_mm             - semi-axis radius [mm]
-%           .H_mm             - semi-axis height [mm]
-%           .lungPosition_mm  - center position offset along LR [mm]
+%       leftEllipsoidParams, rightEllipsoidParams - structs with fields:
+%           .a_mm, .b_mm, .c_mm - semi-axis lengths [mm]
+%           .pose              - pose struct including center.x_mm, etc.
 %       visOpts - (optional struct)
 %                 .frameStep - frame stride for animation
 %                 .nTheta    - number of points for ellipse/circle
@@ -20,7 +19,8 @@ function displayBreathingMotion(t_s, ellipsoidParams, visOpts)
 
     arguments
         t_s     (1,:) double {mustBeReal, mustBeFinite}
-        ellipsoidParams struct
+        leftEllipsoidParams struct
+        rightEllipsoidParams struct
         visOpts struct = struct()   % <- visOpts is a struct positional arg
     end
 
@@ -29,23 +29,61 @@ function displayBreathingMotion(t_s, ellipsoidParams, visOpts)
         error('t_s must be strictly increasing.');
     end
 
-    requiredFields = {'R_mm', 'H_mm', 'lungPosition_mm'};
-    for idxField = 1:numel(requiredFields)
-        if ~isfield(ellipsoidParams, requiredFields{idxField})
+    leftRequired = {'a_mm', 'b_mm', 'c_mm'};
+    rightRequired = {'a_mm', 'b_mm', 'c_mm'};
+
+    for idxField = 1:numel(leftRequired)
+        if ~isfield(leftEllipsoidParams, leftRequired{idxField})
             error('visualize_lung_motion:MissingField', ...
-                'ellipsoidParams.%s is required.', requiredFields{idxField});
+                'leftEllipsoidParams.%s is required.', leftRequired{idxField});
         end
     end
 
-    R_mm = ellipsoidParams.R_mm;
-    H_mm = ellipsoidParams.H_mm;
-    lungPosition_mm = ellipsoidParams.lungPosition_mm;
+    for idxField = 1:numel(rightRequired)
+        if ~isfield(rightEllipsoidParams, rightRequired{idxField})
+            error('visualize_lung_motion:MissingField', ...
+                'rightEllipsoidParams.%s is required.', rightRequired{idxField});
+        end
+    end
+
+    requiredPoseFields = {'pose'};
+    for idxField = 1:numel(requiredPoseFields)
+        if ~isfield(leftEllipsoidParams, requiredPoseFields{idxField}) || ...
+                ~isstruct(leftEllipsoidParams.pose)
+            error('visualize_lung_motion:MissingPose', ...
+                'leftEllipsoidParams.pose is required.');
+        end
+        if ~isfield(rightEllipsoidParams, requiredPoseFields{idxField}) || ...
+                ~isstruct(rightEllipsoidParams.pose)
+            error('visualize_lung_motion:MissingPose', ...
+                'rightEllipsoidParams.pose is required.');
+        end
+    end
+
+    centerFields = {'x_mm', 'y_mm', 'z_mm'};
+    for idxField = 1:numel(centerFields)
+        if ~isfield(leftEllipsoidParams.pose, 'center') || ...
+                ~isstruct(leftEllipsoidParams.pose.center) || ...
+                ~isfield(leftEllipsoidParams.pose.center, centerFields{idxField})
+            error('visualize_lung_motion:MissingCenter', ...
+                'leftEllipsoidParams.pose.center.%s is required.', centerFields{idxField});
+        end
+
+        if ~isfield(rightEllipsoidParams.pose, 'center') || ...
+                ~isstruct(rightEllipsoidParams.pose.center) || ...
+                ~isfield(rightEllipsoidParams.pose.center, centerFields{idxField})
+            error('visualize_lung_motion:MissingCenter', ...
+                'rightEllipsoidParams.pose.center.%s is required.', centerFields{idxField});
+        end
+    end
+
+    R_mm = leftEllipsoidParams.a_mm;
+    H_mm = leftEllipsoidParams.c_mm;
 
     validateattributes(R_mm, {'numeric'}, {'real', 'positive'});
     validateattributes(H_mm, {'numeric'}, {'real', 'positive'});
-    validateattributes(lungPosition_mm, {'numeric'}, {'real', 'finite'});
 
-    if ~isequal(size(R_mm), size(H_mm), size(lungPosition_mm))
+    if ~isequal(size(R_mm), size(H_mm))
         error('visualize_lung_motion:AxisLengthMismatch', ...
             'ellipsoidParams fields must share the same size.');
     end
@@ -66,8 +104,12 @@ function displayBreathingMotion(t_s, ellipsoidParams, visOpts)
     frameStep = visOpts.frameStep;
     nTheta    = visOpts.nTheta;
 
-    leftCenter_mm = [-lungPosition_mm(:), zeros(numel(lungPosition_mm), 1), zeros(numel(lungPosition_mm), 1)];
-    rightCenter_mm = [lungPosition_mm(:), zeros(numel(lungPosition_mm), 1), zeros(numel(lungPosition_mm), 1)];
+    leftCenter_mm = [leftEllipsoidParams.pose.center.x_mm(:), ...
+        leftEllipsoidParams.pose.center.y_mm(:), ...
+        leftEllipsoidParams.pose.center.z_mm(:)];
+    rightCenter_mm = [rightEllipsoidParams.pose.center.x_mm(:), ...
+        rightEllipsoidParams.pose.center.y_mm(:), ...
+        rightEllipsoidParams.pose.center.z_mm(:)];
 
     % Work in cm for display
     R_cm = R_mm / 10;

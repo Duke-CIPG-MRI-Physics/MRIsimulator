@@ -4,8 +4,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     %   geometry follows lung_ellipsoid_waveform.
     %
     %   Constructor:
-    %       obj = BreathingLung(t_s, f_bpm, VT_L, Vres_L, Vbase_L, ...
-    %           bellyFrac, inspFrac, maxHeartDim_mm, intensity, center, rollPitchYaw)
+    %       obj = BreathingLung(t_s, pulmonaryOpts, lungSeparation_mm, intensity, shapeParameters)
     %
     %   Inputs:
     %       t_s           - time [s]
@@ -17,8 +16,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     %       inspFrac      - inspiratory fraction of cycle (0,1)
     %       lungSeparation_mm - additional spacing beyond lung radius [mm]
     %       intensity     - shape intensity (handled by parent)
-    %       center        - composite center [mm]
-    %       rollPitchYaw  - optional composite orientation [deg]
+    %       shapeParameters - optional pose struct for the composite
     %
     %   Notes:
     %       - Left and right lungs are created as AnalyticalEllipsoid3D
@@ -28,41 +26,33 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     properties (Access = protected)
         t_s (1,:) double {mustBeReal, mustBeFinite}
         rightLung
-        lefttLung
+        leftLung
     end
 
     methods
         function obj = BreathingLung(t_s, pulmonaryOpts, lungSeparation_mm, intensity, shapeParameters)
-            if nargin < 2 || isempty(shapeParameters)
-                shapeParameters = BreathingLung.defaultLungParameters();
+            if nargin < 4 || isempty(intensity)
+                intensity = 1;
             end
 
-            % Calculate breathing waveform
-            ellipsoidParams = lung_ellipsoid_waveform(t_s, pulmonaryOpts);
+            if nargin < 5 || isempty(shapeParameters)
+                shapeParameters = BreathingLung.defaultLungParameters();
+            else
+                shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
+            end
 
-            lungParams = struct('a_mm', ellipsoidParams.R_mm, ...
-                'b_mm', ellipsoidParams.R_mm, ...
-                'c_mm', ellipsoidParams.H_mm);
-            
-            rightCenter_mm = [ellipsoidParams.lungPosition_mm(:), ...
-                zeros(numel(ellipsoidParams.lungPosition_mm), 1), ...
-                zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
-            leftCenter_mm = [-ellipsoidParams.lungPosition_mm(:), ...
-                zeros(numel(ellipsoidParams.lungPosition_mm), 1), ...
-                zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
-            rightParams = lungParams;
-            rightParams.pose = struct('center', struct('x_mm', rightCenter_mm(:,1), ...
-                'y_mm', rightCenter_mm(:,2), ...
-                'z_mm', rightCenter_mm(:,3)), ...
-                'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
-            leftParams = lungParams;
-            leftParams.pose = struct('center', struct('x_mm', leftCenter_mm(:,1), ...
-                'y_mm', leftCenter_mm(:,2), ...
-                'z_mm', leftCenter_mm(:,3)), ...
-                'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
+            if isscalar(lungSeparation_mm)
+                pulmonaryOpts.lungSeparation_mm = lungSeparation_mm * ones(size(t_s));
+            else
+                pulmonaryOpts.lungSeparation_mm = lungSeparation_mm;
+            end
 
-            rightLung = AnalyticalEllipsoid3D([], rightParams);
-            leftLung = AnalyticalEllipsoid3D([], leftParams);
+            waveformHandle = @() lung_ellipsoid_waveform(t_s, pulmonaryOpts);
+            rightParamsHandle = @() BreathingLung.extractLungParameters(waveformHandle, 'right');
+            leftParamsHandle = @() BreathingLung.extractLungParameters(waveformHandle, 'left');
+
+            rightLung = AnalyticalEllipsoid3D([], rightParamsHandle);
+            leftLung = AnalyticalEllipsoid3D([], leftParamsHandle);
 
             obj@CompositeAnalyticalShape3D([leftLung, rightLung], ...
                 AnalyticalShape3D.empty, intensity, shapeParameters);
@@ -78,6 +68,24 @@ classdef BreathingLung < CompositeAnalyticalShape3D
 
         function rightLung = getRightLung(obj)
             rightLung = obj.rightLung;
+        end
+    end
+
+    methods (Static, Access = private)
+        function params = extractLungParameters(waveformHandle, side)
+            [leftParams, rightParams] = waveformHandle();
+            switch lower(side)
+                case 'left'
+                    params = leftParams;
+                case 'right'
+                    params = rightParams;
+                otherwise
+                    error('BreathingLung:InvalidSide', 'Side must be ''left'' or ''right''.');
+            end
+        end
+
+        function params = defaultLungParameters()
+            params = AnalyticalShape3D.ensurePoseFields(struct());
         end
     end
 end
