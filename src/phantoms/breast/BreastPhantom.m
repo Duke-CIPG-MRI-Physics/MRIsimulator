@@ -39,22 +39,21 @@ classdef BreastPhantom < MultipleMaterialPhantom
             heart = AnalyticalEllipsoid3D(cardiacParams, heartIntensity, centered, notRotated);
 
             %% Create lungs
-            f_bpm = 12;
-            VT_L = 0.4;
-            Vres_L = 0.8;
-            Vbase_L = 1.5;
-            bellyFrac = 0.6;
-            inspFrac = 0.4;
+            pulmonaryOpts = struct('f_bpm', 12, ...
+                'VT_L', 0.4,...
+                'Vres_L', 0.8, ...
+                'Vbase_L', 1.5, ...
+                'bellyFrac', 0.6, ...
+                'GCS_peak', 0.4);
+            lungIntensity = 0.1; 
 
             heartParams = heart.getShapeParameters();
             heart_lr_mm = heartParams.a_mm;
             heartThickness_mm = 8;
             spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
-            breathingLung = BreathingLung(obj.time_s, f_bpm, VT_L, Vres_L, ...
-                Vbase_L, bellyFrac, inspFrac, spacingBetweenLungs, ...
-                0.1, [0, 0, 0], [0, 0, 0]);
+            breathingLung = BreathingLung(obj.time_s, pulmonaryOpts, spacingBetweenLungs, ...
+                lungIntensity, centered, notRotated);
 
-            
             % breathingLung = obj.createBreathingLung(heart);
             % thorax = obj.createThorax(heart, breathingLung);
             % 
@@ -72,22 +71,6 @@ classdef BreastPhantom < MultipleMaterialPhantom
     end
 
     methods (Access = private)
-        function breathingLung = createBreathingLung(obj, heart)
-            f_bpm = 12 * ones(1, numel(obj.time_s));
-            VT_L = 0.4 * ones(1, numel(obj.time_s));
-            Vres_L = 0.8 * ones(1, numel(obj.time_s));
-            Vbase_L = 1.5 * ones(1, numel(obj.time_s));
-            bellyFrac = 0.6 * ones(1, numel(obj.time_s));
-            inspFrac = 0.4 * ones(1, numel(obj.time_s));
-
-            heartParams = heart.getShapeParameters();
-            heart_lr_mm = heartParams.a_mm;
-            heartThickness_mm = 8;
-            spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
-            breathingLung = BreathingLung(obj.time_s, f_bpm, VT_L, Vres_L, ...
-                Vbase_L, bellyFrac, inspFrac, spacingBetweenLungs, ...
-                0.1, [0, 0, 0], [0, 0, 0]);
-        end
 
         function thorax = createThorax(~, heart, breathingLung)
             bodyShift = -80;
