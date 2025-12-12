@@ -62,13 +62,23 @@ classdef EnhancingVessel < MultipleMaterialPhantom
 
             enhancedParams = struct('radius_mm', obj.vesselRadius_mm, ...
                 'length_mm', enhancedLength_mm);
-            obj.enhancedVessel = AnalyticalCylinder3D(enhancedParams, ...
-                enhancedIntensity, enhancedCenter_mm, rollPitchYaw);
+            enhancedParams.pose = struct('center', struct('x_mm', enhancedCenter_mm(:,1), ...
+                'y_mm', enhancedCenter_mm(:,2), ...
+                'z_mm', enhancedCenter_mm(:,3)), ...
+                'roll_deg', rollPitchYaw(1), ...
+                'pitch_deg', rollPitchYaw(2), ...
+                'yaw_deg', rollPitchYaw(3));
+            obj.enhancedVessel = AnalyticalCylinder3D(enhancedIntensity, enhancedParams);
 
             unenhancedParams = struct('radius_mm', obj.vesselRadius_mm, ...
                 'length_mm', unenhancedLength_mm);
-            obj.unenhancedVessel = AnalyticalCylinder3D(unenhancedParams, ...
-                unenhancedIntensity, unenhancedCenter_mm, rollPitchYaw);
+            unenhancedParams.pose = struct('center', struct('x_mm', unenhancedCenter_mm(:,1), ...
+                'y_mm', unenhancedCenter_mm(:,2), ...
+                'z_mm', unenhancedCenter_mm(:,3)), ...
+                'roll_deg', rollPitchYaw(1), ...
+                'pitch_deg', rollPitchYaw(2), ...
+                'yaw_deg', rollPitchYaw(3));
+            obj.unenhancedVessel = AnalyticalCylinder3D(unenhancedIntensity, unenhancedParams);
 
             obj.setShapes([obj.unenhancedVessel, obj.enhancedVessel]);
         end
@@ -134,7 +144,9 @@ classdef EnhancingVessel < MultipleMaterialPhantom
             %   assumed.
             if nargin < 2 || isempty(rpy)
                 if ~isempty(obj.enhancedVessel) && isvalid(obj.enhancedVessel)
-                    rpy = obj.enhancedVessel.getRollPitchYaw();
+                    params = obj.enhancedVessel.getShapeParameters();
+                    pose = obj.extractPose(params, 0);
+                    rpy = [pose.roll_deg(1), pose.pitch_deg(1), pose.yaw_deg(1)];
                 else
                     rpy = obj.rollPitchYaw;
                 end
@@ -161,12 +173,14 @@ classdef EnhancingVessel < MultipleMaterialPhantom
             %   Recompute segment lengths and apply them to the vessel
             %   shapes.
             [enhancedLength_mm, unenhancedLength_mm] = obj.calcVesselLengths(t_s, V_contrast_mm3, vesselRadius_mm);
-            enhancedParams = struct('radius_mm', vesselRadius_mm, ...
-                'length_mm', enhancedLength_mm);
+            enhancedParams = obj.enhancedVessel.getShapeParameters();
+            enhancedParams.radius_mm = vesselRadius_mm;
+            enhancedParams.length_mm = enhancedLength_mm;
             obj.enhancedVessel.setShapeParameters(enhancedParams);
 
-            unenhancedParams = struct('radius_mm', vesselRadius_mm, ...
-                'length_mm', unenhancedLength_mm);
+            unenhancedParams = obj.unenhancedVessel.getShapeParameters();
+            unenhancedParams.radius_mm = vesselRadius_mm;
+            unenhancedParams.length_mm = unenhancedLength_mm;
             obj.unenhancedVessel.setShapeParameters(unenhancedParams);
         end
 
@@ -193,9 +207,21 @@ classdef EnhancingVessel < MultipleMaterialPhantom
             [enhancedCenter, unenhancedCenter] = obj.calcVesselCenter(vesselCenter, ...
                 enhancedLength_mm, unenhancedLength_mm);
 
-            obj.enhancedVessel.setCenter(enhancedCenter);
-            obj.unenhancedVessel.setCenter(unenhancedCenter);
-            obj.setCenter(vesselCenter);
+            enhancedParams.pose.center.x_mm = enhancedCenter(:,1);
+            enhancedParams.pose.center.y_mm = enhancedCenter(:,2);
+            enhancedParams.pose.center.z_mm = enhancedCenter(:,3);
+            obj.enhancedVessel.setShapeParameters(enhancedParams);
+
+            unenhancedParams.pose.center.x_mm = unenhancedCenter(:,1);
+            unenhancedParams.pose.center.y_mm = unenhancedCenter(:,2);
+            unenhancedParams.pose.center.z_mm = unenhancedCenter(:,3);
+            obj.unenhancedVessel.setShapeParameters(unenhancedParams);
+
+            phantomPose = obj.getShapeParameters();
+            phantomPose.pose.center.x_mm = vesselCenter(:,1);
+            phantomPose.pose.center.y_mm = vesselCenter(:,2);
+            phantomPose.pose.center.z_mm = vesselCenter(:,3);
+            obj.setShapeParameters(phantomPose);
         end
 
         function radiusVec = ensureRadiusVector(~, radiusInput, targetLength)
