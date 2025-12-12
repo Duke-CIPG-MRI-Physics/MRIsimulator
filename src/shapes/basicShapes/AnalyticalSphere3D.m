@@ -14,7 +14,6 @@ classdef AnalyticalSphere3D < AnalyticalEllipsoid3D
             end
 
             shapeParameters = AnalyticalSphere3D.normalizeSphereParameters(shapeParameters);
-            shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
             obj@AnalyticalEllipsoid3D(intensity, shapeParameters);
         end
     end

@@ -15,7 +15,6 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
                 shapeParameters = AnalyticalEllipticalCylinder3D.defaultEllipticalCylinderParameters();
             end
 
-            shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
             obj@AnalyticalShape3D(intensity, shapeParameters);
         end
     end

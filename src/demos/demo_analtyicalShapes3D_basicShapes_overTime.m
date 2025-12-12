@@ -10,7 +10,7 @@
 %          (A) FFT–reconstructed
 %          (B) Geometry-based “exact shape” rendering
 %
-function demo_analtyicalShapes3D_temporalShapes()
+function demo_analtyicalShapes3D_basicShapes_overTime()
 clc; 
 clear all;
 close all

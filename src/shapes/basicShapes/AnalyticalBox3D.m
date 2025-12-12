@@ -14,7 +14,6 @@ classdef AnalyticalBox3D < AnalyticalShape3D
                 shapeParameters = AnalyticalBox3D.defaultBoxParameters();
             end
 
-            shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
             obj@AnalyticalShape3D(intensity, shapeParameters);
         end
     end
