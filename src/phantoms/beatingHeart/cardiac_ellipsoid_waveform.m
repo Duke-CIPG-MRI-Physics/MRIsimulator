@@ -185,7 +185,7 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
     end
 
     c_mm = b_mm;
-    ellipsoidParams = struct('a_mm', a_mm, 'b_mm', b_mm, 'c_mm', c_mm);
+    ellipsoidParams = struct('a_mm', c_mm, 'b_mm', b_mm, 'c_mm', a_mm);
 end
 
 % -------------------------------------------------------------------------

@@ -30,7 +30,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     end
 
     methods
-        function obj = BreathingLung(t_s, pulmonaryOpts, lungSeparation_mm, intensity, shapeParameters)
+        function obj = BreathingLung(t_s, pulmonaryOpts, intensity, shapeParameters)
             if nargin < 4 || isempty(intensity)
                 intensity = 1;
             end
@@ -39,12 +39,6 @@ classdef BreathingLung < CompositeAnalyticalShape3D
                 shapeParameters = BreathingLung.defaultLungParameters();
             else
                 shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
-            end
-
-            if isscalar(lungSeparation_mm)
-                pulmonaryOpts.lungSeparation_mm = lungSeparation_mm * ones(size(t_s));
-            else
-                pulmonaryOpts.lungSeparation_mm = lungSeparation_mm;
             end
 
             waveformHandle = @() lung_ellipsoid_waveform(t_s, pulmonaryOpts);

@@ -8,7 +8,7 @@ savepath
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [400 400 400];
-N      = [200 200 30]; % [Nx Ny Nz]
+N      = [100 100 100]; % [Nx Ny Nz]
 resolution = FOV_mm./N;
 resolution_normalized = resolution/max(resolution);
 
@@ -47,7 +47,7 @@ ordKsx_ky = ky_vec(ky_orderedIdx)';
 ordKsx_kz = kz_vec(kz_orderedIdx)';
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-phantom = BreastPhantom(0);
+phantom = BreastPhantom(1:length(ordKsx_kx));
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
@@ -77,7 +77,7 @@ ax1 = ancestor(h1,'axes');
 set(ax1,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
     'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([1 2 3]));
 subplot(1,3,2)
-h2 = imagesc(rot90(squeeze(abs(img_viaKspace(:,116,:)))));
+h2 = imagesc(rot90(squeeze(abs(img_viaKspace(:,round(0.5*size(img_viaKspace,2)),:)))));
 colormap(gray)
 xlabel('R/L');
 ylabel('S/I');
@@ -86,7 +86,7 @@ set(ax2,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
     'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([1 3 2]));
 title(encodingFullStr)
 subplot(1,3,3)
-h3 = imagesc(fliplr(rot90(squeeze(abs(img_viaKspace(106,:,:))))));
+h3 = imagesc(fliplr(rot90(squeeze(abs(img_viaKspace(round(0.5*size(img_viaKspace,1)),:,:))))));
 colormap(gray)
 xlabel('A/P');
 ylabel('S/I');
