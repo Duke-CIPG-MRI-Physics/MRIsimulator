@@ -123,6 +123,23 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
             validateParameterFields@AnalyticalShape3D(obj, params);
         end
 
+        function percent = percentInsideBody(obj, xb, yb, zb)
+            % percentInsideBody  Composite occupancy in BODY coordinates.
+            %   Uses component percentInsideShape evaluations to determine
+            %   which BODY-frame points fall inside the composite geometry.
+            additiveMask = false(size(xb));
+            for idx = 1:numel(obj.additiveComponents)
+                additiveMask = additiveMask | (obj.additiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
+            end
+
+            subtractiveMask = false(size(xb));
+            for idx = 1:numel(obj.subtractiveComponents)
+                subtractiveMask = subtractiveMask | (obj.subtractiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
+            end
+
+            percent = additiveMask & ~subtractiveMask;
+        end
+
         function S_body = kspaceBaseShape(obj, kx, ky, kz)
             arguments
                 obj
