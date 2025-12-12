@@ -21,8 +21,6 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             obj.time_s = t_s(:).';
 
-         
-
             %% Create heart
             cardiacOpts = struct('HR_bpm', 70, ...
                 'EDV_ml', 150,...
@@ -32,6 +30,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 'GLS_peak', -0.20, ...
                 'GCS_peak', -0.25);
             heartIntensity = 1;
+            heartWallThickness_mm = 8;
             centered = [0, 0, 0];
             notRotated = [0, 0, 0];
 
@@ -48,19 +47,48 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 'inspFrac', 1/3, ...
                 'GCS_peak', 0.4);
             lungIntensity = 0.1;
-
-            heartParams = beatingHeart.getShapeParameters();
-            heart_lr_mm = heartParams.a_mm;
-            heartThickness_mm = 8;
-            spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
-            pulmonaryOpts.lungSeparation_mm = spacingBetweenLungs; 
+            pulmonaryOpts.lungSeparation_mm = beatingHeart.getShapeParameters.a_mm + heartWallThickness_mm; 
 
             lungShapeParameters = BreastPhantom.addPoseToParameters(struct(), centered, notRotated);
             breathingLung = BreathingLung(obj.time_s, pulmonaryOpts, ...
                 lungIntensity, lungShapeParameters);
 
-            % breathingLung = obj.createBreathingLung(heart);
-            % thorax = obj.createThorax(heart, breathingLung);
+            %% Create thorax
+            bodyShift = -80;
+            tissueGap_lr_mm = 30;
+            phantomDepth_mm = 300;
+            fatIntensity = 2;
+            tissueIntensity = 0.5;
+            heart_ap_mm = beatingHeart.getShapeParameters.b_mm;
+            lungRadius = breathingLung.getLeftLung().getShapeParameters().R_mm;
+
+            chest_ap_inner_mm = max(heart_ap_mm, lungRadius) + tissueGap_lr_mm;
+            chest_lr_inner_mm = 2 * lungRadius + pulmonaryOpts.lungSeparation_mm + tissueGap_lr_mm;
+            
+
+            fatInnerParams = struct('a_mm', chest_lr_inner_mm, ...
+                'b_mm', chest_ap_inner_mm, 'length_mm', phantomDepth_mm);
+            fatInnerParams = BreastPhantom.addPoseToParameters(fatInnerParams, [0, 0, 0], [0, 0, 0]);
+            fat_inner = AnalyticalEllipticalCylinder3D([], fatInnerParams);
+
+            fatThickness_mm = 10;
+            chest_ap_outer_mm = chest_ap_inner_mm + fatThickness_mm;
+            chest_lr_outer_mm = chest_lr_inner_mm + fatThickness_mm;
+            fatOuterParams = struct('a_mm', chest_lr_outer_mm, ...
+                'b_mm', chest_ap_outer_mm, 'length_mm', phantomDepth_mm);
+            fatOuterParams = BreastPhantom.addPoseToParameters(fatOuterParams, [0, 0, 0], [0, 0, 0]);
+            fat_outer = AnalyticalEllipticalCylinder3D([], fatOuterParams);
+
+            fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, fatIntensity);
+            tissueComposite = CompositeAnalyticalShape3D(fat_inner, [beatingHeart, breathingLung], ...
+               tissueIntensity);
+
+            thoraxCenter = [zeros(size(chest_ap_outer_mm(:))), -chest_ap_outer_mm(:), zeros(size(chest_ap_outer_mm(:)))];
+            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0, bodyShift, 0], [0, 0, 0]));
+            thorax = MultipleMaterialPhantom([beatingHeart, breathingLung, fatComposite, tissueComposite], ...
+                thoraxPose);
+
+           
             % 
             % [breastLeft, breastRight, breastCenter, rightBreastCenter] = obj.createBreastGeometry();
             % enhancingVessel = obj.createEnhancingVessel(obj.time_s, rightBreastCenter);
@@ -71,48 +99,11 @@ classdef BreastPhantom < MultipleMaterialPhantom
             % bothBreasts = MultipleMaterialPhantom([leftAndRightBreastTissue, enhancingVessel], ...
             %     breastCenter, [0, 0, 0]);
 
-            obj.setShapes([beatingHeart breathingLung]);
+            obj.setShapes([thorax]);
         end
     end
 
     methods (Access = private)
-
-        function thorax = createThorax(~, heart, breathingLung)
-            bodyShift = -80;
-            heartParams = heart.getShapeParameters();
-            heart_ap_mm = heartParams.b_mm;
-            lungRadius = breathingLung.getLungRadiusMm();
-            tissueGap_lr_mm = 30;
-            heart_lr_mm = heartParams.a_mm;
-            heartThickness_mm = 8;
-            spacingBetweenLungs = heart_lr_mm + heartThickness_mm;
-
-            chest_ap_inner_mm = max(heart_ap_mm, lungRadius) + tissueGap_lr_mm;
-            chest_lr_inner_mm = 2 * lungRadius + spacingBetweenLungs + tissueGap_lr_mm;
-            phantomDepth_mm = 300;
-
-            fatInnerParams = struct('a_mm', chest_lr_inner_mm, ...
-                'b_mm', chest_ap_inner_mm, 'length_mm', 0.9 * phantomDepth_mm);
-            fatInnerParams = BreastPhantom.addPoseToParameters(fatInnerParams, [0, 0, 0], [0, 0, 0]);
-            fat_inner = AnalyticalEllipticalCylinder3D([], fatInnerParams);
-
-            fatThickness_mm = 10;
-            chest_ap_outer_mm = chest_ap_inner_mm + fatThickness_mm;
-            chest_lr_outer_mm = chest_lr_inner_mm + fatThickness_mm;
-            fatOuterParams = struct('a_mm', chest_lr_outer_mm, ...
-                'b_mm', chest_ap_outer_mm, 'length_mm', 0.9 * phantomDepth_mm);
-            fatOuterParams = BreastPhantom.addPoseToParameters(fatOuterParams, [0, 0, 0], [0, 0, 0]);
-            fat_outer = AnalyticalEllipticalCylinder3D([], fatOuterParams);
-
-            fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2);
-            tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, breathingLung], ...
-                0.5);
-
-            thoraxCenter = [zeros(size(chest_ap_outer_mm(:))), -chest_ap_outer_mm(:), zeros(size(chest_ap_outer_mm(:)))];
-            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0, bodyShift, 0], [0, 0, 0]));
-            thorax = MultipleMaterialPhantom([heart, breathingLung, fatComposite, tissueComposite], ...
-                thoraxPose);
-        end
 
         function [breastLeft, breastRight, breastCenter, right_breast_center] = createBreastGeometry(~)
             breast_gap_mm = 60;

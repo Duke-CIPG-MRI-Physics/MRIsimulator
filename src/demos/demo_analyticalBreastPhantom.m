@@ -42,12 +42,14 @@ kx_orderedIdx = kOrderedIdx(1, :);
 ky_orderedIdx = kOrderedIdx(2, :);
 kz_orderedIdx = kOrderedIdx(3, :);
 
-ordKsx_kx = kx_vec(kx_orderedIdx)';
-ordKsx_ky = ky_vec(ky_orderedIdx)'; 
-ordKsx_kz = kz_vec(kz_orderedIdx)';
+ordKsx_kx = kx_vec(kx_orderedIdx);
+ordKsx_ky = ky_vec(ky_orderedIdx); 
+ordKsx_kz = kz_vec(kz_orderedIdx);
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-phantom = BreastPhantom(1:length(ordKsx_kx));
+t_s = (1:length(ordKsx_kx))*0.0001;
+mat_t = max(t_s(:))
+phantom = BreastPhantom(t_s);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
