@@ -7,11 +7,12 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
 
     methods
         function obj = AnalyticalEllipticalCylinder3D(intensity, shapeParameters)
-            if nargin < 2 || isempty(shapeParameters)
-                shapeParameters = obj.defaultEllipticalCylinderParameters();
-            end
             if nargin < 1 || isempty(intensity)
                 intensity = 1;
+            end
+
+            if nargin < 2 || isempty(shapeParameters)
+                shapeParameters = AnalyticalEllipticalCylinder3D.defaultEllipticalCylinderParameters();
             end
 
             shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
@@ -63,8 +64,10 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
             inHeight = abs(zb) <= params.length_mm ./ 2;
             percent = double(inEllipse & inHeight);
         end
+    end
 
-        function params = defaultEllipticalCylinderParameters(~)
+    methods (Static, Access = protected)
+        function params = defaultEllipticalCylinderParameters()
             params = struct('a_mm', 1, 'b_mm', 1, 'length_mm', 1);
         end
     end

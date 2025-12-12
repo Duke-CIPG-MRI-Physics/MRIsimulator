@@ -6,11 +6,12 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
 
     methods
         function obj = AnalyticalEllipsoid3D(intensity, shapeParameters)
-            if nargin < 2 || isempty(shapeParameters)
-                shapeParameters = obj.defaultEllipsoidParameters();
-            end
             if nargin < 1 || isempty(intensity)
                 intensity = 1;
+            end
+
+            if nargin < 2 || isempty(shapeParameters)
+                shapeParameters = AnalyticalEllipsoid3D.defaultEllipsoidParameters();
             end
 
             shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
@@ -67,8 +68,10 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
         function params = getAxesParameters(obj, varargin)
             params = obj.getShapeParameters(varargin{:});
         end
+    end
 
-        function params = defaultEllipsoidParameters(~)
+    methods (Static, Access = protected)
+        function params = defaultEllipsoidParameters()
             params = struct('a_mm', 1, 'b_mm', 1, 'c_mm', 1);
         end
     end

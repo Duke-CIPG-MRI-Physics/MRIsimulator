@@ -6,11 +6,12 @@ classdef AnalyticalBox3D < AnalyticalShape3D
 
     methods
         function obj = AnalyticalBox3D(intensity, shapeParameters)
-            if nargin < 2 || isempty(shapeParameters)
-                shapeParameters = obj.defaultBoxParameters();
-            end
             if nargin < 1 || isempty(intensity)
                 intensity = 1;
+            end
+
+            if nargin < 2 || isempty(shapeParameters)
+                shapeParameters = AnalyticalBox3D.defaultBoxParameters();
             end
 
             shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
@@ -54,8 +55,10 @@ classdef AnalyticalBox3D < AnalyticalShape3D
             inZ = abs(zb) <= params.Lz_mm ./ 2;
             percent = double(inX & inY & inZ);
         end
+    end
 
-        function params = defaultBoxParameters(~)
+    methods (Static, Access = protected)
+        function params = defaultBoxParameters()
             params = struct('Lx_mm', 1, 'Ly_mm', 1, 'Lz_mm', 1);
         end
     end
