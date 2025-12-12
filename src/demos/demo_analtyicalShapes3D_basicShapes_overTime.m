@@ -52,11 +52,17 @@ intensity = 1;
 
 t_samples = reshape(1:numel(kx),size(kx));
 
-shapes = [AnalyticalBox3D(@()calcBoxParams(t_samples), intensity, center, roll_pitch_yaw),...
-    AnalyticalCylinder3D(@()calcCylinderParams(t_samples), intensity, center, roll_pitch_yaw),...
-    AnalyticalEllipsoid3D(@()calcEllipsoidParams(t_samples), intensity, center, roll_pitch_yaw),...
-    AnalyticalEllipticalCylinder3D(@()calcEllipticalCylinderParams(t_samples), intensity, center, roll_pitch_yaw),...
-    AnalyticalSphere3D(@()calcSphereParams(t_samples), intensity, center, roll_pitch_yaw)];
+boxParams = @()calcBoxParams(t_samples, center, roll_pitch_yaw);
+cylParams = @()calcCylinderParams(t_samples, center, roll_pitch_yaw);
+ellipParams = @()calcEllipsoidParams(t_samples, center, roll_pitch_yaw);
+ellipCylParams = @()calcEllipticalCylinderParams(t_samples, center, roll_pitch_yaw);
+sphereParams = @()calcSphereParams(t_samples, center, roll_pitch_yaw);
+
+shapes = [AnalyticalBox3D(intensity, boxParams), ...
+    AnalyticalCylinder3D(intensity, cylParams), ...
+    AnalyticalEllipsoid3D(intensity, ellipParams), ...
+    AnalyticalEllipticalCylinder3D(intensity, ellipCylParams), ...
+    AnalyticalSphere3D(intensity, sphereParams)];
 
 %% 7) Loop through shapes
 nShapes = length(shapes);
@@ -97,32 +103,46 @@ for iShape = 1:nShapes
 
 end
 
-    function boxParams = calcBoxParams(t)
-        boxParams = struct('Lx_mm', 60 - 10*t/max(t(:)), ...
-            'Ly_mm', 40+70*t/max(t(:)), ...
-            'Lz_mm', 20*ones(size(t))); % [mm];
-    end
+function boxParams = calcBoxParams(t, poseCenter, poseAngles)
+    boxParams = struct('Lx_mm', 60 - 10*t/max(t(:)), ...
+        'Ly_mm', 40+70*t/max(t(:)), ...
+        'Lz_mm', 20*ones(size(t))); % [mm];
+    boxParams.pose = createPose(poseCenter, poseAngles);
+end
 
-    function params = calcCylinderParams(t)
-        params = struct('radius_mm', 60 - 20*(t/max(t(:))), ... % linearly taper radius
-            'length_mm', 80 + 20*(t/max(t(:)))); % extend length over time
-    end
+function params = calcCylinderParams(t, poseCenter, poseAngles)
+    params = struct('radius_mm', 60 - 20*(t/max(t(:))), ... % linearly taper radius
+        'length_mm', 80 + 20*(t/max(t(:)))); % extend length over time
+    params.pose = createPose(poseCenter, poseAngles);
+end
 
-    function params = calcEllipsoidParams(t)
-        growth = -0.5 * sin(2*pi*t/max(t(:)));
-        params = struct('a_mm', 140 .* (1 + growth), ...
-            'b_mm', 100 .* (1 - 0.3*growth), ...
-            'c_mm', 70 .* (1 + 0.2*growth));
-    end
+function params = calcEllipsoidParams(t, poseCenter, poseAngles)
+    growth = -0.5 * sin(2*pi*t/max(t(:)));
+    params = struct('a_mm', 140 .* (1 + growth), ...
+        'b_mm', 100 .* (1 - 0.3*growth), ...
+        'c_mm', 70 .* (1 + 0.2*growth));
+    params.pose = createPose(poseCenter, poseAngles);
+end
 
-    function params = calcEllipticalCylinderParams(t)
-        oscillation = 0.4 * sin(2*pi*t/max(t(:)));
-        params = struct('a_mm', 140 .* (1 + oscillation), ...
-            'b_mm', 100 .* (1 - oscillation), ...
-            'length_mm', 70 .* (1 + 0.25*oscillation));
-    end
+function params = calcEllipticalCylinderParams(t, poseCenter, poseAngles)
+    oscillation = 0.4 * sin(2*pi*t/max(t(:)));
+    params = struct('a_mm', 140 .* (1 + oscillation), ...
+        'b_mm', 100 .* (1 - oscillation), ...
+        'length_mm', 70 .* (1 + 0.25*oscillation));
+    params.pose = createPose(poseCenter, poseAngles);
+end
 
-    function params = calcSphereParams(t)
-        params = struct('radius_mm', 60 + 15 * sin(2*pi*t/max(t(:))));
-    end
+function params = calcSphereParams(t, poseCenter, poseAngles)
+    params = struct('radius_mm', 60 + 15 * sin(2*pi*t/max(t(:))));
+    params.pose = createPose(poseCenter, poseAngles);
+end
+
+function pose = createPose(poseCenter, poseAngles)
+    pose = struct('center', struct('x_mm', poseCenter(1), ...
+        'y_mm', poseCenter(2), ...
+        'z_mm', poseCenter(3)), ...
+        'roll_deg', poseAngles(1), ...
+        'pitch_deg', poseAngles(2), ...
+        'yaw_deg', poseAngles(3));
+end
 end

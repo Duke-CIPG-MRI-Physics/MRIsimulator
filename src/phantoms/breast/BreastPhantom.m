@@ -35,8 +35,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
             centered = [0, 0, 0];
             notRotated = [0, 0, 0];
 
-            cardiacParams = @()cardiac_ellipsoid_waveform(t_s, cardiacOpts);
-            heart = AnalyticalEllipsoid3D(cardiacParams, heartIntensity, centered, notRotated);
+            cardiacParams = @()BreastPhantom.addPoseToParameters( ...
+                cardiac_ellipsoid_waveform(t_s, cardiacOpts), centered, notRotated);
+            heart = AnalyticalEllipsoid3D(heartIntensity, cardiacParams);
 
             %% Create lungs
             pulmonaryOpts = struct('f_bpm', 12, ...
@@ -88,22 +89,25 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             fatInnerParams = struct('a_mm', chest_lr_inner_mm, ...
                 'b_mm', chest_ap_inner_mm, 'length_mm', 0.9 * phantomDepth_mm);
-            fat_inner = AnalyticalEllipticalCylinder3D(fatInnerParams, [], [0, 0, 0], [0, 0, 0]);
+            fatInnerParams = BreastPhantom.addPoseToParameters(fatInnerParams, [0, 0, 0], [0, 0, 0]);
+            fat_inner = AnalyticalEllipticalCylinder3D([], fatInnerParams);
 
             fatThickness_mm = 10;
             chest_ap_outer_mm = chest_ap_inner_mm + fatThickness_mm;
             chest_lr_outer_mm = chest_lr_inner_mm + fatThickness_mm;
             fatOuterParams = struct('a_mm', chest_lr_outer_mm, ...
                 'b_mm', chest_ap_outer_mm, 'length_mm', 0.9 * phantomDepth_mm);
-            fat_outer = AnalyticalEllipticalCylinder3D(fatOuterParams, [], [0, 0, 0], [0, 0, 0]);
+            fatOuterParams = BreastPhantom.addPoseToParameters(fatOuterParams, [0, 0, 0], [0, 0, 0]);
+            fat_outer = AnalyticalEllipticalCylinder3D([], fatOuterParams);
 
             fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, 2, [], []);
             tissueComposite = CompositeAnalyticalShape3D(fat_inner, [heart, breathingLung], ...
                 0.5, [0, 0, 0], [0, 0, 0]);
 
             thoraxCenter = [zeros(size(chest_ap_outer_mm(:))), -chest_ap_outer_mm(:), zeros(size(chest_ap_outer_mm(:)))];
+            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0, bodyShift, 0], [0, 0, 0]));
             thorax = MultipleMaterialPhantom([heart, breathingLung, fatComposite, tissueComposite], ...
-                thoraxCenter + [0, bodyShift, 0], [0, 0, 0]);
+                thoraxPose);
         end
 
         function [breastLeft, breastRight, breastCenter, right_breast_center] = createBreastGeometry(~)
@@ -115,8 +119,10 @@ classdef BreastPhantom < MultipleMaterialPhantom
             left_breast_center = [-right_breast_center(1), right_breast_center(2:3)];
 
             breastParams = struct('radius_mm', breast_radius_mm, 'length_mm', breast_depth_mm);
-            breast_right = AnalyticalCylinder3D(breastParams, [], right_breast_center, [0, 90, 90]);
-            breast_left = AnalyticalCylinder3D(breastParams, [], left_breast_center, [0, 90, 90]);
+            breastParamsRight = BreastPhantom.addPoseToParameters(breastParams, right_breast_center, [0, 90, 90]);
+            breastParamsLeft = BreastPhantom.addPoseToParameters(breastParams, left_breast_center, [0, 90, 90]);
+            breast_right = AnalyticalCylinder3D([], breastParamsRight);
+            breast_left = AnalyticalCylinder3D([], breastParamsLeft);
 
             breastCenter = [0, 0.5 * breast_depth_mm, 0];
         end
@@ -131,6 +137,21 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             enhancingVessel = EnhancingVessel(obj.time_s.', total_vessel_length_mm, 2.5, 0.4, ...
                 vesselRadius_mm, V_contrast_mm3, rightBreastCenter, rollPitchYaw);
+        end
+    end
+
+    methods (Access = private, Static)
+        function params = addPoseToParameters(params, centerVec, rollPitchYaw)
+            params.pose = BreastPhantom.createPoseStruct(centerVec, rollPitchYaw);
+        end
+
+        function pose = createPoseStruct(centerVec, rollPitchYaw)
+            pose = struct('center', struct('x_mm', centerVec(:,1), ...
+                'y_mm', centerVec(:,2), ...
+                'z_mm', centerVec(:,3)), ...
+                'roll_deg', rollPitchYaw(1), ...
+                'pitch_deg', rollPitchYaw(2), ...
+                'yaw_deg', rollPitchYaw(3));
         end
     end
 

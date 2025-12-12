@@ -3,26 +3,29 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
     %   Container for a collection of AnalyticalShape3D objects representing
     %   different materials. Evaluates k-space by summing the contributions
     %   from each contained shape (each shape carries its own intensity).
+    %
+    %   Constructor:
+    %       phantom = MultipleMaterialPhantom(shapes, shapeParameters)
 
     properties (Access = protected)
         shapes  % No type constraint - validated in setShapes() method
     end
 
     methods
-        function obj = MultipleMaterialPhantom(shapes, center, rollPitchYaw)
-            if nargin < 3 
-                rollPitchYaw = [0, 0, 0];
+        function obj = MultipleMaterialPhantom(shapes, shapeParameters)
+            if nargin < 2 || isempty(shapeParameters)
+                shapeParameters = AnalyticalShape3D.ensurePoseFields(struct());
             end
-            if nargin < 2
-                center = [0, 0, 0];
+            if nargin < 1
+                shapes = [];
             end
 
-            obj@AnalyticalShape3D(1, center, rollPitchYaw);
-            
+            obj@AnalyticalShape3D(1, shapeParameters);
+
             % Initialize shapes as empty array of the abstract class
             obj.shapes = AnalyticalShape3D.empty(1,0);
 
-            if nargin >= 1 && ~isempty(shapes)
+            if ~isempty(shapes)
                 obj.setShapes(shapes);
             end
         end
@@ -60,8 +63,10 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 return;
             end
 
-            rpy = obj.getRollPitchYaw();
-            noRotation = ~any(rpy);
+            params = obj.getShapeParameters();
+            pose = obj.extractPose(params, kx);
+            rpy = [pose.roll_deg, pose.pitch_deg, pose.yaw_deg];
+            noRotation = ~any(rpy(:));
 
             if noRotation
                 % Fast path: BODY and WORLD frames align
@@ -70,14 +75,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 kzb = kz;
             else
                 % WORLD → BODY transform
-                inputSize = size(kx);
-                K_world = [kx(:) ky(:) kz(:)].';
-                R = obj.calculateRotationMatrix();
-                K_body = R.' * K_world;
-
-                kxb = reshape(K_body(1,:), inputSize);
-                kyb = reshape(K_body(2,:), inputSize);
-                kzb = reshape(K_body(3,:), inputSize);
+                [kxb, kyb, kzb] = obj.rotateWorldToBody(kx, ky, kz, pose.roll_deg, pose.pitch_deg, pose.yaw_deg);
             end
 
             S_body = zeros(size(kxb));
@@ -86,21 +84,11 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
 
              % WORLD translation phase
-            c = obj.getCenter();
-            if any(c(:) ~= 0)
-                if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspaceWorldPlacedShape:CenterSizeMismatch', ...
-                        'Center must have 3 columns for x, y, z.');
-                end
-
-                cx = obj.requireScalarOrSize(c(:,1), kx, 'centerX');
-                cy = obj.requireScalarOrSize(c(:,2), ky, 'centerY');
-                cz = obj.requireScalarOrSize(c(:,3), kz, 'centerZ');
-
+            if any(pose.centerX(:) ~= 0) || any(pose.centerY(:) ~= 0) || any(pose.centerZ(:) ~= 0)
                 phase = exp(-1i * 2*pi * ( ...
-                        kx .* cx + ...
-                        ky .* cy + ...
-                        kz .* cz));
+                        kx .* pose.centerX + ...
+                        ky .* pose.centerY + ...
+                        kz .* pose.centerZ));
                 S = S_body .* phase;
             else
                 S = S_body;
@@ -121,8 +109,10 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 return;
             end
 
-            rpy = obj.getRollPitchYaw();
-            noRotation = ~any(rpy);
+            params = obj.getShapeParameters();
+            pose = obj.extractPose(params, kx);
+            rpy = [pose.roll_deg, pose.pitch_deg, pose.yaw_deg];
+            noRotation = ~any(rpy(:));
 
             if noRotation
                 % Fast path: BODY and WORLD frames align
@@ -131,14 +121,7 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
                 kzb = kz;
             else
                 % WORLD → BODY transform
-                inputSize = size(kx);
-                K_world = [kx(:) ky(:) kz(:)].';
-                R = obj.calculateRotationMatrix();
-                K_body = R.' * K_world;
-
-                kxb = reshape(K_body(1,:), inputSize);
-                kyb = reshape(K_body(2,:), inputSize);
-                kzb = reshape(K_body(3,:), inputSize);
+                [kxb, kyb, kzb] = obj.rotateWorldToBody(kx, ky, kz, pose.roll_deg, pose.pitch_deg, pose.yaw_deg);
             end
 
             S_body = zeros(size(kxb));
@@ -147,21 +130,11 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
 
             % WORLD translation phase
-            c = obj.getCenter();
-            if any(c(:) ~= 0)
-                if size(c, 2) ~= 3
-                    error('AnalyticalShape3D:kspaceWorldPlacedShape:CenterSizeMismatch', ...
-                        'Center must have 3 columns for x, y, z.');
-                end
-
-                cx = obj.requireScalarOrSize(c(:,1), kx, 'centerX');
-                cy = obj.requireScalarOrSize(c(:,2), ky, 'centerY');
-                cz = obj.requireScalarOrSize(c(:,3), kz, 'centerZ');
-
+            if any(pose.centerX(:) ~= 0) || any(pose.centerY(:) ~= 0) || any(pose.centerZ(:) ~= 0)
                 phase = exp(-1i * 2*pi * ( ...
-                        kx .* cx + ...
-                        ky .* cy + ...
-                        kz .* cz));
+                        kx .* pose.centerX + ...
+                        ky .* pose.centerY + ...
+                        kz .* pose.centerZ));
                 S = S_body .* phase;
             else
                 S = S_body;
@@ -169,6 +142,10 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
         end
     end
     methods (Access = protected)
+        function validateParameterFields(obj, params)
+            validateParameterFields@AnalyticalShape3D(obj, params);
+        end
+
         function S = kspaceBaseShape(obj, kx_body, ky_body, kz_body)
             % kspaceBaseShape  BODY-frame analytic FT (no intensity scaling).
             %   Implemented as the sum of each contained shape's WORLD-frame
@@ -199,15 +176,6 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
             end
         end
 
-        function params = validateParameters(~, params)
-            % validateParameters  MultipleMaterialPhantom has no tunable
-            % shape parameters; ensure a struct is always returned.
-            if isempty(params)
-                params = struct();
-                return;
-            end
-        end
-  
     end
 
     methods

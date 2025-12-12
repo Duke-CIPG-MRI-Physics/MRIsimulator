@@ -5,35 +5,22 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
     %   handle returning such a struct for time-varying shapes.
 
     methods
-        function obj = AnalyticalEllipsoid3D(shapeParameters, intensity, center, rollPitchYaw)
-            if nargin < 4 || isempty(rollPitchYaw)
-                rollPitchYaw = [0 0 0];
-            end
-            if nargin < 3 || isempty(center)
-                center = [0 0 0];
-            end
-            if nargin < 2 || isempty(intensity)
-                intensity = 1;
-            end
-            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
-            
-            if nargin < 1 || isempty(shapeParameters)
+        function obj = AnalyticalEllipsoid3D(intensity, shapeParameters)
+            if nargin < 2 || isempty(shapeParameters)
                 shapeParameters = obj.defaultEllipsoidParameters();
             end
-            obj.setShapeParameters(shapeParameters);
+            if nargin < 1 || isempty(intensity)
+                intensity = 1;
+            end
+
+            shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
+            obj@AnalyticalShape3D(intensity, shapeParameters);
         end
     end
 
     methods (Access = protected)
-        function params = validateParameters(~, params)
-            if isa(params, 'function_handle')
-                params = params();
-            end
-
-            if ~isstruct(params)
-                error('AnalyticalEllipsoid3D:ShapeParameters:InvalidType', ...
-                    'Shape parameters must be provided as a struct.');
-            end
+        function validateParameterFields(obj, params)
+            validateParameterFields@AnalyticalShape3D(obj, params);
 
             required = {'a_mm', 'b_mm', 'c_mm'};
             for idx = 1:numel(required)
@@ -41,21 +28,13 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
                     error('AnalyticalEllipsoid3D:ShapeParameters:MissingField', ...
                         'Field %s is required for ellipsoid dimensions.', required{idx});
                 end
-            end
 
-            vectorSize = [];
-            for idx = 1:numel(required)
                 value = params.(required{idx});
-                validateattributes(value, {'numeric'}, {'real', 'nonnegative'});
-
-                if ~isscalar(value)
-                    thisSize = size(value);
-                    if isempty(vectorSize)
-                        vectorSize = thisSize;
-                    elseif ~isequal(thisSize, vectorSize)
-                        error('AnalyticalEllipsoid3D:ShapeParameters:LengthMismatch', ...
-                            'Vector-valued semi-axes must share the same size.');
-                    end
+                if isnumeric(value)
+                    validateattributes(value, {'numeric'}, {'real', 'nonnegative', 'finite'});
+                elseif ~isa(value, 'function_handle')
+                    error('AnalyticalEllipsoid3D:ShapeParameters:InvalidType', ...
+                        'Dimensions must be numeric or function handles.');
                 end
             end
         end

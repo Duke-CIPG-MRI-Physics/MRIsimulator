@@ -50,7 +50,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             end
 
             % Calculate breathing waveform
-            ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters);
+            ellipsoidParams = lung_ellipsoid_waveform(t_s, pulmonaryOpts);
 
 
             lungParams = struct('a_mm', ellipsoidParams.R_mm, ...
@@ -63,19 +63,30 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             leftCenter_mm = [-ellipsoidParams.lungPosition_mm(:), ...
                 zeros(numel(ellipsoidParams.lungPosition_mm), 1), ...
                 zeros(numel(ellipsoidParams.lungPosition_mm), 1)];
-            rightLung = AnalyticalEllipsoid3D(lungParams, [], rightCenter_mm, [0, 0, 0]);
-            leftLung = AnalyticalEllipsoid3D(lungParams, [], leftCenter_mm, [0, 0, 0]);
+            rightParams = lungParams;
+            rightParams.pose = struct('center', struct('x_mm', rightCenter_mm(:,1), ...
+                'y_mm', rightCenter_mm(:,2), ...
+                'z_mm', rightCenter_mm(:,3)), ...
+                'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
+            leftParams = lungParams;
+            leftParams.pose = struct('center', struct('x_mm', leftCenter_mm(:,1), ...
+                'y_mm', leftCenter_mm(:,2), ...
+                'z_mm', leftCenter_mm(:,3)), ...
+                'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
+
+            rightLung = AnalyticalEllipsoid3D([], rightParams);
+            leftLung = AnalyticalEllipsoid3D([], leftParams);
 
             obj@CompositeAnalyticalShape3D([leftLung, rightLung], ...
                 AnalyticalShape3D.empty, intensity, center, rollPitchYaw);
 
             obj.t_s = t_s;
-            obj.f_bpm = f_bpm;
-            obj.VT_L = VT_L;
-            obj.Vres_L = Vres_L;
-            obj.Vbase_L = Vbase_L;
-            obj.bellyFrac = bellyFrac;
-            obj.inspFrac = inspFrac;
+            obj.f_bpm = pulmonaryOpts.f_bpm;
+            obj.VT_L = pulmonaryOpts.VT_L;
+            obj.Vres_L = pulmonaryOpts.Vres_L;
+            obj.Vbase_L = pulmonaryOpts.Vbase_L;
+            obj.bellyFrac = pulmonaryOpts.bellyFrac;
+            obj.inspFrac = pulmonaryOpts.inspFrac;
             obj.R_mm = ellipsoidParams.R_mm;
             obj.H_mm = ellipsoidParams.H_mm;
         end

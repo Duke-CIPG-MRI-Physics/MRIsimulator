@@ -5,37 +5,22 @@ classdef AnalyticalBox3D < AnalyticalShape3D
     %   handle returning such a struct for time-varying shapes.
 
     methods
-        function obj = AnalyticalBox3D(shapeParameters, intensity, center, rollPitchYaw)
-            if nargin < 4 || isempty(rollPitchYaw)
-                rollPitchYaw = [0 0 0];
-            end
-            if nargin < 3 || isempty(center)
-                center = [0 0 0];
-            end
-            if nargin < 2 || isempty(intensity)
-                intensity = 1;
-            end
-            
-            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
-
-            if nargin < 1 || isempty(shapeParameters)
+        function obj = AnalyticalBox3D(intensity, shapeParameters)
+            if nargin < 2 || isempty(shapeParameters)
                 shapeParameters = obj.defaultBoxParameters();
             end
+            if nargin < 1 || isempty(intensity)
+                intensity = 1;
+            end
 
-            obj.setShapeParameters(shapeParameters);
+            shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
+            obj@AnalyticalShape3D(intensity, shapeParameters);
         end
     end
 
     methods (Access = protected)
-        function params = validateParameters(~, params)
-            if isa(params, 'function_handle')
-                params = params();
-            end
-
-            if ~isstruct(params)
-                error('AnalyticalBox3D:ShapeParameters:InvalidType', ...
-                    'Shape parameters must be provided as a struct.');
-            end
+        function validateParameterFields(obj, params)
+            validateParameterFields@AnalyticalShape3D(obj, params);
 
             required = {'Lx_mm', 'Ly_mm', 'Lz_mm'};
             for idx = 1:numel(required)
@@ -43,21 +28,13 @@ classdef AnalyticalBox3D < AnalyticalShape3D
                     error('AnalyticalBox3D:ShapeParameters:MissingField', ...
                         'Field %s is required for box dimensions.', required{idx});
                 end
-            end
 
-            vectorSize = [];
-            for idx = 1:numel(required)
                 value = params.(required{idx});
-                validateattributes(value, {'numeric'}, {'real', 'nonnegative'});
-
-                if ~isscalar(value)
-                    thisSize = size(value);
-                    if isempty(vectorSize)
-                        vectorSize = thisSize;
-                    elseif ~isequal(thisSize, vectorSize)
-                        error('AnalyticalBox3D:ShapeParameters:LengthMismatch', ...
-                            'All vector-valued dimensions must share the same size.');
-                    end
+                if isnumeric(value)
+                    validateattributes(value, {'numeric'}, {'real', 'nonnegative', 'finite'});
+                elseif ~isa(value, 'function_handle')
+                    error('AnalyticalBox3D:ShapeParameters:InvalidType', ...
+                        'Dimensions must be numeric or function handles.');
                 end
             end
         end

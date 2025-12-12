@@ -26,7 +26,23 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     methods
         function obj = CompositeAnalyticalShape3D(additiveComponents, subtractiveComponents, ...
                 intensity, center, rollPitchYaw)
-            obj@AnalyticalShape3D(intensity, center, rollPitchYaw);
+            if nargin < 5 || isempty(rollPitchYaw)
+                rollPitchYaw = [0 0 0];
+            end
+            if nargin < 4 || isempty(center)
+                center = [0 0 0];
+            end
+            if nargin < 3 || isempty(intensity)
+                intensity = 1;
+            end
+
+            poseParams = struct('pose', struct( ...
+                'center', struct('x_mm', center(:,1), 'y_mm', center(:,2), 'z_mm', center(:,3)), ...
+                'roll_deg', rollPitchYaw(1), ...
+                'pitch_deg', rollPitchYaw(2), ...
+                'yaw_deg', rollPitchYaw(3))));
+            poseParams = AnalyticalShape3D.ensurePoseFields(poseParams);
+            obj@AnalyticalShape3D(intensity, poseParams);
             
             % Initialize component arrays as empty
             obj.additiveComponents = AnalyticalShape3D.empty(1,0);
@@ -61,6 +77,10 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     end
 
     methods (Access = protected)
+        function validateParameterFields(obj, params)
+            validateParameterFields@AnalyticalShape3D(obj, params);
+        end
+
         function S_body = kspaceBaseShape(obj, kx, ky, kz)
             arguments
                 obj
