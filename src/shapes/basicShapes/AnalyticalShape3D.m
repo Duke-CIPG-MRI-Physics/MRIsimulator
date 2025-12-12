@@ -126,6 +126,9 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
         end
 
+    end
+
+    methods
         function percent = percentInsideShape(obj, x, y, z)
             arguments
                 obj

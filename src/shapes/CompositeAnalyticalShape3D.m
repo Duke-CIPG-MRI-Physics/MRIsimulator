@@ -78,6 +78,46 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
         end
     end
 
+    methods
+        function image = estimateImage(obj, xMesh, yMesh, zMesh)
+            arguments
+                obj
+                xMesh double
+                yMesh double
+                zMesh double
+            end
+
+            if ~isequal(size(xMesh), size(yMesh), size(zMesh))
+                error('CompositeAnalyticalShape3D:estimateImage:SizeMismatch', ...
+                    'xMesh, yMesh, zMesh must have identical sizes.');
+            end
+
+            image = zeros(size(xMesh));
+
+            for idx = 1:numel(obj.additiveComponents)
+                image = image + obj.additiveComponents(idx).estimateImage(xMesh, yMesh, zMesh);
+            end
+
+            for idx = 1:numel(obj.subtractiveComponents)
+                image = image - obj.subtractiveComponents(idx).estimateImage(xMesh, yMesh, zMesh);
+            end
+        end
+
+        function mask = percentInsideShape(obj, xb, yb, zb)
+            additiveMask = false(size(xb));
+            for idx = 1:numel(obj.additiveComponents)
+                additiveMask = additiveMask | (obj.additiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
+            end
+
+            subtractiveMask = false(size(xb));
+            for idx = 1:numel(obj.subtractiveComponents)
+                subtractiveMask = subtractiveMask | (obj.subtractiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
+            end
+
+            mask = additiveMask & ~subtractiveMask;
+        end
+    end
+
     methods (Access = protected)
         function validateParameterFields(obj, params)
             validateParameterFields@AnalyticalShape3D(obj, params);
@@ -106,44 +146,5 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
             end
         end
 
-        function mask = percentInsideShape(obj, xb, yb, zb)
-            additiveMask = false(size(xb));
-            for idx = 1:numel(obj.additiveComponents)
-                additiveMask = additiveMask | (obj.additiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
-            end
-
-            subtractiveMask = false(size(xb));
-            for idx = 1:numel(obj.subtractiveComponents)
-                subtractiveMask = subtractiveMask | (obj.subtractiveComponents(idx).percentInsideShape(xb, yb, zb) ~= 0);
-            end
-
-            mask = additiveMask & ~subtractiveMask;
-        end
-    end
-
-    methods
-        function image = estimateImage(obj, xMesh, yMesh, zMesh)
-            arguments
-                obj
-                xMesh double
-                yMesh double
-                zMesh double
-            end
-
-            if ~isequal(size(xMesh), size(yMesh), size(zMesh))
-                error('CompositeAnalyticalShape3D:estimateImage:SizeMismatch', ...
-                    'xMesh, yMesh, zMesh must have identical sizes.');
-            end
-
-            image = zeros(size(xMesh));
-
-            for idx = 1:numel(obj.additiveComponents)
-                image = image + obj.additiveComponents(idx).estimateImage(xMesh, yMesh, zMesh);
-            end
-
-            for idx = 1:numel(obj.subtractiveComponents)
-                image = image - obj.subtractiveComponents(idx).estimateImage(xMesh, yMesh, zMesh);
-            end
-        end
     end
 end
