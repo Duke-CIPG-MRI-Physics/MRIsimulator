@@ -6,11 +6,12 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
 
     methods
         function obj = AnalyticalCylinder3D(intensity, shapeParameters)
-            if nargin < 2 || isempty(shapeParameters)
-                shapeParameters = obj.defaultCylinderParameters();
-            end
             if nargin < 1 || isempty(intensity)
                 intensity = 1;
+            end
+
+            if nargin < 2 || isempty(shapeParameters)
+                shapeParameters = AnalyticalCylinder3D.defaultCylinderParameters();
             end
 
             shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
@@ -61,8 +62,10 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
             inHeight = abs(zb) <= (params.length_mm ./ 2);
             percent = double(inRadius & inHeight);
         end
+    end
 
-        function params = defaultCylinderParameters(~)
+    methods (Static, Access = protected)
+        function params = defaultCylinderParameters()
             params = struct('radius_mm', 1, 'length_mm', 1);
         end
     end
