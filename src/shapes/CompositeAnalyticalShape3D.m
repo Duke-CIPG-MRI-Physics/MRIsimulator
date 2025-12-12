@@ -12,7 +12,7 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     %
     %   Constructor:
     %       obj = CompositeAnalyticalShape3D(additiveComponents, subtractiveComponents, ...
-    %               intensity, center, rollPitchYaw)
+    %               intensity, shapeParameters)
     %
     %   Methods:
     %       addComponent(shape)      % append to additiveComponents
@@ -26,24 +26,26 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
     methods
         function obj = CompositeAnalyticalShape3D(additiveComponents, subtractiveComponents, ...
                 intensity, shapeParameters)
-            if nargin < 5 || isempty(rollPitchYaw)
-                rollPitchYaw = [0 0 0];
+            if nargin < 1 || isempty(additiveComponents)
+                additiveComponents = AnalyticalShape3D.empty(1,0);
             end
-            if nargin < 4 || isempty(center)
-                center = [0 0 0];
+
+            if nargin < 2 || isempty(subtractiveComponents)
+                subtractiveComponents = AnalyticalShape3D.empty(1,0);
             end
+
             if nargin < 3 || isempty(intensity)
                 intensity = 1;
             end
 
-            poseParams = struct('pose', struct( ...
-                'center', struct('x_mm', center(:,1), 'y_mm', center(:,2), 'z_mm', center(:,3)), ...
-                'roll_deg', rollPitchYaw(1), ...
-                'pitch_deg', rollPitchYaw(2), ...
-                'yaw_deg', rollPitchYaw(3)));
-            poseParams = AnalyticalShape3D.ensurePoseFields(poseParams);
-            obj@AnalyticalShape3D(intensity, poseParams);
-            
+            if nargin < 4 || isempty(shapeParameters)
+                shapeParameters = AnalyticalShape3D.ensurePoseFields(struct());
+            else
+                shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
+            end
+
+            obj@AnalyticalShape3D(intensity, shapeParameters);
+
             % Initialize component arrays as empty
             obj.additiveComponents = AnalyticalShape3D.empty(1,0);
             obj.subtractiveComponents = AnalyticalShape3D.empty(1,0);

@@ -1,7 +1,7 @@
-function ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
+function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t_s, lungParameters)
 %LUNG_ELLIPSOID_WAVEFORM  Lung ellipsoid geometry vs time.
 %
-%   ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
+%   [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t_s, lungParameters)
 %
 %   Inputs:
 %       t_s     - time [s], strictly increasing 1xN vector
@@ -15,10 +15,11 @@ function ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
 %           lungSeparation_mm- spacing added to the lung radius [mm]
 %
 %   Outputs:
-%       ellipsoidParams - struct with fields:
-%           .R_mm             - effective semi-axis radius [mm] (LR/AP)
-%           .H_mm             - semi-axis height [mm] (SI)
-%           .lungPosition_mm  - center position offset along LR [mm]
+%       leftEllipsoidParams, rightEllipsoidParams - struct with fields:
+%           .a_mm, .b_mm, .c_mm  - ellipsoid semi-axes [mm]
+%           .pose               - pose struct with center and orientation
+%         Additional convenience fields include the underlying waveform
+%         values (.R_mm, .H_mm, .lungPosition_mm).
 %
 %   Model details:
 %       - Breathing phase is built from instantaneous f_bpm(t).
@@ -171,10 +172,30 @@ function ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
 
     lungPosition_mm = R_mm + lungSeparation_mm;
 
-    ellipsoidParams = struct( ...
+    lungParams = struct('a_mm', R_mm, ...
+        'b_mm', R_mm, ...
+        'c_mm', H_mm, ...
         'R_mm', R_mm, ...
         'H_mm', H_mm, ...
         'lungPosition_mm', lungPosition_mm);
+
+    rightCenter_mm = [lungPosition_mm(:), ...
+        zeros(numel(lungPosition_mm), 1), ...
+        zeros(numel(lungPosition_mm), 1)];
+    leftCenter_mm = [-lungPosition_mm(:), ...
+        zeros(numel(lungPosition_mm), 1), ...
+        zeros(numel(lungPosition_mm), 1)];
+
+    rightEllipsoidParams = lungParams;
+    rightEllipsoidParams.pose = struct('center', struct('x_mm', rightCenter_mm(:,1), ...
+        'y_mm', rightCenter_mm(:,2), ...
+        'z_mm', rightCenter_mm(:,3)), ...
+        'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
+    leftEllipsoidParams = lungParams;
+    leftEllipsoidParams.pose = struct('center', struct('x_mm', leftCenter_mm(:,1), ...
+        'y_mm', leftCenter_mm(:,2), ...
+        'z_mm', leftCenter_mm(:,3)), ...
+        'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
 
     % Optional sanity check:
     % V_check = (4/3)*pi.*R_m.^2.*H_m;
