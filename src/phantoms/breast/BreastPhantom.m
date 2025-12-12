@@ -82,9 +82,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
             fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, fatIntensity);
             tissueComposite = CompositeAnalyticalShape3D(fat_inner, [beatingHeart, breathingLung], ...
                tissueIntensity);
-
-            thoraxCenter = [zeros(size(chest_ap_outer_mm(:))), -chest_ap_outer_mm(:), zeros(size(chest_ap_outer_mm(:)))];
-            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0, bodyShift, 0], [0, 0, 0]));
+            
+            thoraxCenter = [zeros(size(chest_ap_outer_mm(:))), -chest_ap_outer_mm(:), zeros(size(chest_ap_outer_mm(:)))]';
+            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0; bodyShift; 0], [0, 0, 0]));
             thorax = MultipleMaterialPhantom([beatingHeart, breathingLung, fatComposite, tissueComposite], ...
                 thoraxPose);
 
