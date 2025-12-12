@@ -65,11 +65,39 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     if any(diff(t_s) < 0)
         error('t_s must be strictly increasing.');
     end
-    if any([numel(f_bpm), numel(VT_L), numel(Vres_L), ...
-            numel(Vbase_L), numel(bellyFrac), numel(inspFrac), ...
-            numel(lungSeparation_mm)] ~= N)
-        error('All lungParameters vectors must have the same length as t_s.');
+
+    paramNames = {'f_bpm', 'VT_L', 'Vres_L', 'Vbase_L', ...
+        'bellyFrac', 'inspFrac', 'lungSeparation_mm'};
+    paramValues = {f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac, ...
+        lungSeparation_mm};
+
+    nonScalarSize = [];
+    for idxParam = 1:numel(paramValues)
+        thisValue = paramValues{idxParam};
+        if isscalar(thisValue)
+            continue
+        end
+
+        thisSize = size(thisValue);
+        if isempty(nonScalarSize)
+            if numel(thisValue) ~= N
+                error('lung_ellipsoid_waveform:LengthMismatch', ...
+                    ['Non-scalar lungParameters.%s must have %d elements ' ...
+                    'to align with t_s.'], paramNames{idxParam}, N);
+            end
+            nonScalarSize = thisSize;
+        elseif ~isequal(thisSize, nonScalarSize)
+            error('lung_ellipsoid_waveform:SizeMismatch', ...
+                ['All non-scalar lungParameters must have the same size. ' ...
+                '%s has size %s; expected %s.'], paramNames{idxParam}, ...
+                mat2str(thisSize), mat2str(nonScalarSize));
+        end
     end
+
+    if isempty(nonScalarSize)
+        nonScalarSize = size(t_s);
+    end
+
     if any(bellyFrac < 0 | bellyFrac > 1)
         error('bellyFrac must be in [0,1].');
     end
@@ -80,12 +108,15 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     % ---------------------------------------------------------------------
     % 1) Breathing phase B_phase from instantaneous frequency f_bpm(t)
     % ---------------------------------------------------------------------
+    waveformSize = nonScalarSize;
+
     f_Hz = f_bpm / 60;          % [Hz]
-    B_phase = zeros(1, N);      % [rad]
+    B_phase = zeros(waveformSize);      % [rad]
     dt = diff(t_s);
 
     for k = 2:N
-        B_phase(k) = B_phase(k-1) + 2*pi*f_Hz(k-1)*dt(k-1);
+        f_Hz_km1 = valueAtIndex(f_Hz, k-1);
+        B_phase(k) = B_phase(k-1) + 2*pi*f_Hz_km1*dt(k-1);
     end
 
     % Within-cycle phase φ in [0,1)
@@ -94,10 +125,10 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     % ---------------------------------------------------------------------
     % 2) Dimensionless volume waveform g(φ, inspFrac) in [0,1]
     % ---------------------------------------------------------------------
-    g = zeros(1, N);
+    g = zeros(waveformSize);
 
     for k = 1:N
-        alpha = inspFrac(k);        % local inspiratory fraction
+        alpha = valueAtIndex(inspFrac, k);        % local inspiratory fraction
         phi  = phi_cycle(k);
 
         if phi < alpha
@@ -200,4 +231,14 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     % Optional sanity check:
     % V_check = (4/3)*pi.*R_m.^2.*H_m;
     % maxRelErr = max(abs(V_check - V_m3)./max(V_m3, eps));
+end
+
+% -------------------------------------------------------------------------
+function value = valueAtIndex(param, idx)
+%VALUEATINDEX Return a scalar parameter value, tolerating scalar inputs.
+    if isscalar(param)
+        value = param;
+    else
+        value = param(idx);
+    end
 end
