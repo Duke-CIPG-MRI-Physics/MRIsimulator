@@ -17,7 +17,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
 
     properties (Access = protected)
         shapeIntensity (1,1) double = 1;
-        center (1,3) double = [0 0 0];
+        center = [0 0 0];
         rollPitchYaw_deg (1,3) double = [0 0 0];
         shapeParameters = struct();
     end
@@ -28,7 +28,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                 obj.shapeIntensity = intensity;
             end
             if nargin >= 2 && ~isempty(center)
-                obj.center = center;
+                obj.setCenter(center);
             end
             if nargin >= 3 && ~isempty(rollPitchYaw)
                 obj.rollPitchYaw_deg = rollPitchYaw;
@@ -70,7 +70,16 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
         end
 
         function setCenter(obj, newCenter)
-            obj.center = newCenter;
+            % setCenter  Store center translation or a generating function handle.
+            %   setCenter(obj, newCenter) accepts a numeric N-by-3 center matrix
+            %   or a function handle that returns such a matrix when invoked
+            %   (e.g., for time-varying translations).
+            if isa(newCenter, 'function_handle')
+                obj.center = newCenter;
+                return;
+            end
+
+            obj.center = obj.validateCenter(newCenter);
         end
 
         function setOrientation(obj, roll_deg, pitch_deg, yaw_deg)
@@ -81,8 +90,18 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             obj.rollPitchYaw_deg = rollPitchYaw;
         end
 
-        function c = getCenter(obj)
-            c = obj.center;
+        function c = getCenter(obj, varargin)
+            % getCenter  Retrieve the current center translation.
+            %   c = getCenter(obj, ...) returns the stored center matrix
+            %   directly or evaluates the stored function handle with any
+            %   provided arguments before validation.
+            if isa(obj.center, 'function_handle')
+                c = obj.center(varargin{:});
+            else
+                c = obj.center;
+            end
+
+            c = obj.validateCenter(c);
         end
 
         function rpy = getRollPitchYaw(obj)
@@ -190,9 +209,13 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             c = obj.getCenter();
             rpy = obj.getRollPitchYaw();
 
-            xBody = x - c(1);
-            yBody = y - c(2);
-            zBody = z - c(3);
+            cx = obj.requireScalarOrSize(c(:,1), x, 'centerX');
+            cy = obj.requireScalarOrSize(c(:,2), y, 'centerY');
+            cz = obj.requireScalarOrSize(c(:,3), z, 'centerZ');
+
+            xBody = x - cx;
+            yBody = y - cy;
+            zBody = z - cz;
 
             if any(rpy)
                 coords = [xBody(:) yBody(:) zBody(:)].';
@@ -230,6 +253,11 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                 error(sprintf('AnalyticalShape3D:%s:SizeMismatch', id), ...
                     'Values must be scalar or match the reference array size.');
             end
+        end
+
+        function c = validateCenter(~, c)
+            validateattributes(c, {'numeric'}, {'nonempty', 'ncols', 3, 'real', 'finite'}, ...
+                'AnalyticalShape3D', 'center');
         end
         
     end
