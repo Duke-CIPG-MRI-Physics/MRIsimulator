@@ -18,13 +18,23 @@ Vbase_L = 2.4 * ones(size(t_s));      % baseline ~FRC = 2.4 L
 bellyFrac = 0.6 * ones(size(t_s));    % 60% belly breathing
 inspFrac  = (1/3) * ones(size(t_s));  % I:E ≈ 1:2
 
+lungParameters = struct( ...
+    'f_bpm', f_bpm, ...
+    'VT_L', VT_L, ...
+    'Vres_L', Vres_L, ...
+    'Vbase_L', Vbase_L, ...
+    'bellyFrac', bellyFrac, ...
+    'inspFrac', inspFrac, ...
+    'lungSeparation_mm', 5 * ones(size(t_s)));
+
 % Compute breathing motion + ellipsoid geometry
-[V_L, R_mm, H_mm, B_phase] = lung_ellipsoid_waveform( ...
-    t_s, f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac);
+ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters);
+V_L = ellipsoidParams.volume_L;
+B_phase = ellipsoidParams.phase_rad;
 
 % Visualization options
 visOpts.frameStep = 4;        % skip frames for speed
 visOpts.nTheta    = 200;
 
 % Display breathing motion
-visualize_lung_motion(t_s, V_L, R_mm, H_mm, B_phase, visOpts);
+visualize_lung_motion(t_s, V_L, ellipsoidParams, B_phase, visOpts);

@@ -1,24 +1,28 @@
-function [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
-            t_s, f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac)
-%COMPUTEBREATHINGMOTIONELLIPSOID  Lung volume + ellipsoid geometry vs time.
+function ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
+%LUNG_ELLIPSOID_WAVEFORM  Lung volume + ellipsoid geometry vs time.
 %
-%   [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
-%           t_s, f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac)
+%   ellipsoidParams = lung_ellipsoid_waveform(t_s, lungParameters)
 %
-%   Inputs (1xN row vectors):
-%       t_s       - time [s], strictly increasing
-%       f_bpm     - breathing frequency [breaths/min]
-%       VT_L      - tidal volume [L] (peak insp - base)
-%       Vres_L    - residual volume [L] (not used in geometry, for later use)
-%       Vbase_L   - baseline lung volume [L] (e.g. FRC) at each time
-%       bellyFrac - belly-breathing fraction in [0,1] at each time
-%       inspFrac  - inspiratory fraction of cycle in (0,1) at each time
+%   Inputs:
+%       t_s     - time [s], strictly increasing 1xN vector
+%       lungParameters - struct with 1xN vectors for fields:
+%           f_bpm            - breathing frequency [breaths/min]
+%           VT_L             - tidal volume [L] (peak insp - base)
+%           Vres_L           - residual volume [L] (kept for compatibility)
+%           Vbase_L          - baseline lung volume [L] (e.g. FRC)
+%           bellyFrac        - belly-breathing fraction in [0,1]
+%           inspFrac         - inspiratory fraction of cycle in (0,1)
+%           lungSeparation_mm- spacing added to the lung radius [mm]
 %
-%   Outputs:
-%       V_L     - total lung volume [L] (both lungs combined)
-%       R_mm    - effective semi-axis radius [mm] of each lung ellipsoid (LR/AP)
-%       H_mm    - semi-axis height [mm] of each lung ellipsoid (SI)
-%       B_phase - cumulative breathing phase [rad]
+%   Output:
+%       ellipsoidParams - struct with fields:
+%           .axes            - struct('a_mm', R_mm, 'b_mm', R_mm, 'c_mm', H_mm)
+%           .rightCenter_mm  - Nx3 centers for right lung
+%           .leftCenter_mm   - Nx3 centers for left lung
+%           .volume_L        - total lung volume [L] (both lungs combined)
+%           .phase_rad       - cumulative breathing phase [rad]
+%           .radius_mm       - effective semi-axis radius [mm] (LR/AP)
+%           .height_mm       - semi-axis height [mm] (SI)
 %
 %   Model details:
 %       - Breathing phase is built from instantaneous f_bpm(t).
@@ -31,22 +35,43 @@ function [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
 %         changes H only, applied sequentially so that V_total(t) is exact.
 
     arguments
-        t_s       (1,:) double {mustBeReal, mustBeFinite}
-        f_bpm     (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-        VT_L      (1,:) double {mustBeReal, mustBeFinite}
-        Vres_L    (1,:) double {mustBeReal, mustBeFinite, mustBeNonnegative} %#ok<INUSA>
-        Vbase_L   (1,:) double {mustBeReal, mustBeFinite, mustBePositive}
-        bellyFrac (1,:) double {mustBeReal, mustBeFinite}
-        inspFrac  (1,:) double {mustBeReal, mustBeFinite}
+        t_s             (1,:) double {mustBeReal, mustBeFinite}
+        lungParameters  struct
     end
+
+    requiredFields = {'f_bpm', 'VT_L', 'Vres_L', 'Vbase_L', ...
+        'bellyFrac', 'inspFrac', 'lungSeparation_mm'};
+    for idxField = 1:numel(requiredFields)
+        if ~isfield(lungParameters, requiredFields{idxField})
+            error('lung_ellipsoid_waveform:MissingField', ...
+                'lungParameters.%s is required.', requiredFields{idxField});
+        end
+    end
+
+    f_bpm = lungParameters.f_bpm;
+    VT_L  = lungParameters.VT_L;
+    Vres_L = lungParameters.Vres_L; %#ok<NASGU>
+    Vbase_L = lungParameters.Vbase_L;
+    bellyFrac = lungParameters.bellyFrac;
+    inspFrac  = lungParameters.inspFrac;
+    lungSeparation_mm = lungParameters.lungSeparation_mm;
+
+    validateattributes(f_bpm, {'numeric'}, {'real', 'finite', 'nonnegative'});
+    validateattributes(VT_L, {'numeric'}, {'real', 'finite'});
+    validateattributes(Vres_L, {'numeric'}, {'real', 'finite', 'nonnegative'});
+    validateattributes(Vbase_L, {'numeric'}, {'real', 'finite', 'positive'});
+    validateattributes(bellyFrac, {'numeric'}, {'real', 'finite'});
+    validateattributes(inspFrac, {'numeric'}, {'real', 'finite'});
+    validateattributes(lungSeparation_mm, {'numeric'}, {'real', 'finite', 'nonnegative'});
 
     N = numel(t_s);
     if any(diff(t_s) < 0)
         error('t_s must be strictly increasing.');
     end
     if any([numel(f_bpm), numel(VT_L), numel(Vres_L), ...
-            numel(Vbase_L), numel(bellyFrac), numel(inspFrac)] ~= N)
-        error('All input vectors must have the same length as t_s.');
+            numel(Vbase_L), numel(bellyFrac), numel(inspFrac), ...
+            numel(lungSeparation_mm)] ~= N)
+        error('All lungParameters vectors must have the same length as t_s.');
     end
     if any(bellyFrac < 0 | bellyFrac > 1)
         error('bellyFrac must be in [0,1].');
@@ -147,6 +172,20 @@ function [V_L, R_mm, H_mm, B_phase] = computeBreathingMotionEllipsoid( ...
     % Convert to millimeters for output
     R_mm = 1000 .* R_m;
     H_mm = 1000 .* H_m;
+
+    lungPosition_mm = R_mm + lungSeparation_mm;
+
+    rightCenter = [lungPosition_mm(:), zeros(size(lungPosition_mm(:))), zeros(size(lungPosition_mm(:)))];
+    leftCenter  = [-lungPosition_mm(:), zeros(size(lungPosition_mm(:))), zeros(size(lungPosition_mm(:)))];
+
+    ellipsoidParams = struct( ...
+        'axes', struct('a_mm', R_mm, 'b_mm', R_mm, 'c_mm', H_mm), ...
+        'rightCenter_mm', rightCenter, ...
+        'leftCenter_mm', leftCenter, ...
+        'volume_L', V_L, ...
+        'phase_rad', B_phase, ...
+        'radius_mm', R_mm, ...
+        'height_mm', H_mm);
 
     % Optional sanity check:
     % V_check = (4/3)*pi.*R_m.^2.*H_m;
