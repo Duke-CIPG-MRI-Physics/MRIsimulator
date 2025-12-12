@@ -25,7 +25,7 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
 
     methods
         function obj = CompositeAnalyticalShape3D(additiveComponents, subtractiveComponents, ...
-                intensity, center, rollPitchYaw)
+                intensity, shapeParameters)
             if nargin < 5 || isempty(rollPitchYaw)
                 rollPitchYaw = [0 0 0];
             end
@@ -40,7 +40,7 @@ classdef CompositeAnalyticalShape3D < AnalyticalShape3D
                 'center', struct('x_mm', center(:,1), 'y_mm', center(:,2), 'z_mm', center(:,3)), ...
                 'roll_deg', rollPitchYaw(1), ...
                 'pitch_deg', rollPitchYaw(2), ...
-                'yaw_deg', rollPitchYaw(3))));
+                'yaw_deg', rollPitchYaw(3)));
             poseParams = AnalyticalShape3D.ensurePoseFields(poseParams);
             obj@AnalyticalShape3D(intensity, poseParams);
             
