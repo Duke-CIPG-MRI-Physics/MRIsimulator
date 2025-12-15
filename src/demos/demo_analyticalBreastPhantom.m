@@ -49,6 +49,7 @@ ordKsx_kz = kz_vec(kz_orderedIdx);
 %% 5) Construct the breast phantom with the embedded enhancing vessel
 t_s = (1:length(ordKsx_kx))*0.0001;
 mat_t = max(t_s(:))
+t_s = reshape(t_s,size(ordKsx_kx)); % force time and k-space to be the same size;
 phantom = BreastPhantom(t_s);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space

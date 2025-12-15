@@ -47,6 +47,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 'inspFrac', 1/3, ...
                 'GCS_peak', 0.4);
             lungIntensity = 0.1;
+
+            % TODO make this a function handle so its not directly
+            % evaluated yet.
             pulmonaryOpts.lungSeparation_mm = beatingHeart.getShapeParameters.a_mm + heartWallThickness_mm; 
 
             lungShapeParameters = BreastPhantom.addPoseToParameters(struct(), centered, notRotated);
@@ -83,7 +86,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             tissueComposite = CompositeAnalyticalShape3D(fat_inner, [beatingHeart, breathingLung], ...
                tissueIntensity);
             
-            thoraxCenter = [zeros(size(chest_ap_outer_mm)), -chest_ap_outer_mm, zeros(size(chest_ap_outer_mm))];
+            thoraxCenter = [zeros(size(chest_ap_outer_mm)); -chest_ap_outer_mm; zeros(size(chest_ap_outer_mm))];
             thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0; bodyShift; 0], [0, 0, 0]));
             thorax = MultipleMaterialPhantom([beatingHeart, breathingLung, fatComposite, tissueComposite], ...
                 thoraxPose);

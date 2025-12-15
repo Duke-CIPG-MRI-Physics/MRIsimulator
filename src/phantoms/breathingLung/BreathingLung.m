@@ -24,7 +24,6 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     %         constructor as additive components.
 
     properties (Access = protected)
-        t_s (1,:) double {mustBeReal, mustBeFinite}
         rightLung
         leftLung
     end
@@ -51,7 +50,6 @@ classdef BreathingLung < CompositeAnalyticalShape3D
             obj@CompositeAnalyticalShape3D([leftLung, rightLung], ...
                 AnalyticalShape3D.empty, intensity, shapeParameters);
 
-            obj.t_s = t_s;
             obj.rightLung = rightLung;
             obj.leftLung = leftLung;
         end
