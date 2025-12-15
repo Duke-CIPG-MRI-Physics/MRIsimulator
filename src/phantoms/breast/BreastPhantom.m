@@ -8,18 +8,18 @@ classdef BreastPhantom < MultipleMaterialPhantom
     %   ~0.001 Gb, 15,625-sample chunks to keep memory usage minimal.
 
     properties (Access = private)
-        time_s (:,1) double {mustBeFinite}
+        time_s (1,:) double {mustBeFinite}
     end
 
     methods
         function obj = BreastPhantom(t_s)
             arguments
-                t_s (:,1) double {mustBeFinite}
+                t_s (1,:) double {mustBeFinite}
             end
 
             obj@MultipleMaterialPhantom();
 
-            obj.time_s = t_s(:).';
+            obj.time_s = t_s;
 
             %% Create heart
             cardiacOpts = struct('HR_bpm', 70, ...
@@ -83,7 +83,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             tissueComposite = CompositeAnalyticalShape3D(fat_inner, [beatingHeart, breathingLung], ...
                tissueIntensity);
             
-            thoraxCenter = [zeros(size(chest_ap_outer_mm(:))), -chest_ap_outer_mm(:), zeros(size(chest_ap_outer_mm(:)))]';
+            thoraxCenter = [zeros(size(chest_ap_outer_mm)), -chest_ap_outer_mm, zeros(size(chest_ap_outer_mm))];
             thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0; bodyShift; 0], [0, 0, 0]));
             thorax = MultipleMaterialPhantom([beatingHeart, breathingLung, fatComposite, tissueComposite], ...
                 thoraxPose);
@@ -141,9 +141,22 @@ classdef BreastPhantom < MultipleMaterialPhantom
         end
 
         function pose = createPoseStruct(centerVec, rollPitchYaw)
-            pose = struct('center', struct('x_mm', centerVec(:,1), ...
-                'y_mm', centerVec(:,2), ...
-                'z_mm', centerVec(:,3)), ...
+            if size(centerVec, 1) == 3 && size(centerVec, 2) ~= 3
+                x_mm = centerVec(1, :);
+                y_mm = centerVec(2, :);
+                z_mm = centerVec(3, :);
+            elseif size(centerVec, 2) == 3
+                x_mm = centerVec(:, 1);
+                y_mm = centerVec(:, 2);
+                z_mm = centerVec(:, 3);
+            else
+                error('BreastPhantom:InvalidCenterVec', ...
+                    'centerVec must be 3xN (axis rows) or Nx3 (axis columns).');
+            end
+
+            pose = struct('center', struct('x_mm', x_mm, ...
+                'y_mm', y_mm, ...
+                'z_mm', z_mm), ...
                 'roll_deg', rollPitchYaw(1), ...
                 'pitch_deg', rollPitchYaw(2), ...
                 'yaw_deg', rollPitchYaw(3));
