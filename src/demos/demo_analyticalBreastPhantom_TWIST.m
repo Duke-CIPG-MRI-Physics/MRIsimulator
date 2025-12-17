@@ -2,9 +2,9 @@ clear all;
 close all; 
 clc; 
 % restoredefaultpath; 
-run('C:\code\mriSimulator\cipg_setup.m');
-run('C:\code\Duke-CIVM-MRI-Tools\setup.m');
-savepath
+% run('C:\code\mriSimulator\cipg_setup.m');
+% run('C:\code\Duke-CIVM-MRI-Tools\setup.m');
+% savepath
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [400 400 400];
@@ -23,29 +23,15 @@ freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
 
 pA = 0.05;
 Nb = 10;
-Sampling_table = TWIST(pA,Nb,N);
 Time_Measured = 90; %sec
 TR = 6E-3; 
 R = 1;
 PF_Factor = 1;
 
-[Sampling_Table,PF_ask,GRAPPA_ask] = Ultrafast_Sampling(N,pA,Nb,Time_Measured,TR,R,PF_Factor);
+Sampling_Table = Ultrafast_Sampling(N,pA,Nb,Time_Measured,TR,R,PF_Factor);
 
-% TODO2 - clean this up
-nFreq = N(freq_phase_slice(1));
-nPhase = N(freq_phase_slice(2));
-nSlice = N(freq_phase_slice(3));
-phaseEncoding = Sampling_table.("Row (phase)");
-phaseEncoding = repmat(phaseEncoding',[nFreq, 1]);
-phaseEncodingFull = phaseEncoding(:);
+kOrderedIdx = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
 
-sliceEncoding = Sampling_table.("Column (slice)");
-sliceEncoding = repmat(sliceEncoding',[nFreq, 1]);
-sliceEncodingFull = sliceEncoding(:);
-
-freqEncodeingFull = repmat((1:nFreq)',[length(sliceEncodingFull)/nFreq 1]);
-
-kOrderedIdx = [freqEncodeingFull(:) phaseEncodingFull(:) sliceEncodingFull(:)]';
 
 encodingDimStr = {'freq:',', phase:',', slice:'};
 encodingFullStr = '';
@@ -64,11 +50,12 @@ for iDim = 1:3
 end
 encodingFullStr
 
-%% 3) Build WORLD k-space grid and map to the rectilinear ordering
+%% 3) Build WORLD k-space grid and map to the TWIST ordering
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
-kx_orderedIdx = kOrderedIdx(1, :);
-ky_orderedIdx = kOrderedIdx(2, :);
-kz_orderedIdx = kOrderedIdx(3, :);
+
+kx_orderedIdx = kOrderedIdx(:, 1);
+ky_orderedIdx = kOrderedIdx(:, 2);
+kz_orderedIdx = kOrderedIdx(:, 3);
 
 ordKsx_kx = kx_vec(kx_orderedIdx);
 ordKsx_ky = ky_vec(ky_orderedIdx); 
