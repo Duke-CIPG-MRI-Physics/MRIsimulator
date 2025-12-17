@@ -97,13 +97,50 @@ phantom = BreastPhantom(Sampling_Table.Timing);
 fprintf('Evaluating analytic k-space...\n');
 K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
 
-% TODO1 - fix the recon
-% Either break this into separate time-recon windows 
+Sampling_Table.Kspace_Value = K_ordered';
 
-% Reassemble onto the kx/ky/kz grid for reconstruction
-K = zeros(N);
-linearIdx = sub2ind(N, kx_orderedIdx, ky_orderedIdx, kz_orderedIdx);
-K(linearIdx) = K_ordered;
+Sampling_Table.("Linear Index") = sub2ind([N,max(Sampling_Table.Bj)+1],Sampling_Table.("Row (phase)"),Sampling_Table.("Column (slice)"),Sampling_Table.Frequency);
+
+TWISTED_Kspace = zeros([N,max(Sampling_Table.Bj)+1]);
+TWISTED_Kspace(Sampling_Table.("Linear Index")) = Sampling_Table.Kspace_Value;
+%% ---  6. Updating K-Space from each measurement to undo TWIST
+
+%TODO - make this unTWIST part work
+fprintf('\nUndoing TWIST...')
+
+% Initialize the output array
+unTWISTed_Kspace = zeros(N(2,3));
+
+% The first timepoint is the baseline for all coils
+unTWISTed_Kspace(:,:,:,1,:) = TWIST_Kspace(:,:,:,1,:);
+
+% Loop only through timepoints (vectorized over coils)
+for ii_timepoint = 2:size(TWIST_Kspace,4)
+    % 1. Create a temporary variable for the current timepoint's slice,
+    % starting with data from the previous timepoint.
+    dest_slice = unTWISTed_Kspace(:,:,:,ii_timepoint-1,:);
+
+    % 2. Get the new sparse measurements for the current timepoint
+    source_slice = TWIST_Kspace(:,:,:,ii_timepoint,:);
+
+    % 3. Create a logical mask of where the new measurements exist
+    update_mask = (source_slice ~= 0);
+
+    % 4. Use the mask to update the destination slice with the new values.
+    % This logical indexing is very fast.
+    dest_slice(update_mask) = source_slice(update_mask);
+
+    % 5. Assign the updated slice back into the main array.
+    unTWISTed_Kspace(:,:,:,ii_timepoint,:) = dest_slice;
+end
+
+clear('dest_slice','source_slice','update_mask')
+
+% Perform the inverse 3D FFT on all timepoints and coils at once.
+% This part of the optimization remains correct and highly efficient.
+k_shifted_back = ifftshift(ifftshift(ifftshift(unTWISTed_Kspace, 1), 2), 3);
+unTWISTed_IMspace = ifft(ifft(ifft(k_shifted_back, [], 1), [], 2), [], 3);
+
 
 %% 6) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
