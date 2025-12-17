@@ -14,7 +14,7 @@ clear; clc;
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [300 300 300];               % 300 mm cube
-N      = [150 150 80];                % [Nx Ny Nz]
+N      = [300 300 300];                % [Nx Ny Nz]
 
 resolution = FOV_mm./N;
 
@@ -44,7 +44,7 @@ yaw_deg    = 25;
 
 %% 6) Construct array of shapes
 center = [0 0 0];
-roll_pitch_yaw = [0, 15, 35];
+roll_pitch_yaw = [0, 0, 0];
 intensity = 1;
 
 boxParams = struct('Lx_mm', 60, 'Ly_mm', 40, 'Lz_mm', 20); % [mm];

@@ -91,24 +91,6 @@ classdef BreastPhantom < MultipleMaterialPhantom
             thorax = MultipleMaterialPhantom([beatingHeart, breathingLung, fatComposite, tissueComposite], ...
                 thoraxPose);
 
-           
-            % 
-            % [breastLeft, breastRight, breastCenter, rightBreastCenter] = obj.createBreastGeometry();
-            % enhancingVessel = obj.createEnhancingVessel(obj.time_s, rightBreastCenter);
-            % 
-            % leftAndRightBreastTissue = CompositeAnalyticalShape3D([breastRight, breastLeft], enhancingVessel, ...
-            %     0.5, [0, 0, 0], [0, 0, 0]);
-            % 
-            % bothBreasts = MultipleMaterialPhantom([leftAndRightBreastTissue, enhancingVessel], ...
-            %     breastCenter, [0, 0, 0]);
-
-            obj.setShapes([thorax]);
-        end
-    end
-
-    methods (Access = private)
-
-        function [breastLeft, breastRight, breastCenter, right_breast_center] = createBreastGeometry(~)
             breast_gap_mm = 60;
             breast_radius_mm = 60;
             breast_depth_mm = 125;
@@ -123,7 +105,26 @@ classdef BreastPhantom < MultipleMaterialPhantom
             breast_left = AnalyticalCylinder3D([], breastParamsLeft);
 
             breastCenter = [0, 0.5 * breast_depth_mm, 0];
+           breastParamsBoth = BreastPhantom.addPoseToParameters(breastParams, breastCenter, [0, 0, 0]);
+            
+            
+        
+            % enhancingVessel = obj.createEnhancingVessel(obj.time_s, right_breast_center);
+            % 
+            % leftAndRightBreastTissue = CompositeAnalyticalShape3D([breastRight, breastLeft], enhancingVessel, ...
+            %     0.5, [0, 0, 0], [0, 0, 0]);
+            leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], [], ...
+                0.5, breastParamsBoth);
+            % 
+
+            % bothBreasts = MultipleMaterialPhantom([leftAndRightBreastTissue, enhancingVessel], ...
+            %     breastCenter, [0, 0, 0]);
+
+            obj.setShapes([thorax leftAndRightBreastTissue]);
         end
+    end
+
+    methods (Access = private)
 
         function enhancingVessel = createEnhancingVessel(obj, rightBreastCenter)
             vesselRadius_mm = 2.5;
