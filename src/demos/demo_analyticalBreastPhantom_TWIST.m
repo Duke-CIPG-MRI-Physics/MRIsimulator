@@ -19,12 +19,33 @@ fprintf('Grid size : %d x %d x %d\n', N(1), N(2), N(3));
 freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
 % [kOrderedIdx, ~] = orderRectilinearKspace(N, freq_phase_slice, 1, 1);
 
+% parameters from clinical ultrafast protocol
+FOV_read_mm = 350;
+FOV_phase_pct = 100;
+oversampling_phase_pct = 20; 
+oversampling_slice_pct = 33.3; 
+slices_per_slab = 240;
+slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
+base_resolution = 224;
+phase_resolution_pct = 100;
+slice_resolution_pct = 80;
+freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
+
+% TODO - interpolation is off in current protocol, but we could consider it as an option in the future...
+
+% Contrast parameters
+rBW_HzPerPix = 570;
+TR = 5.88E-3;   
+TE = 2.63E-3;
+
+% Derived contrast paramters
+rBW_Hz = rBW_HzPerPix*base_resolution;
+dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 
 pA = 0.05;
 Nb = 10;
 Time_Measured = 90; %sec
-TR = 6E-3; 
 R = 1;
 PF_Factor = 1;
 
@@ -62,10 +83,15 @@ ordKsx_ky = ky_vec(ky_orderedIdx);
 ordKsx_kz = kz_vec(kz_orderedIdx);
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-t_s = (1:length(ordKsx_kx))*0.0001;
-mat_t = max(t_s(:))
-t_s = reshape(t_s,size(ordKsx_kx)); % force time and k-space to be the same size;
-phantom = BreastPhantom(t_s);
+t_PE = TR-(N(1)*dt_s);
+t_s = t_PE+dt_s:dt_s:TR;
+multipliers = 1:height(Sampling_Table)/N(1);
+
+matrix_result = t_s(:) + (multipliers * TR);
+
+Sampling_Table.Timing = matrix_result(:);
+
+phantom = BreastPhantom(Sampling_Table.Timing);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
