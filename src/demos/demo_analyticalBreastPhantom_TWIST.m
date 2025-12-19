@@ -95,33 +95,35 @@ phantom = BreastPhantom(Sampling_Table.Timing);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
+
+%TODO - figure out why it's wrapping and confirm dimensions are correct
+
 K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
 
 Sampling_Table.Kspace_Value = K_ordered';
 
-Sampling_Table.("Linear Index") = sub2ind([N,max(Sampling_Table.Bj)+1],Sampling_Table.("Row (phase)"),Sampling_Table.("Column (slice)"),Sampling_Table.Frequency);
 
-TWISTED_Kspace = zeros([N,max(Sampling_Table.Bj)+1]);
-TWISTED_Kspace(Sampling_Table.("Linear Index")) = Sampling_Table.Kspace_Value;
+TWISTed_Kspace = zeros([N,max(Sampling_Table.Bj)+1]);
+TWISTed_Kspace(Sampling_Table.("Linear Index")) = Sampling_Table.Kspace_Value;
 %% ---  6. Updating K-Space from each measurement to undo TWIST
 
 %TODO - make this unTWIST part work
 fprintf('\nUndoing TWIST...')
 
 % Initialize the output array
-unTWISTed_Kspace = zeros(N(2,3));
+unTWISTed_Kspace = zeros(size(TWISTed_Kspace));
 
 % The first timepoint is the baseline for all coils
-unTWISTed_Kspace(:,:,:,1,:) = TWIST_Kspace(:,:,:,1,:);
+unTWISTed_Kspace(:,:,:,1,:) = TWISTed_Kspace(:,:,:,1,:);
 
 % Loop only through timepoints (vectorized over coils)
-for ii_timepoint = 2:size(TWIST_Kspace,4)
+for ii_timepoint = 2:size(TWISTed_Kspace,4)
     % 1. Create a temporary variable for the current timepoint's slice,
     % starting with data from the previous timepoint.
     dest_slice = unTWISTed_Kspace(:,:,:,ii_timepoint-1,:);
 
     % 2. Get the new sparse measurements for the current timepoint
-    source_slice = TWIST_Kspace(:,:,:,ii_timepoint,:);
+    source_slice = TWISTed_Kspace(:,:,:,ii_timepoint,:);
 
     % 3. Create a logical mask of where the new measurements exist
     update_mask = (source_slice ~= 0);
@@ -141,11 +143,7 @@ clear('dest_slice','source_slice','update_mask')
 k_shifted_back = ifftshift(ifftshift(ifftshift(unTWISTed_Kspace, 1), 2), 3);
 unTWISTed_IMspace = ifft(ifft(ifft(k_shifted_back, [], 1), [], 2), [], 3);
 
-
-%% 6) Reconstruct 3D image via inverse FFT
-fprintf('Performing 3D inverse FFT...\n');
-img_viaKspace = fftshift(ifftn(ifftshift(K)));
-
+img_viaKspace = unTWISTed_IMspace;
 
 
 %% display
