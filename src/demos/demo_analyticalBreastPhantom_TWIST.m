@@ -3,8 +3,6 @@ close all;
 clc; 
 restoredefaultpath; 
 run('C:\code\mriSimulator\cipg_setup.m');
-run('C:\code\mri-breast-virtual-trial-simulator\cipg_setup.m')
-run('C:\code\Duke-CIVM-MRI-Tools\setup.m');
 savepath
 
 %% 1) FOV and matrix size (scanner-style inputs)
