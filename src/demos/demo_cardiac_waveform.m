@@ -1,0 +1,97 @@
+% demo_cardiac_waveform.m
+% Demo of time-varying LV ellipsoid geometry using the simplified interface
+%   of cardiac_ellipsoid_waveform (returns ellipsoidParams only).
+% The core waveform model now evaluates long time vectors in 15,625-sample
+% chunks (~0.001 Gb of temporaries) to limit memory use.
+%
+% Requires:
+%   - cardiac_ellipsoid_waveform.m
+
+clear; clc; close all;
+
+%% 1) Time axis and basic hemodynamics
+T_total_s = 6;                    % total simulation time [s]
+N         = 2001;                 % number of time samples
+t_s       = linspace(0, T_total_s, N);
+
+%% 2) Waveform + geometry options
+cardiacOpts = struct();
+cardiacOpts.systFrac  = 0.35;    % systolic fraction of cycle
+cardiacOpts.q_ED      = 2.5;     % ED aspect ratio a0/b0 (long/short)
+cardiacOpts.GLS_peak  = -0.20;   % peak longitudinal strain (GLS)
+cardiacOpts.GCS_peak  = -0.25;   % peak circumferential strain (GCS)
+cardiacOpts.HR_bpm    = 70;      % Heart rate: 70 bpm
+cardiacOpts.EDV_ml    = 120;     % end-diastolic volume [mL]
+cardiacOpts.ESV_ml    = 50;      % end-systolic volume [mL]
+
+SV_ml = cardiacOpts.EDV_ml - cardiacOpts.ESV_ml;
+EF    = SV_ml ./ cardiacOpts.EDV_ml;
+
+fprintf('Demo EF = %.1f %% (SV = %.1f mL, EDV = %.1f mL)\n', ...
+    100 * EF(1), SV_ml(1), cardiacOpts.EDV_ml(1));
+
+%% 3) Run ellipsoid waveform model (new interface: ellipsoid params)
+ellipsoidParams = cardiac_ellipsoid_waveform(t_s, cardiacOpts);
+a_mm = ellipsoidParams.a_mm;
+b_mm = ellipsoidParams.b_mm;
+
+%% 4) Visualization: ellipse outline + semi-axes vs time
+frameStep = 4;             % subsample frames to speed up animation (~N/4 frames)
+nTheta    = 200;           % angular resolution for ellipse
+
+a_cm = a_mm(1, :) / 10;          % convert to cm for plotting (visualize first waveform)
+b_cm = b_mm(1, :) / 10;
+
+theta = linspace(0, 2*pi, nTheta);
+
+% Axis limits
+maxA = max(a_cm);
+maxB = max(b_cm);
+pad = 1.2;
+
+figure('Name','Cardiac ellipsoid (simplified)','Color','w');
+tlo = tiledlayout(2,1,'TileSpacing','compact','Padding','compact');
+
+% (1) Coronal ellipse outline (x = b, y = a)
+axEll = nexttile(tlo, 1);
+hold(axEll, 'on');
+x0 = b_cm(1) * cos(theta);
+y0 = a_cm(1) * sin(theta);
+hEll = plot(axEll, x0, y0, 'b', 'LineWidth', 2);
+axis(axEll, 'equal');
+xlim(axEll, pad * [-maxB, maxB]);
+ylim(axEll, pad * [-maxA, maxA]);
+xlabel(axEll, 'Left–Right [cm]');
+ylabel(axEll, 'Long-axis [cm]');
+title(axEll, 'Ellipsoid cross-section');
+grid(axEll, 'on');
+
+% (2) Semi-axes vs time with moving cursor
+axAxes = nexttile(tlo, 2);
+hold(axAxes, 'on');
+plot(axAxes, t_s, a_cm, 'LineWidth', 1.5, 'DisplayName', 'a (long)');
+plot(axAxes, t_s, b_cm, 'LineWidth', 1.5, 'DisplayName', 'b (short)');
+hPointA = plot(axAxes, t_s(1), a_cm(1), 'ok', 'MarkerFaceColor', 'k', ...
+    'MarkerSize', 6, 'DisplayName', 'Cursor a');
+hPointB = plot(axAxes, t_s(1), b_cm(1), 'or', 'MarkerFaceColor', 'r', ...
+    'MarkerSize', 6, 'DisplayName', 'Cursor b');
+xlabel(axAxes, 'Time [s]');
+ylabel(axAxes, 'Semi-axis [cm]');
+title(axAxes, 'Semi-axes vs time');
+legend(axAxes, 'Location', 'best');
+grid(axAxes, 'on');
+
+% Animation loop
+for k = 1:frameStep:numel(t_s)
+    ak = a_cm(k);
+    bk = b_cm(k);
+
+    xk = bk * cos(theta);
+    yk = ak * sin(theta);
+    set(hEll, 'XData', xk, 'YData', yk);
+
+    set(hPointA, 'XData', t_s(k), 'YData', ak);
+    set(hPointB, 'XData', t_s(k), 'YData', bk);
+
+    drawnow;
+end
