@@ -3,8 +3,9 @@ close all;
 clc; 
 restoredefaultpath; 
 run('C:\code\mriSimulator\cipg_setup.m');
+run('C:\code\mri-breast-virtual-trial-simulator\cipg_setup.m')
 run('C:\code\Duke-CIVM-MRI-Tools\setup.m');
-savepath;
+savepath
 
 % parameters from clinical ultrafast protocol
 FOV_read_mm = 350;

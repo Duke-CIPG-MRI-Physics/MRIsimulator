@@ -11,6 +11,12 @@ classdef MultipleMaterialPhantom < AnalyticalShape3D
         shapes  % No type constraint - validated in setShapes() method
     end
 
+    methods (Access = protected)
+         function S = bodyKspace(obj, kx_body, ky_body, kz_body);
+            error('bodyKspace not defined for Multiple Material Phantom due to rotations of subjects');
+        end
+    end
+
     methods
         function obj = MultipleMaterialPhantom(shapes, shapeParameters)
             if nargin < 2 || isempty(shapeParameters)
