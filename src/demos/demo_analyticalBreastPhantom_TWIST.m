@@ -9,7 +9,7 @@ savepath
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [400 400 400];
-N      = [100 100 100]; % [Nx Ny Nz]
+N      = [224 224 224]; % [Nx Ny Nz]
 resolution = FOV_mm./N;
 resolution_normalized = resolution/max(resolution);
 
