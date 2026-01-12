@@ -139,9 +139,9 @@ ky_orderedIdx = kOrderedIdx(2, :);
 kz_orderedIdx = kOrderedIdx(3, :);
 clear kOrderedIdx;
 
-ordKsx_kx = kx_vec(kx_orderedIdx)';
-ordKsx_ky = ky_vec(ky_orderedIdx)'; 
-ordKsx_kz = kz_vec(kz_orderedIdx)';
+ordKsx_kx = kx_vec(kx_orderedIdx);
+ordKsx_ky = ky_vec(ky_orderedIdx); 
+ordKsx_kz = kz_vec(kz_orderedIdx);
 clear kx_vec ky_vec kz_vec;
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
