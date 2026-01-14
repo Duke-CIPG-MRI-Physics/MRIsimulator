@@ -105,37 +105,53 @@ classdef BreastPhantom < MultipleMaterialPhantom
             breast_left = AnalyticalCylinder3D([], breastParamsLeft);
 
             breastCenter = [0, 0.5 * breast_depth_mm, 0];
-           breastParamsBoth = BreastPhantom.addPoseToParameters(breastParams, breastCenter, [0, 0, 0]);
-            
-            
-        
-            % enhancingVessel = obj.createEnhancingVessel(obj.time_s, right_breast_center);
-            % 
-            % leftAndRightBreastTissue = CompositeAnalyticalShape3D([breastRight, breastLeft], enhancingVessel, ...
-            %     0.5, [0, 0, 0], [0, 0, 0]);
+            breastParamsBoth = BreastPhantom.addPoseToParameters(breastParams, breastCenter, [0, 0, 0]);
+
+            vesselDiameter_mm = 5;
+            vesselRadius_mm = 0.5 * vesselDiameter_mm;
+            totalVesselLength_mm = 100;
+            rollPitchYaw = [0, 0, 0];
+            enhancedIntensity = 2.5;
+            unenhancedIntensity = 0.4;
+            breastVesselVelocity_mm_s = 50;
+
+            t_s = obj.time_s(:);
+            elapsedTime_s = t_s - t_s(1);
+
+            enhancedParamsHandle = @() localVesselParameters('enhanced');
+            unenhancedParamsHandle = @() localVesselParameters('unenhanced');
+
+            enhancedCylinder = AnalyticalCylinder3D(enhancedIntensity, enhancedParamsHandle);
+            unenhancedCylinder = AnalyticalCylinder3D(unenhancedIntensity, unenhancedParamsHandle);
+
+            enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder, enhancedCylinder]);
+
             leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], [], ...
                 0.5, breastParamsBoth);
-            % 
 
-            % bothBreasts = MultipleMaterialPhantom([leftAndRightBreastTissue, enhancingVessel], ...
-            %     breastCenter, [0, 0, 0]);
+            obj.setShapes([thorax leftAndRightBreastTissue enhancingVessel]);
 
-            obj.setShapes([thorax leftAndRightBreastTissue]);
-        end
-    end
+            function params = localVesselParameters(segment)
+                enhancedLength_mm = min(breastVesselVelocity_mm_s .* elapsedTime_s, totalVesselLength_mm);
+                unenhancedLength_mm = max(totalVesselLength_mm - enhancedLength_mm, 0);
 
-    methods (Access = private)
+                switch lower(segment)
+                    case 'enhanced'
+                        length_mm = enhancedLength_mm;
+                        center_mm = repmat(right_breast_center, numel(length_mm), 1);
+                        center_mm(:,3) = center_mm(:,3) - 0.5 .* unenhancedLength_mm;
+                    case 'unenhanced'
+                        length_mm = unenhancedLength_mm;
+                        center_mm = repmat(right_breast_center, numel(length_mm), 1);
+                        center_mm(:,3) = center_mm(:,3) + 0.5 .* enhancedLength_mm;
+                    otherwise
+                        error('BreastPhantom:InvalidVesselSegment', ...
+                            'Segment must be ''enhanced'' or ''unenhanced''.');
+                end
 
-        function enhancingVessel = createEnhancingVessel(obj, rightBreastCenter)
-            vesselRadius_mm = 2.5;
-            total_vessel_length_mm = 100;
-            rollPitchYaw = [0, 90, 90];
-
-            totalVolume_mm3 = pi * vesselRadius_mm^2 * total_vessel_length_mm;
-            V_contrast_mm3 = totalVolume_mm3 * ones(numel(obj.time_s), 1);
-
-            enhancingVessel = EnhancingVessel(obj.time_s.', total_vessel_length_mm, 2.5, 0.4, ...
-                vesselRadius_mm, V_contrast_mm3, rightBreastCenter, rollPitchYaw);
+                params = struct('radius_mm', vesselRadius_mm, 'length_mm', length_mm);
+                params.pose = BreastPhantom.createPoseStruct(center_mm, rollPitchYaw);
+            end
         end
     end
 
