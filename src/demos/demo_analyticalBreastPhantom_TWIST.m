@@ -33,8 +33,9 @@ freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
 % TODO - interpolation is off in current protocol, but we could consider it as an option in the future...
 
 % Contrast parameters
+grappa_pf_accel = 10;
 rBW_HzPerPix = 570;
-TR = 5.88E-3;   
+TR = (5.88E-3)/grappa_pf_accel;   
 TE = 2.63E-3;
 
 % Derived contrast paramters
@@ -44,7 +45,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = 0.05;
 Nb = 10;
-Time_Measured = 90; %sec
+Time_Measured = 90/grappa_pf_accel; %sec
 R = 1;
 PF_Factor = 1;
 
@@ -90,14 +91,17 @@ matrix_result = t_s(:) + (multipliers * TR);
 
 Sampling_Table.Timing = matrix_result(:);
 
-phantom = BreastPhantom(Sampling_Table.Timing);
+% Force Timing to be increasing
+[sortedT,sortIdx] = sort(Sampling_Table.Timing);
+phantom = BreastPhantom(sortedT);
+
+% phantom = BreastPhantom(Sampling_Table.Timing);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 
 %TODO - figure out why it's wrapping and confirm dimensions are correct
-
-K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
+K_ordered = phantom.kspace(ordKsx_kx(sortIdx), ordKsx_ky(sortIdx), ordKsx_kz(sortIdx));
 
 Sampling_Table.Kspace_Value = K_ordered';
 
