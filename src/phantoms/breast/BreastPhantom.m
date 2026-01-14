@@ -115,21 +115,21 @@ classdef BreastPhantom < MultipleMaterialPhantom
             unenhancedIntensity = 0.4;
             breastVesselVelocity_mm_s = 50;
 
-            t_s = obj.time_s(:);
-            elapsedTime_s = t_s - t_s(1);
-
-            enhancedParamsHandle = @() localVesselParameters('enhanced');
-            unenhancedParamsHandle = @() localVesselParameters('unenhanced');
-
-            enhancedCylinder = AnalyticalCylinder3D(enhancedIntensity, enhancedParamsHandle);
-            unenhancedCylinder = AnalyticalCylinder3D(unenhancedIntensity, unenhancedParamsHandle);
-
-            enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder, enhancedCylinder]);
+            % t_s = obj.time_s(:);
+            % elapsedTime_s = t_s - t_s(1);
+            % 
+            % enhancedParamsHandle = @() localVesselParameters('enhanced');
+            % unenhancedParamsHandle = @() localVesselParameters('unenhanced');
+            % 
+            % enhancedCylinder = AnalyticalCylinder3D(enhancedIntensity, enhancedParamsHandle);
+            % unenhancedCylinder = AnalyticalCylinder3D(unenhancedIntensity, unenhancedParamsHandle);
+            % 
+            % enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder, enhancedCylinder]);
 
             leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], [], ...
                 0.5, breastParamsBoth);
 
-            obj.setShapes([thorax leftAndRightBreastTissue enhancingVessel]);
+            obj.setShapes([thorax leftAndRightBreastTissue ]);
 
             function params = localVesselParameters(segment)
                 enhancedLength_mm = min(breastVesselVelocity_mm_s .* elapsedTime_s, totalVesselLength_mm);
