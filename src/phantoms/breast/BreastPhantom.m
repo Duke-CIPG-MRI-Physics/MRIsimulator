@@ -115,35 +115,34 @@ classdef BreastPhantom < MultipleMaterialPhantom
             unenhancedIntensity = 0.4;
             breastVesselVelocity_mm_s = 50;
 
-            % t_s = obj.time_s(:);
-            % elapsedTime_s = t_s - t_s(1);
-            % 
-            % enhancedParamsHandle = @() localVesselParameters('enhanced');
-            % unenhancedParamsHandle = @() localVesselParameters('unenhanced');
-            % 
-            % enhancedCylinder = AnalyticalCylinder3D(enhancedIntensity, enhancedParamsHandle);
-            % unenhancedCylinder = AnalyticalCylinder3D(unenhancedIntensity, unenhancedParamsHandle);
-            % 
-            % enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder, enhancedCylinder]);
+            enhancedParamsHandle = @() localVesselParameters('enhanced', t_s);
+            unenhancedParamsHandle = @() localVesselParameters('unenhanced', t_s);
 
-            leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], [], ...
-                0.5, breastParamsBoth);
+            enhancedCylinder = AnalyticalCylinder3D(enhancedIntensity, enhancedParamsHandle);
+            unenhancedCylinder = AnalyticalCylinder3D(unenhancedIntensity, unenhancedParamsHandle);
 
-            obj.setShapes([thorax leftAndRightBreastTissue ]);
+            enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder, enhancedCylinder]);
 
-            function params = localVesselParameters(segment)
+            breastIntensity = 0.5;
+            leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], enhancingVessel, ...
+                breastIntensity , breastParamsBoth);
+
+            obj.setShapes([thorax leftAndRightBreastTissue enhancingVessel]);
+
+            function params = localVesselParameters(segment, t_s)
+                elapsedTime_s = t_s - t_s(1);
                 enhancedLength_mm = min(breastVesselVelocity_mm_s .* elapsedTime_s, totalVesselLength_mm);
                 unenhancedLength_mm = max(totalVesselLength_mm - enhancedLength_mm, 0);
 
                 switch lower(segment)
                     case 'enhanced'
                         length_mm = enhancedLength_mm;
-                        center_mm = repmat(right_breast_center, numel(length_mm), 1);
-                        center_mm(:,3) = center_mm(:,3) - 0.5 .* unenhancedLength_mm;
+                        center_mm = repmat(right_breast_center, numel(length_mm), 1)';
+                        center_mm(3,:) = center_mm(3,:) - 0.5 .* unenhancedLength_mm;
                     case 'unenhanced'
                         length_mm = unenhancedLength_mm;
-                        center_mm = repmat(right_breast_center, numel(length_mm), 1);
-                        center_mm(:,3) = center_mm(:,3) + 0.5 .* enhancedLength_mm;
+                        center_mm = repmat(right_breast_center, numel(length_mm), 1)';
+                        center_mm(3,:) = center_mm(3,:) + 0.5 .* enhancedLength_mm;
                     otherwise
                         error('BreastPhantom:InvalidVesselSegment', ...
                             'Segment must be ''enhanced'' or ''unenhanced''.');

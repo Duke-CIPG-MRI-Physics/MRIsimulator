@@ -12,7 +12,7 @@ oversampling_phase_pct = 20;
 oversampling_slice_pct = 33.3; 
 slices_per_slab = 240;
 slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
-base_resolution = 224;
+base_resolution = 100; % 224 defauls
 phase_resolution_pct = 100;
 slice_resolution_pct = 80;
 freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
