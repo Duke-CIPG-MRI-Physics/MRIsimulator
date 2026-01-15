@@ -1,10 +1,10 @@
 clear all; 
 close all; 
 clc; 
-restoredefaultpath; 
-run('C:\code\mriSimulator\cipg_setup.m');
-run('C:\code\Duke-CIVM-MRI-Tools\setup.m');
-savepath
+% restoredefaultpath; 
+% run('C:\code\mriSimulator\cipg_setup.m');
+% run('C:\code\Duke-CIVM-MRI-Tools\setup.m');
+% savepath
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [400 400 400];
