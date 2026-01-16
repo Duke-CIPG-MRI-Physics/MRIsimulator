@@ -1,12 +1,9 @@
 clear all; 
 close all; 
 clc; 
-% restoredefaultpath; 
-% run('C:\code\mriSimulator\cipg_setup.m');
-% savepath
 
 %% 1) FOV and matrix size (scanner-style inputs)
-FOV_mm = [400 400 400];
+FOV_mm = [350 350 350];
 N      = [224 224 224]; % [Nx Ny Nz]
 resolution = FOV_mm./N;
 resolution_normalized = resolution/max(resolution);
@@ -33,7 +30,7 @@ freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
 % TODO - interpolation is off in current protocol, but we could consider it as an option in the future...
 
 % Contrast parameters
-grappa_pf_accel = 10;
+grappa_pf_accel = 3*2*(1/(6/8))^2;
 rBW_HzPerPix = 570;
 TR = (5.88E-3)/grappa_pf_accel;   
 TE = 2.63E-3;
@@ -45,7 +42,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = 0.05;
 Nb = 10;
-Time_Measured = 10/grappa_pf_accel; %sec
+Time_Measured = 90/grappa_pf_accel; %sec
 R = 1;
 PF_Factor = 1;
 
@@ -69,9 +66,10 @@ for iDim = 1:3
     end
     encodingFullStr = [encodingFullStr encodingDimStr{iDim} thisDimStr];
 end
-encodingFullStr
+disp(encodingFullStr)
 
 %% 3) Build WORLD k-space grid and map to the TWIST ordering
+disp('Building WORLD k-space')
 [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N);
 
 kx_orderedIdx = kOrderedIdx(:, 1);
@@ -83,7 +81,7 @@ ordKsx_ky = ky_vec(ky_orderedIdx);
 ordKsx_kz = kz_vec(kz_orderedIdx);
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-t_PE = TR-(N(1)*dt_s);
+t_PE = TR-(N(1)*dt_s); %TODO: rename these variables for clarity
 t_s = t_PE+dt_s:dt_s:TR;
 multipliers = 1:height(Sampling_Table)/N(1);
 
@@ -100,17 +98,14 @@ phantom = BreastPhantom(sortedT);
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 
-%TODO - figure out why it's wrapping and confirm dimensions are correct
 K_ordered = phantom.kspace(ordKsx_kx(sortIdx), ordKsx_ky(sortIdx), ordKsx_kz(sortIdx));
 
 Sampling_Table.Kspace_Value = K_ordered';
-
 
 TWISTed_Kspace = zeros([N,max(Sampling_Table.Bj)+1]);
 TWISTed_Kspace(Sampling_Table.("Linear Index")) = Sampling_Table.Kspace_Value;
 %% ---  6. Updating K-Space from each measurement to undo TWIST
 
-%TODO - make this unTWIST part work
 fprintf('\nUndoing TWIST...')
 
 % Initialize the output array
@@ -132,7 +127,6 @@ for ii_timepoint = 2:size(TWISTed_Kspace,4)
     update_mask = (source_slice ~= 0);
 
     % 4. Use the mask to update the destination slice with the new values.
-    % This logical indexing is very fast.
     dest_slice(update_mask) = source_slice(update_mask);
 
     % 5. Assign the updated slice back into the main array.
@@ -141,41 +135,39 @@ end
 
 clear('dest_slice','source_slice','update_mask')
 
-% Perform the inverse 3D FFT on all timepoints and coils at once.
-% This part of the optimization remains correct and highly efficient.
+% Perform the inverse 3D FFT on all timepoints and coils at once
 k_shifted_back = ifftshift(ifftshift(ifftshift(unTWISTed_Kspace, 1), 2), 3);
 unTWISTed_IMspace = ifft(ifft(ifft(k_shifted_back, [], 1), [], 2), [], 3);
-
-img_viaKspace = unTWISTed_IMspace;
+unTWISTed_IMspace = fftshift(fftshift(fftshift(unTWISTed_IMspace, 1), 2), 3);
 
 
 %% display
-imslice(abs(img_viaKspace))
+imslice(abs(unTWISTed_IMspace))
 
-figure()
-subplot(1,3,1)
-h1 = imagesc(rot90(squeeze(abs(img_viaKspace(:,:,round(0.5*size(img_viaKspace,3)))))));
-colormap(gray)
-xlabel('R/L');
-ylabel('A/P');
-ax1 = ancestor(h1,'axes');
-set(ax1,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
-    'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([1 2 3]));
-subplot(1,3,2)
-h2 = imagesc(rot90(squeeze(abs(img_viaKspace(:,round(0.5*size(img_viaKspace,2)),:)))));
-colormap(gray)
-xlabel('R/L');
-ylabel('S/I');
-ax2 = ancestor(h2,'axes');
-set(ax2,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
-    'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([1 3 2]));
-title(encodingFullStr)
-subplot(1,3,3)
-h3 = imagesc(fliplr(rot90(squeeze(abs(img_viaKspace(round(0.5*size(img_viaKspace,1)),:,:))))));
-colormap(gray)
-xlabel('A/P');
-ylabel('S/I');
-ax3 = ancestor(h3,'axes');
-set(ax3,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
-    'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([2 3 1]));
-set(gcf,'Position',[680         665        1137         213]);
+% figure()
+% subplot(1,3,1)
+% h1 = imagesc(rot90(squeeze(abs(img_viaKspace(:,:,round(0.5*size(img_viaKspace,3)))))));
+% colormap(gray)
+% xlabel('R/L');
+% ylabel('A/P');
+% ax1 = ancestor(h1,'axes');
+% set(ax1,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
+%     'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([1 2 3]));
+% subplot(1,3,2)
+% h2 = imagesc(rot90(squeeze(abs(img_viaKspace(:,round(0.5*size(img_viaKspace,2)),:)))));
+% colormap(gray)
+% xlabel('R/L');
+% ylabel('S/I');
+% ax2 = ancestor(h2,'axes');
+% set(ax2,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
+%     'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([1 3 2]));
+% title(encodingFullStr)
+% subplot(1,3,3)
+% h3 = imagesc(fliplr(rot90(squeeze(abs(img_viaKspace(round(0.5*size(img_viaKspace,1)),:,:))))));
+% colormap(gray)
+% xlabel('A/P');
+% ylabel('S/I');
+% ax3 = ancestor(h3,'axes');
+% set(ax3,'XTick',[],'XTickLabel',[], 'YTick',[],'YTickLabel',[],...
+%     'PlotBoxAspectRatioMode','auto','DataAspectRatio',resolution_normalized([2 3 1]));
+% set(gcf,'Position',[680         665        1137         213]);
