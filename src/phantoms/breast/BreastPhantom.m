@@ -114,7 +114,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             enhancedIntensity = 2.5;
             unenhancedIntensity = 0.3;
             breastVesselVelocity_cm_s = 1;
-            startInjectionTime_s = -10;
+            startInjectionTime_s = 30;
             
             min_max_t = [min(t_s) max(t_s)]
 
