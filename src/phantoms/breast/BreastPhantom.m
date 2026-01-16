@@ -110,10 +110,13 @@ classdef BreastPhantom < MultipleMaterialPhantom
             vesselDiameter_mm = 5;
             vesselRadius_mm = 0.5 * vesselDiameter_mm;
             totalVesselLength_mm = 100;
-            rollPitchYaw = [0, 0, 0];
+            breastRollPitchYaw = [0, 90, 90];
             enhancedIntensity = 2.5;
-            unenhancedIntensity = 0.4;
-            breastVesselVelocity_mm_s = 50;
+            unenhancedIntensity = 0.3;
+            breastVesselVelocity_cm_s = 1;
+            startInjectionTime_s = -10;
+            
+            min_max_t = [min(t_s) max(t_s)]
 
             enhancedParamsHandle = @() localVesselParameters('enhanced', t_s);
             unenhancedParamsHandle = @() localVesselParameters('unenhanced', t_s);
@@ -121,17 +124,23 @@ classdef BreastPhantom < MultipleMaterialPhantom
             enhancedCylinder = AnalyticalCylinder3D(enhancedIntensity, enhancedParamsHandle);
             unenhancedCylinder = AnalyticalCylinder3D(unenhancedIntensity, unenhancedParamsHandle);
 
-            enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder, enhancedCylinder]);
+            % enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder, enhancedCylinder]);
+            % enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder]);
 
             breastIntensity = 0.5;
-            leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], enhancingVessel, ...
+            leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], [unenhancedCylinder, enhancedCylinder], ...
                 breastIntensity , breastParamsBoth);
+
+            enhancingVessel = MultipleMaterialPhantom([enhancedCylinder, unenhancedCylinder], breastParamsBoth);
+
+            % enhancingVessel  = CompositeAnalyticalShape3D([unenhancedCylinder, enhancedCylinder], [], ...
+            %     breastIntensity , breastParamsBoth);
 
             obj.setShapes([thorax leftAndRightBreastTissue enhancingVessel]);
 
             function params = localVesselParameters(segment, t_s)
-                elapsedTime_s = t_s - t_s(1);
-                enhancedLength_mm = min(breastVesselVelocity_mm_s .* elapsedTime_s, totalVesselLength_mm);
+                elapsedTime_s = max(t_s - startInjectionTime_s,0);
+                enhancedLength_mm = min(breastVesselVelocity_cm_s*10 .* elapsedTime_s, totalVesselLength_mm);
                 unenhancedLength_mm = max(totalVesselLength_mm - enhancedLength_mm, 0);
 
                 switch lower(segment)
@@ -149,7 +158,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 end
 
                 params = struct('radius_mm', vesselRadius_mm, 'length_mm', length_mm);
-                params.pose = BreastPhantom.createPoseStruct(center_mm, rollPitchYaw);
+                params.pose = BreastPhantom.createPoseStruct(center_mm, breastRollPitchYaw);
             end
         end
     end
