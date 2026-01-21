@@ -33,7 +33,7 @@ function [TWIST_sampling_order] = TWIST(pA,N,kspaceSize)
 %% --- Checking for validity of inputs
 arguments
         % pA must be a single numeric value between 0.04 and 1, inclusive.
-        pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0.04), mustBeLessThanOrEqual(pA, 1)}
+        pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0), mustBeLessThanOrEqual(pA, 1)}
 
         % N must be a single, positive, integer value.
         N (1,1) {mustBeNumeric, mustBePositive, mustBeInteger}
