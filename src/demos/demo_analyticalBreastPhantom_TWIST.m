@@ -4,6 +4,7 @@ clc;
 
 %% 1) FOV and matrix size (scanner-style inputs)
 FOV_mm = [600 600 600];
+FOV_mm = [400 600 350]; %TODO: something still not right here, not centered?
 N      = [224 224 224]; % [Nx Ny Nz]
 resolution = FOV_mm./N;
 resolution_normalized = resolution/max(resolution);
