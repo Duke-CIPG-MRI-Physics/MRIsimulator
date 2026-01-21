@@ -30,10 +30,9 @@ freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
 % TODO - interpolation is off in current protocol, but we could consider it as an option in the future...
 
 % Contrast parameters
-grappa_pf_accel = 3*2*(1/(6/8))^2; %this is the 'cheaty' way to accelerate
 
-rBW_HzPerPix = 570*grappa_pf_accel;
-TR = (5.88E-3)/grappa_pf_accel;   
+rBW_HzPerPix = 570;
+TR = (5.88E-3);  
 TE = 2.63E-3;
 
 % Derived contrast paramters
