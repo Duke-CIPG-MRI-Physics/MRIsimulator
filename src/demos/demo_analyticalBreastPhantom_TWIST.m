@@ -43,7 +43,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = 0.05;
 Nb = 10;
-Time_Measured = 300/grappa_pf_accel; %sec
+Time_Measured = 300; %sec
 R = 1;
 PF_Factor = 1;
 
