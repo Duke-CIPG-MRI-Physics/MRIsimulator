@@ -8,6 +8,14 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     %   voxel occupancy (percentInsideBody) for their specific geometries
     %   while mapping their dimensions into the common setShapeParameters
     %   /getShapeParameters API.
+    %
+    %   Common shape parameter fields (all units in mm or degrees):
+    %     pose.center.x_mm  - Center position along the BODY x-axis.
+    %     pose.center.y_mm  - Center position along the BODY y-axis.
+    %     pose.center.z_mm  - Center position along the BODY z-axis.
+    %     pose.roll_deg     - Roll about BODY x-axis.
+    %     pose.pitch_deg    - Pitch about BODY y-axis.
+    %     pose.yaw_deg      - Yaw about BODY z-axis.
 
     properties (Access = protected)
         shapeIntensity (1,1) double = 1;
