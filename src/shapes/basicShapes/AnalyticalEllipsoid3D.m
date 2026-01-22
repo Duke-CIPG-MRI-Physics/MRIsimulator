@@ -3,6 +3,12 @@ classdef AnalyticalEllipsoid3D < AnalyticalShape3D
     %   Solid ellipsoid aligned with BODY axes. Semi-axes can be static
     %   scalars/vectors, a struct of those values, or supplied via a function
     %   handle returning such a struct for time-varying shapes.
+    %
+    %   Shape parameters (struct fields):
+    %     a_mm  - Semi-axis along the BODY x-axis (full width = 2 * a_mm).
+    %     b_mm  - Semi-axis along the BODY y-axis (full width = 2 * b_mm).
+    %     c_mm  - Semi-axis along the BODY z-axis (full width = 2 * c_mm).
+    %     pose  - Optional pose struct (see AnalyticalShape3D).
 
     methods
         function obj = AnalyticalEllipsoid3D(intensity, shapeParameters)

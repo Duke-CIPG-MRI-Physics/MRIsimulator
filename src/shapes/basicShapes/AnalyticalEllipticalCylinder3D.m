@@ -4,6 +4,12 @@ classdef AnalyticalEllipticalCylinder3D < AnalyticalShape3D
     %   axes. Semi-axes/length can be static scalars/vectors, provided as a
     %   struct, or computed via a function handle returning such a struct for
     %   time-varying geometry.
+    %
+    %   Shape parameters (struct fields):
+    %     a_mm     - Semi-axis along the BODY x-axis (full width = 2 * a_mm).
+    %     b_mm     - Semi-axis along the BODY y-axis (full width = 2 * b_mm).
+    %     length_mm - Full cylinder length along the BODY z-axis.
+    %     pose     - Optional pose struct (see AnalyticalShape3D).
 
     methods
         function obj = AnalyticalEllipticalCylinder3D(intensity, shapeParameters)
