@@ -12,7 +12,7 @@ oversampling_phase_pct = 20;
 oversampling_slice_pct = 33.3; 
 slices_per_slab = 240;
 slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
-base_resolution = 100; % 224 defauls
+base_resolution = 224; % 224 default
 phase_resolution_pct = 100;
 slice_resolution_pct = 80;
 freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
@@ -61,7 +61,7 @@ if(~all(matrix_full_os == ceil(matrix_full_os)))
     disp(['   Adjusted oversampling_slice_pct=' num2str(oversampling_slice_pct) '%'])
 end
 
-% Derived acquired matrix (before cropping, ignoring PI, PF, TWIST, etc)
+% Derive acquired matrix (before cropping, ignoring PI, PF, TWIST, etc)
 % Note this excludes zero padding from percent phase/slice resolution
 pe_res_dec = (phase_resolution_pct/100);
 sl_res_dec = (slice_resolution_pct/100);
@@ -101,6 +101,7 @@ disp(['   Matrix acq os     (f x ph x sl):' num2str(matrix_acq_os(1)) ' x ' num2
 disp(['   Voxel size        (f x ph x sl):' num2str(voxel_size_mm(1)) ' x ' num2str(voxel_size_mm(2)) ' x ' num2str(voxel_size_mm(3)) '(mm)']);
 disp(['   Nominal resoluton (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' x ' num2str(nominal_resolution_mm(2)) ' x ' num2str(nominal_resolution_mm(3)) '(mm)']);
 
+% Robbie - go back to TWIST here
 
 %% Order k-space 
 % * NOTE * this does not use TWIST, PI, PF yet so its much slower!

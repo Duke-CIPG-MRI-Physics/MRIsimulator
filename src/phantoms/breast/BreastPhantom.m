@@ -48,6 +48,10 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 'GCS_peak', 0.4);
             lungIntensity = 0.1;
 
+            % ROBBIE = here are the cardiac values
+            % beatingHeart.getShapeParameters.a_mm -< I think a is the r/l
+            % and a/p direction and b is the s/i direction 
+
             % TODO make this a function handle so its not directly
             % evaluated yet.
             pulmonaryOpts.lungSeparation_mm = beatingHeart.getShapeParameters.a_mm + heartWallThickness_mm; 
@@ -68,6 +72,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
             chest_ap_inner_mm = max(heart_ap_mm, lungRadius) + tissueGap_lr_mm;
             chest_lr_inner_mm = 2 * lungRadius + pulmonaryOpts.lungSeparation_mm + tissueGap_lr_mm;
             
+            % ROBBIE - sanity check that the chest dimmensions make sense
+            % in the oversampled FOV
 
             fatInnerParams = struct('a_mm', chest_lr_inner_mm, ...
                 'b_mm', chest_ap_inner_mm, 'length_mm', phantomDepth_mm);
