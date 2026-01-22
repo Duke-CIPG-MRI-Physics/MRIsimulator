@@ -93,7 +93,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
                tissueIntensity);
             
             thoraxCenter = [zeros(size(chest_ap_outer_mm)); -chest_ap_outer_mm; zeros(size(chest_ap_outer_mm))];
-            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter + [0; bodyShift; 0], [0, 0, 0]));
+            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter, [0, 0, 0]));
             thorax = MultipleMaterialPhantom([beatingHeart, breathingLung, fatComposite, tissueComposite], ...
                 thoraxPose);
 
