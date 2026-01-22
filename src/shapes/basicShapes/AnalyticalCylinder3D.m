@@ -3,6 +3,11 @@ classdef AnalyticalCylinder3D < AnalyticalShape3D
     %   Finite cylinder aligned with the BODY +z axis. Radius/length can be
     %   static scalars/vectors, a struct of those values, or supplied by a
     %   function handle returning such a struct for time-varying geometries.
+    %
+    %   Shape parameters (struct fields):
+    %     radius_mm  - Cylinder radius in the BODY x-y plane.
+    %     length_mm  - Full cylinder length along the BODY z-axis.
+    %     pose       - Optional pose struct (see AnalyticalShape3D).
 
     methods
         function obj = AnalyticalCylinder3D(intensity, shapeParameters)

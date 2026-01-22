@@ -3,6 +3,12 @@ classdef AnalyticalBox3D < AnalyticalShape3D
     %   Rectangular prism aligned with BODY axes. Dimensions can be provided as
     %   static scalars/vectors, a struct of those values, or as a function
     %   handle returning such a struct for time-varying shapes.
+    %
+    %   Shape parameters (struct fields):
+    %     Lx_mm  - Full length along the BODY x-axis.
+    %     Ly_mm  - Full length along the BODY y-axis.
+    %     Lz_mm  - Full length along the BODY z-axis.
+    %     pose   - Optional pose struct (see AnalyticalShape3D).
 
     methods
         function obj = AnalyticalBox3D(intensity, shapeParameters)
