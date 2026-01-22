@@ -4,12 +4,12 @@ clear;clc; close all;
 
 
 %% --- Setup
-Complete_matrix_size = [256,256,256]; % [frequency, phase (rows), slice (columns)]
+Complete_matrix_size = [224,224,224]; % [frequency, phase (rows), slice (columns)]
 
-pA = .1; %Size of A Region for TWIST
+pA = .02; %Size of A Region for TWIST
 N = 10; %Number of regions, Bj, to subdivide region B into
 
-TR = 6e-3; %Sequence TR
+TR = 5.88E-3; %Sequence TR
 Time_Measured = 90; %Time you wish to collect data for, excluding preparation scan time
 
 GRAPPA_R = [3,2]; %GRAPPA acceleration factors: [phase (rows), slice (columns)]

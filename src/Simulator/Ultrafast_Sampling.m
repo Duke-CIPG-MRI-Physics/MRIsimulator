@@ -11,7 +11,7 @@ arguments (Input)
     Complete_Matrix_Size (1,3) {mustBeNumeric, mustBePositive, mustBeInteger}
 
     % pA defines size of TWIST 'A' region
-    pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0.04), mustBeLessThanOrEqual(pA, 1)}
+    pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0), mustBeLessThanOrEqual(pA, 1)}
 
     % N defines how many subregions, 'Bj', that 'B' region is divided into
     N (1,1) {mustBeNumeric, mustBePositive, mustBeInteger}

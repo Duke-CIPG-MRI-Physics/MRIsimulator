@@ -3,7 +3,8 @@ close all;
 clc; 
 
 %% 1) FOV and matrix size (scanner-style inputs)
-FOV_mm = [350 350 350];
+FOV_mm = [600 600 600];
+FOV_mm = [400 600 350]; %TODO: something still not right here, not centered?
 N      = [224 224 224]; % [Nx Ny Nz]
 resolution = FOV_mm./N;
 resolution_normalized = resolution/max(resolution);
@@ -30,9 +31,9 @@ freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
 % TODO - interpolation is off in current protocol, but we could consider it as an option in the future...
 
 % Contrast parameters
-grappa_pf_accel = 3*2*(1/(6/8))^2;
+
 rBW_HzPerPix = 570;
-TR = (5.88E-3)/grappa_pf_accel;   
+TR = (5.88E-3);  
 TE = 2.63E-3;
 
 % Derived contrast paramters
@@ -42,7 +43,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = 0.05;
 Nb = 10;
-Time_Measured = 90/grappa_pf_accel; %sec
+Time_Measured = 300/grappa_pf_accel; %sec
 R = 1;
 PF_Factor = 1;
 
