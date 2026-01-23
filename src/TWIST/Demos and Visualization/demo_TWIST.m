@@ -1,8 +1,8 @@
 clc; clear; close all;
 
 %% --- Parameters and Initialization ---
-kspaceSize = [256 256 256];  % [frequency, phase (rows), slice (columns)]
-pA = 0.016;                  % Proportion of A region (central k-space)
+kspaceSize = [224 269 256];  % [frequency, phase (rows), slice (columns)]
+pA = 0.05;                  % Proportion of A region (central k-space)
 N = 10;                     % Number of time frames (B interleaves)
 TR = 6e-3; %not critical, just gives us temporal resolution
 %% --- Coordinate Grid Setup (Phase/Slice) ---
@@ -19,7 +19,7 @@ kz = kzi - centerPixel(2);  % row offset (phase)
 theta(theta>0) = 2*pi-(theta(theta>0)); 
 theta = abs(theta);
 
-%kr = round(kr/1)*1;  % Integer bins for radius
+kr = round(kr/1)*1;  % Integer bins for radius
 
 %% --- Define A and B Sampling Regions ---
 max_kz_ky = max(kr(centerPixel(2), end), kr(end, centerPixel(3)));
