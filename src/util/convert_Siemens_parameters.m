@@ -1,4 +1,5 @@
-function [FOV_acquired,matrix_complete,matrix_acquired,voxel_size_mm,nyquist_resolution_mm] = convert_Siemens_parameters(Scan_Parameters)
+function [FOV_acquired,kmatrix_size_complete,kmatrix_size_acquired,voxel_size_mm,...
+    nyquist_resolution_mm,IMmatrix_crop_size] = convert_Siemens_parameters(Scan_Parameters)
 %This function takes as input a Dictionary of Siemens scan parameters
 %to output what the true dimensions and FOV of k-space are.
 
@@ -33,21 +34,21 @@ FOV_acquired = [FOV_read_mm, ...                                 % freq dir
 %% Derive oversampled matrix (before cropping, ignoring PI, PF, TWIST, etc)
 % *NOTE* this also includes zero-padding from percent resolution,
  % this is the matrix we will ifft
-matrix_complete = [base_resolution, ...              % freq dir
+kmatrix_size_complete = [base_resolution, ...              % freq dir
     base_resolution*phase_oversampling, ...          % phase dir
     slices_per_slab*slice_oversampling];             % slice dir
 
 
 %% Check if matrix is integer
 %  - sometimes oversampling is off from decimal rounding
-if(~all(matrix_complete == ceil(matrix_complete)))
+if(~all(kmatrix_size_complete == ceil(kmatrix_size_complete)))
     phase_oversampling = ceil(base_resolution*phase_oversampling)/base_resolution;
     slice_oversampling = ceil(slices_per_slab*slice_oversampling)/slices_per_slab;
 
     oversampling_phase_pct = 100*(phase_oversampling-1);
     oversampling_slice_pct = 100*(slice_oversampling-1);
 
-    matrix_complete = [base_resolution, ...     % freq dir
+    kmatrix_size_complete = [base_resolution, ...     % freq dir
         base_resolution*phase_oversampling, ... % phase dir
         slices_per_slab*slice_oversampling];    % slice dir
 
@@ -59,31 +60,44 @@ end
 phase_resolution = (phase_resolution_pct/100);
 slice_resolution = (slice_resolution_pct/100);
 
-matrix_acquired = [matrix_complete(1), ...      % freq dir
-    matrix_complete(2)*phase_resolution, ...    % phase dir
-    matrix_complete(3)*slice_resolution];       % slice dir
+kmatrix_size_acquired = [kmatrix_size_complete(1), ...      % freq dir
+    kmatrix_size_complete(2)*phase_resolution, ...    % phase dir
+    kmatrix_size_complete(3)*slice_resolution];       % slice dir
 
 % Acquired matrix must also be integer - somtimes phase/slice resolution
 % makes this slightly off due to decimal reporting in pdf values
-if(~all(matrix_acquired == ceil(matrix_acquired)))
-    phase_resolution = ceil(matrix_complete(2)*phase_resolution)/matrix_complete(2);
-    slice_resolution = ceil(matrix_complete(3)*slice_resolution)/matrix_complete(3);
+if(~all(kmatrix_size_acquired == ceil(kmatrix_size_acquired)))
+    phase_resolution = ceil(kmatrix_size_complete(2)*phase_resolution)/kmatrix_size_complete(2);
+    slice_resolution = ceil(kmatrix_size_complete(3)*slice_resolution)/kmatrix_size_complete(3);
 
     phase_resolution_pct = 100*phase_resolution;
     slice_resolution_pct = 100*slice_resolution;
 
-    matrix_acquired = [matrix_complete(1), ...      % freq dir
-        matrix_complete(2)*phase_resolution, ...    % phase dir
-        matrix_complete(3)*slice_resolution];       % slice dir
+    kmatrix_size_acquired = [kmatrix_size_complete(1), ...      % freq dir
+        kmatrix_size_complete(2)*phase_resolution, ...    % phase dir
+        kmatrix_size_complete(3)*slice_resolution];       % slice dir
     
 end
 
 
 % Derived voxel sizes (ignoring percent slice/phase resolution)
-voxel_size_mm = FOV_acquired./matrix_complete;
+voxel_size_mm = FOV_acquired./kmatrix_size_complete;
 
 % Derived nominal voxel sizes (considering percent slice/phase resolution)
-nyquist_resolution_mm = FOV_acquired./matrix_acquired;
+nyquist_resolution_mm = FOV_acquired./kmatrix_size_acquired;
+
+%% Derive Final Image Crop Size (Post-Reconstruction)
+crop_read = base_resolution;
+crop_phase = base_resolution * phase_FOV_pct;
+crop_slice = slices_per_slab;
+
+IMmatrix_crop_size = [crop_read, crop_phase, crop_slice];
+
+% Sanity Check: Ensure dimensions are integers
+if any(mod(IMmatrix_crop_size, 1) ~= 0)
+    IMmatrix_crop_size = round(IMmatrix_crop_size);
+end
+
 
 %% Display basic parameters
 % disp( '***Basic protocol parameters: ***');
