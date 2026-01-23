@@ -87,8 +87,9 @@ Measurement_Time_GRAPPA_PF = GRAPPA_PF_Temporal_Resolution*Num_Measurements_GRAP
 Timing = [Timing ; {GRAPPA_PF_Temporal_Resolution,Num_Measurements_GRAPPA_PF,Preparation_Scan_Time_GRAPPA_PF,Measurement_Time_GRAPPA_PF}];
 Timing.Properties.RowNames{end} = 'TWIST+GRAPPA+Partial Fourier';
 end
+fprintf('TIMING ESTIMATES:\n')
 disp(Timing)
-fprintf('\n***TIMES ARE APPROXIMATE***\n')
+fprintf('\n')
 
 
 %% --- Asking what to use
@@ -231,7 +232,13 @@ Sampling_Table = Sampling_Table(expandedIdx, :);
 Sampling_Table.Frequency = repmat((1:N_freqs)', original_height, 1);
 
 %Correct linear index column for addded dimension
-Sampling_Table.("Linear Index") = sub2ind([Complete_Matrix_Size([2,3,1]),max(Sampling_Table.Bj)+1],...
-    Sampling_Table.("Row (phase)"),Sampling_Table.("Column (slice)"),Sampling_Table.Frequency,Sampling_Table.Bj+1);
+% Order: [Frequency, Phase, Slice, Time]
+sz_4D = [Complete_Matrix_Size(1), Complete_Matrix_Size(2), Complete_Matrix_Size(3), max(Sampling_Table.Bj)+1];
+
+Sampling_Table.("Linear Index") = sub2ind(sz_4D, ...
+    Sampling_Table.Frequency, ...          % Dim 1
+    Sampling_Table.("Row (phase)"), ...    % Dim 2
+    Sampling_Table.("Column (slice)"), ... % Dim 3
+    Sampling_Table.Bj + 1);                % Dim 4
 
 end
