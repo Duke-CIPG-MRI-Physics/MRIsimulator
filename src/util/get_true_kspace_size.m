@@ -48,9 +48,7 @@ if(~all(matrix_full_os == ceil(matrix_full_os)))
         base_resolution*os_pe_dec, ...
         slices_per_slab*os_sl_dec];
 
-    disp('Adjusting oversampling to give integer matrix...');
-    disp(['   Adjusted oversampling_phase_pct=' num2str(oversampling_phase_pct) '%'])
-    disp(['   Adjusted oversampling_slice_pct=' num2str(oversampling_slice_pct) '%'])
+  
 end
 
 % Derive acquired matrix (before cropping, ignoring PI, PF, TWIST, etc)
@@ -74,9 +72,7 @@ if(~all(matrix_acq_os == ceil(matrix_acq_os)))
         matrix_full_os(2)*pe_res_dec, ...
         matrix_full_os(3)*sl_res_dec];
 
-    disp('Adjusting phase/slice resolution to give integer matrix...');
-    disp(['   Adjusted phase_resolution_pct=' num2str(phase_resolution_pct) '%'])
-    disp(['   Adjusted slice_resolution_pct=' num2str(slice_resolution_pct) '%'])
+
 end
 
 
@@ -87,11 +83,11 @@ voxel_size_mm = FOV_oversampled./matrix_full_os;
 nominal_resolution_mm = FOV_oversampled./matrix_acq_os;
 
 %% Display basic parameters
-disp( '***Basic protocol parameters: ***');
-disp(['   FOV oversampled   (f x ph x sl):' num2str(FOV_oversampled(1)) ' x ' num2str(FOV_oversampled(2)) ' x ' num2str(FOV_oversampled(3)) '(mm)']);
-disp(['   Matrix acq os     (f x ph x sl):' num2str(matrix_acq_os(1)) ' x ' num2str(matrix_acq_os(2)) ' x ' num2str(matrix_acq_os(3))]);
-disp(['   Voxel size        (f x ph x sl):' num2str(voxel_size_mm(1)) ' x ' num2str(voxel_size_mm(2)) ' x ' num2str(voxel_size_mm(3)) '(mm)']);
-disp(['   Nominal resoluton (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' x ' num2str(nominal_resolution_mm(2)) ' x ' num2str(nominal_resolution_mm(3)) '(mm)']);
+% disp( '***Basic protocol parameters: ***');
+% disp(['   FOV oversampled   (f x ph x sl):' num2str(FOV_oversampled(1)) ' x ' num2str(FOV_oversampled(2)) ' x ' num2str(FOV_oversampled(3)) '(mm)']);
+% disp(['   Matrix acq os     (f x ph x sl):' num2str(matrix_acq_os(1)) ' x ' num2str(matrix_acq_os(2)) ' x ' num2str(matrix_acq_os(3))]);
+% disp(['   Voxel size        (f x ph x sl):' num2str(voxel_size_mm(1)) ' x ' num2str(voxel_size_mm(2)) ' x ' num2str(voxel_size_mm(3)) '(mm)']);
+% disp(['   Nominal resolution (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' x ' num2str(nominal_resolution_mm(2)) ' x ' num2str(nominal_resolution_mm(3)) '(mm)']);
 
 
 
