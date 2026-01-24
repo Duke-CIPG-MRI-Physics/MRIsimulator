@@ -8,7 +8,6 @@ classdef BreastPhantom < MultipleMaterialPhantom
     %   ~0.001 Gb, 15,625-sample chunks to keep memory usage minimal.
 
     properties (Access = private)
-        time_s (1,:) double {mustBeFinite}
     end
 
     methods
@@ -18,8 +17,6 @@ classdef BreastPhantom < MultipleMaterialPhantom
             end
 
             obj@MultipleMaterialPhantom();
-
-            obj.time_s = t_s;
 
             %% Create heart
             cardiacOpts = struct('HR_bpm', 70/10.66, ...
@@ -57,7 +54,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             pulmonaryOpts.lungSeparation_mm = beatingHeart.getShapeParameters.a_mm + heartWallThickness_mm; 
 
             lungShapeParameters = BreastPhantom.addPoseToParameters(struct(), centered, notRotated);
-            breathingLung = BreathingLung(obj.time_s, pulmonaryOpts, ...
+            breathingLung = BreathingLung(t_s, pulmonaryOpts, ...
                 lungIntensity, lungShapeParameters);
 
             %% Create thorax

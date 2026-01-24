@@ -6,16 +6,27 @@ clc;
 % savepath
 
 % parameters from clinical ultrafast protocol
+% FOV_read_mm = 350;
+% FOV_phase_pct = 100;
+% oversampling_phase_pct = 20; 
+% oversampling_slice_pct = 33.3; 
+% slices_per_slab = 240;
+% slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
+% base_resolution = 224; % 224 default
+% phase_resolution_pct = 100;
+% slice_resolution_pct = 80;
+% freq_phase_slice = [1 3 2]; % 1 = R/L, 2=A/P, 3 = S/I (use 2 1 3 for R/L PE, S/I slice)
+
 FOV_read_mm = 350;
 FOV_phase_pct = 100;
 oversampling_phase_pct = 20; 
 oversampling_slice_pct = 33.3; 
 slices_per_slab = 240;
 slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
-base_resolution = 224; % 224 default
+base_resolution = 100; % 224 default
 phase_resolution_pct = 100;
 slice_resolution_pct = 80;
-freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I
+freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I (use 2 1 3 for R/L PE, S/I slice)
 
 % TODO - interpolation is off in current protocol, but we could consider it as an option in the future...
 
@@ -32,27 +43,27 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 FOV_phase_dec = FOV_phase_pct/100;
 os_pe_dec = (1+(oversampling_phase_pct/100));
 os_sl_dec = (1+(oversampling_slice_pct/100));
-FOV_oversampled = [FOV_read_mm, ...                     % freq dir
+FOV_oversampled_fps = [FOV_read_mm, ...                     % freq dir
     FOV_read_mm*os_pe_dec*FOV_phase_dec, ...            % phase dir
     slices_per_slab*os_sl_dec*slice_thickness_mm];      % slice dir
 
 % Derived oversampled matrix (before cropping, ignoring PI, PF, TWIST, etc)
 % *NOTE* this also includes zero-padding from percent phase/slice
 % resolution
-matrix_full_os = [base_resolution, ...      % freq dir
+matrix_full_os_fps = [base_resolution, ...      % freq dir
     base_resolution*os_pe_dec, ...
     slices_per_slab*os_sl_dec];
 
 % Check if matrix is integer - sometimes oversampling is off from decimal
 % rounding
-if(~all(matrix_full_os == ceil(matrix_full_os)))
+if(~all(matrix_full_os_fps == ceil(matrix_full_os_fps)))
     os_pe_dec = ceil(base_resolution*os_pe_dec)/base_resolution;
     os_sl_dec = ceil(slices_per_slab*os_sl_dec)/slices_per_slab;
 
     oversampling_phase_pct = 100*(os_pe_dec-1);
     oversampling_slice_pct = 100*(os_sl_dec-1);
 
-    matrix_full_os = [base_resolution, ...      % freq dir
+    matrix_full_os_fps = [base_resolution, ...      % freq dir
         base_resolution*os_pe_dec, ...
         slices_per_slab*os_sl_dec];
 
@@ -65,22 +76,22 @@ end
 % Note this excludes zero padding from percent phase/slice resolution
 pe_res_dec = (phase_resolution_pct/100);
 sl_res_dec = (slice_resolution_pct/100);
-matrix_acq_os = [matrix_full_os(1), ...
-    matrix_full_os(2)*pe_res_dec, ...
-    matrix_full_os(3)*sl_res_dec];
+matrix_acq_os_fps = [matrix_full_os_fps(1), ...
+    matrix_full_os_fps(2)*pe_res_dec, ...
+    matrix_full_os_fps(3)*sl_res_dec];
 
 % Acquired matrix must also be integer - somtimes phase/slice resolution
 % makes this slightly off due to decimal reporting in pdf values
-if(~all(matrix_acq_os == ceil(matrix_acq_os)))
-    pe_res_dec = ceil(matrix_full_os(2)*pe_res_dec)/matrix_full_os(2);
-    sl_res_dec = ceil(matrix_full_os(3)*sl_res_dec)/matrix_full_os(3);
+if(~all(matrix_acq_os_fps == ceil(matrix_acq_os_fps)))
+    pe_res_dec = ceil(matrix_full_os_fps(2)*pe_res_dec)/matrix_full_os_fps(2);
+    sl_res_dec = ceil(matrix_full_os_fps(3)*sl_res_dec)/matrix_full_os_fps(3);
 
     phase_resolution_pct = 100*pe_res_dec;
     slice_resolution_pct = 100*sl_res_dec;
 
-    matrix_acq_os = [matrix_full_os(1), ...
-        matrix_full_os(2)*pe_res_dec, ...
-        matrix_full_os(3)*sl_res_dec];
+    matrix_acq_os_fps = [matrix_full_os_fps(1), ...
+        matrix_full_os_fps(2)*pe_res_dec, ...
+        matrix_full_os_fps(3)*sl_res_dec];
 
     disp('Adjusting phase/slice resolution to give integer matrix...');
     disp(['   Adjusted phase_resolution_pct=' num2str(phase_resolution_pct) '%'])
@@ -89,15 +100,15 @@ end
 
 
 % Derived voxel sizes (ignoring percent slice/phase resolution)
-voxel_size_mm = FOV_oversampled./matrix_full_os;
+voxel_size_mm = FOV_oversampled_fps./matrix_full_os_fps;
 
 % Derived nominal voxel sizes (considering percent slice/phase resolution)
-nominal_resolution_mm = FOV_oversampled./matrix_acq_os;
+nominal_resolution_mm = FOV_oversampled_fps./matrix_acq_os_fps;
 
 %% Display basic parameters
 disp( '***Basic protocol parameters: ***');
-disp(['   FOV oversampled   (f x ph x sl):' num2str(FOV_oversampled(1)) ' x ' num2str(FOV_oversampled(2)) ' x ' num2str(FOV_oversampled(3)) '(mm)']);
-disp(['   Matrix acq os     (f x ph x sl):' num2str(matrix_acq_os(1)) ' x ' num2str(matrix_acq_os(2)) ' x ' num2str(matrix_acq_os(3))]);
+disp(['   FOV oversampled   (f x ph x sl):' num2str(FOV_oversampled_fps(1)) ' x ' num2str(FOV_oversampled_fps(2)) ' x ' num2str(FOV_oversampled_fps(3)) '(mm)']);
+disp(['   Matrix acq os     (f x ph x sl):' num2str(matrix_acq_os_fps(1)) ' x ' num2str(matrix_acq_os_fps(2)) ' x ' num2str(matrix_acq_os_fps(3))]);
 disp(['   Voxel size        (f x ph x sl):' num2str(voxel_size_mm(1)) ' x ' num2str(voxel_size_mm(2)) ' x ' num2str(voxel_size_mm(3)) '(mm)']);
 disp(['   Nominal resoluton (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' x ' num2str(nominal_resolution_mm(2)) ' x ' num2str(nominal_resolution_mm(3)) '(mm)']);
 
@@ -105,7 +116,7 @@ disp(['   Nominal resoluton (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' 
 
 %% Order k-space 
 % * NOTE * this does not use TWIST, PI, PF yet so its much slower!
-[kOrderedIdx, t_s] = orderRectilinearKspace(matrix_acq_os, freq_phase_slice, dt_s, TR_s);
+[t_s] = orderRectilinearKspace(matrix_acq_os_fps, dt_s, TR_s); % Scott - rename to calculateKspaceSampleTimes_rectilinear
 t_s = t_s(:); % use sampling timestamps as the phantom time base
 
 encodingFullStr = '';
@@ -129,36 +140,57 @@ end
 
 disp(['   Encoding          (f x ph x sl):' encodingFullStr])
 
+figure();
+plot(t_s)
+
 %% 5) Construct the breast phantom with the embedded enhancing vessel
+disp('Constructing phantom');
 phantom = BreastPhantom(t_s);
-clear t_s;
+
 
 %% 3) Build WORLD k-space grid and map to the rectilinear ordering
-[kx_vec, ky_vec, kz_vec, ~, ~, ~] = computeKspaceGrid3D(FOV_oversampled, matrix_acq_os);
-kx_orderedIdx = kOrderedIdx(1, :);
-ky_orderedIdx = kOrderedIdx(2, :);
-kz_orderedIdx = kOrderedIdx(3, :);
-clear kOrderedIdx;
+disp('Constructing k-space grid');
+[~, ~, ~, kfreq, kPhase, kSlice] = computeKspaceGrid3D(FOV_oversampled_fps, matrix_acq_os_fps);
+k_fps = [kfreq(:) kPhase(:) kSlice(:)]';
 
-ordKsx_kx = kx_vec(kx_orderedIdx);
-ordKsx_ky = ky_vec(ky_orderedIdx); 
-ordKsx_kz = kz_vec(kz_orderedIdx);
-clear kx_vec ky_vec kz_vec;
+disp('kspaceSanityCheck Freq, phase, slice')
+nptsPlot = 2000;
+figure();
+plot(t_s(1:nptsPlot),k_fps(1,1:nptsPlot));
+hold on
+plot(t_s(1:nptsPlot),k_fps(2,1:nptsPlot));
+plot(t_s(1:nptsPlot),k_fps(3,1:nptsPlot));
+legend('Frequency','Phase','Slice')
+
+%% Permute dimmensions to convert FPS to XYZ
+disp('Permuting');
+kspaceSize = size(kfreq);
+xy_dir = find(freq_phase_slice == 1);
+k_xyz(xy_dir,:) = k_fps(1,:);
+ap_dir = find(freq_phase_slice == 2);
+k_xyz(ap_dir,:) = k_fps(2,:);
+si_dir = find(freq_phase_slice == 3);
+k_xyz(si_dir,:) = k_fps(3,:);
+clear k_fps kfreq kPhase kSlice;
+
+disp('kspaceSanityCheck x, y, z')
+figure();
+plot(t_s(1:nptsPlot),k_xyz(1,1:nptsPlot));
+hold on
+plot(t_s(1:nptsPlot),k_xyz(2,1:nptsPlot));
+plot(t_s(1:nptsPlot),k_xyz(3,1:nptsPlot));
+legend('x (X/Y)','y (A/P)','z(S/I)')
+clear t_s;
+
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
-clear ordKsx_kx ordKsx_ky ordKsx_kz phantom;
-
-% Reassemble onto the kx/ky/kz grid for reconstruction
-K = zeros(matrix_acq_os);
-linearIdx = sub2ind(matrix_acq_os, kx_orderedIdx, ky_orderedIdx, kz_orderedIdx);
-clear kx_orderedIdx ky_orderedIdx kz_orderedIdx;
-K(linearIdx) = K_ordered;
-clear K_ordered;
+K = phantom.kspace(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:));
+K = reshape(K,matrix_acq_os_fps);
 
 %% 6) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
+clear k_xyz phantom;
 img_viaKspace = fftshift(ifftn(ifftshift(K)));
 
 

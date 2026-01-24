@@ -27,11 +27,12 @@ function [kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, N)
         error('FOV_mm must be scalar or 1x3 [FOVx FOVy FOVz] in mm.');
     end
 
-    Nx = N(1); Ny = N(2); Nz = N(3);
+    kx_vec = computeKspaceGrid1D(FOV_mm(1), N(1));
+    ky_vec = computeKspaceGrid1D(FOV_mm(2), N(2));
+    kz_vec = computeKspaceGrid1D(FOV_mm(3), N(3));
 
-    kx_vec = computeKspaceGrid1D(FOV_mm(1), Nx);
-    ky_vec = computeKspaceGrid1D(FOV_mm(2), Ny);
-    kz_vec = computeKspaceGrid1D(FOV_mm(3), Nz);
-
+    % Note that matlab uses (x,y) notation for meshgrid/ndgrid, but indexes 
+    % according to (row,col), so dims 1 and two have to be swapped to 
+    % ensure sampling is in the correct order
     [kx, ky, kz] = ndgrid(kx_vec, ky_vec, kz_vec);
 end
