@@ -135,14 +135,14 @@ disp('Constructing k-space grid');
 [~, ~, ~, kfreq, kPhase, kSlice] = computeKspaceGrid3D(FOV_oversampled_fps, matrix_acq_os_fps);
 k_fps = [kfreq(:) kPhase(:) kSlice(:)]';
 
-disp('kspaceSanityCheck Freq, phase, slice')
-nptsPlot = 2000;
-figure();
-plot(t_s(1:nptsPlot),k_fps(1,1:nptsPlot));
-hold on
-plot(t_s(1:nptsPlot),k_fps(2,1:nptsPlot));
-plot(t_s(1:nptsPlot),k_fps(3,1:nptsPlot));
-legend('Frequency','Phase','Slice')
+% disp('kspaceSanityCheck Freq, phase, slice')
+% nptsPlot = 2000;
+% figure();
+% plot(t_s(1:nptsPlot),k_fps(1,1:nptsPlot));
+% hold on
+% plot(t_s(1:nptsPlot),k_fps(2,1:nptsPlot));
+% plot(t_s(1:nptsPlot),k_fps(3,1:nptsPlot));
+% legend('Frequency','Phase','Slice')
 
 %% Permute dimmensions to convert FPS to XYZ
 disp('Permuting');
@@ -150,29 +150,30 @@ kspaceSize = size(kfreq);
 [k_xyz, fps_to_xyz] = mapKspaceFpsToXyz(k_fps, freq_phase_slice);
 clear k_fps kfreq kPhase kSlice;
 
-disp('kspaceSanityCheck x, y, z')
-figure();
-plot(t_s(1:nptsPlot),k_xyz(1,1:nptsPlot));
-hold on
-plot(t_s(1:nptsPlot),k_xyz(2,1:nptsPlot));
-plot(t_s(1:nptsPlot),k_xyz(3,1:nptsPlot));
-legend('x (X/Y)','y (A/P)','z(S/I)')
-clear t_s;
-
+% disp('kspaceSanityCheck x, y, z')
+% figure();
+% plot(t_s(1:nptsPlot),k_xyz(1,1:nptsPlot));
+% hold on
+% plot(t_s(1:nptsPlot),k_xyz(2,1:nptsPlot));
+% plot(t_s(1:nptsPlot),k_xyz(3,1:nptsPlot));
+% legend('x (X/Y)','y (A/P)','z(S/I)')
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
+clear t_s;
 K = phantom.kspace(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:));
 K = reshape(K,matrix_acq_os_fps);
 
-%% 6) Reconstruct 3D image via inverse FFT
-K_xyz = permute(K, fps_to_xyz);
+%% Permute so that image is always oriented with dims:
+% 1 = R/L (x)
+% 2 = A/P (y)
+% 3 = S/II (z)
+K = permute(K, fps_to_xyz); 
 
+%% 6) Reconstruct 3D image via inverse FFT
 fprintf('Performing 3D inverse FFT...\n');
 clear k_xyz phantom;
-img_viaKspace = fftshift(ifftn(ifftshift(K_xyz)));
-
-
+img_viaKspace = fftshift(ifftn(ifftshift(K)));
 
 %% display
 imslice(abs(img_viaKspace))
