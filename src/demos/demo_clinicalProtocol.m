@@ -165,12 +165,10 @@ legend('Frequency','Phase','Slice')
 %% Permute dimmensions to convert FPS to XYZ
 disp('Permuting');
 kspaceSize = size(kfreq);
-xy_dir = find(freq_phase_slice == 1);
-k_xyz(xy_dir,:) = k_fps(1,:);
-ap_dir = find(freq_phase_slice == 2);
-k_xyz(ap_dir,:) = k_fps(2,:);
-si_dir = find(freq_phase_slice == 3);
-k_xyz(si_dir,:) = k_fps(3,:);
+k_xyz = zeros(3, numel(k_fps(1, :)));
+k_xyz(freq_phase_slice(1), :) = k_fps(1, :);
+k_xyz(freq_phase_slice(2), :) = k_fps(2, :);
+k_xyz(freq_phase_slice(3), :) = k_fps(3, :);
 clear k_fps kfreq kPhase kSlice;
 
 disp('kspaceSanityCheck x, y, z')
