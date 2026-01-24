@@ -3,45 +3,7 @@ close all;
 clc; 
 
 %% 1) FOV and matrix size (scanner-style inputs)
-freq_phase_slice = [3 2 1]; % 1 = R/L, 2=A/P, 3 = S/I 
-%TODO: ask Scott about this ^
-
-
-
-%load('Breast_Ultrafast_scan_parameters.mat') %TODO: figure out why this %isn't working
-load('test_scan_parameters.mat')
-[FOV_mm,Matrix_size,voxel_size_mm,nominal_resolution_mm] = get_true_kspace_size(test_scan_parameters);
-
-%TODO: make sure the output is correct and dimension order is correct
-
-resolution = FOV_mm./Matrix_size;
-resolution_normalized = resolution/max(resolution);
-
-
-% Contrast parameters
-
-rBW_HzPerPix = 570;
-TR = (5.88E-3);  
-TE = 2.63E-3;
-
-% Derived contrast paramters
-rBW_Hz = rBW_HzPerPix*Matrix_size(1);  
-dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
-
-%% 2) Configure acquisition ordering and timing
-
-
-pA = 0.05;
-Nb = 10;
-Time_Measured = 300; %sec
-R = 1; %[2 3]
-PF_Factor = 1; %[6/8 6/8]
-
-Sampling_Table = Ultrafast_Sampling(Matrix_size,pA,Nb,Time_Measured,TR,R,PF_Factor);
-
-kOrderedIdx = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
-
-%TODO: Understand the loop below
+freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I 
 encodingDimStr = {'freq:',', phase:',', slice:'};
 encodingFullStr = '';
 for iDim = 1:3
@@ -59,10 +21,37 @@ for iDim = 1:3
 end
 disp(encodingFullStr)
 
+
+
+load('Breast_Ultrafast_scan_parameters.mat') 
+%load('base_scan_parameters.mat')
+[FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] = convert_Siemens_parameters(scan_parameters);
+
+
+% Contrast parameters
+rBW_HzPerPix = 570;
+TR = (5.88E-3);  
+TE = 2.63E-3;
+
+% Derived contrast paramters
+rBW_Hz = rBW_HzPerPix*matrix_size_acquired(1);  
+dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
+
+%% 2) Configure acquisition ordering and timing
+
+pA = 0.05;
+Nb = 10;
+Time_Measured = 300; %sec
+R = 1; %[2 3]
+PF_Factor = 1; %[6/8 6/8]
+
+Sampling_Table = Ultrafast_Sampling(matrix_size_acquired,pA,Nb,Time_Measured,TR,R,PF_Factor);
+
+kOrderedIdx = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
+
 %% 3) Build WORLD k-space grid and map to the TWIST ordering
 disp('Building WORLD k-space')
-[kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_mm, Matrix_size); %TODO: This might be causing error due to zero padding, not sure it's being accounted for
-
+[kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_acquired, matrix_size_acquired); 
 kx_orderedIdx = kOrderedIdx(:, 1);
 ky_orderedIdx = kOrderedIdx(:, 2);
 kz_orderedIdx = kOrderedIdx(:, 3);
@@ -72,28 +61,28 @@ ordKsx_ky = ky_vec(ky_orderedIdx);
 ordKsx_kz = kz_vec(kz_orderedIdx);
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
-t_PE = TR-(Matrix_size(1)*dt_s); %TODO: rename these variables for clarity
+t_PE = TR-(matrix_size_acquired(1)*dt_s); %TODO: rename these variables for clarity
 t_s = t_PE+dt_s:dt_s:TR;
-multipliers = 1:height(Sampling_Table)/Matrix_size(1);
+multipliers = 1:height(Sampling_Table)/matrix_size_acquired(1);
 
 matrix_result = t_s(:) + (multipliers * TR);
 
 Sampling_Table.Timing = matrix_result(:);
 
-% Force Timing to be increasing
-[sortedT,sortIdx] = sort(Sampling_Table.Timing);
-phantom = BreastPhantom(sortedT);
+% % Force Timing to be increasing
+% [sortedT,sortIdx] = sort(Sampling_Table.Timing);
+% phantom = BreastPhantom(sortedT);
 
-% phantom = BreastPhantom(Sampling_Table.Timing);
+phantom = BreastPhantom(Sampling_Table.Timing);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 
-K_ordered = phantom.kspace(ordKsx_kx(sortIdx), ordKsx_ky(sortIdx), ordKsx_kz(sortIdx));
+K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
 
 Sampling_Table.Kspace_Value = K_ordered';
 
-TWISTed_Kspace = zeros([Matrix_size,max(Sampling_Table.Bj)+1]);
+TWISTed_Kspace = zeros([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
 TWISTed_Kspace(Sampling_Table.("Linear Index")) = Sampling_Table.Kspace_Value;
 %% ---  6. Updating K-Space from each measurement to undo TWIST
 
@@ -126,10 +115,24 @@ end
 
 clear('dest_slice','source_slice','update_mask')
 
+%% --- 7. Resolving %resolution
+padsize = matrix_size_complete - matrix_size_acquired;
+final_kspace = padarray(unTWISTed_Kspace,padsize,0);
+
 % Perform the inverse 3D FFT on all timepoints and coils at once
-k_shifted_back = ifftshift(ifftshift(ifftshift(unTWISTed_Kspace, 1), 2), 3);
-unTWISTed_IMspace = ifft(ifft(ifft(k_shifted_back, [], 1), [], 2), [], 3);
+final_kspace_shifted = ifftshift(ifftshift(ifftshift(final_kspace, 1), 2), 3);
+unTWISTed_IMspace = ifft(ifft(ifft(final_kspace_shifted, [], 1), [], 2), [], 3);
 unTWISTed_IMspace = fftshift(fftshift(fftshift(unTWISTed_IMspace, 1), 2), 3);
+
+%% --- 8. Resolving Oversampling
+% crop_amount = matrix_size_acquired-IMmatrix_crop_size;
+% margin = floor(crop_amount ./ 2); 
+% 
+% final_IMspace = unTWISTed_IMspace(...
+%     margin(1)+1 : margin(1)+IMmatrix_crop_size(1), ...
+%     margin(2)+1 : margin(2)+IMmatrix_crop_size(2), ...
+%     margin(3)+1 : margin(3)+IMmatrix_crop_size(3),...
+%     :);
 
 
 %% display
