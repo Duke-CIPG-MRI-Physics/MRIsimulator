@@ -4,21 +4,7 @@ clc;
 
 %% 1) FOV and matrix size (scanner-style inputs)
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I 
-encodingDimStr = {'freq:',', phase:',', slice:'};
-encodingFullStr = '';
-for iDim = 1:3
-    switch freq_phase_slice(iDim)
-        case 1
-            thisDimStr = 'R/L';
-        case 2
-            thisDimStr = 'A/P';
-        case 3
-            thisDimStr = 'S/I';
-        otherwise
-            error('freq_phase_slice can only be numbers 1-3')
-    end
-    encodingFullStr = [encodingFullStr encodingDimStr{iDim} thisDimStr];
-end
+encodingFullStr = formatEncodingString(freq_phase_slice);
 disp(encodingFullStr)
 
 
@@ -51,14 +37,18 @@ kOrderedIdx = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Samplin
 
 %% 3) Build WORLD k-space grid and map to the TWIST ordering
 disp('Building WORLD k-space')
-[kx_vec, ky_vec, kz_vec, kx, ky, kz] = computeKspaceGrid3D(FOV_acquired, matrix_size_acquired); 
-kx_orderedIdx = kOrderedIdx(:, 1);
-ky_orderedIdx = kOrderedIdx(:, 2);
-kz_orderedIdx = kOrderedIdx(:, 3);
+[kfreq_vec, kphase_vec, kslice_vec, ~, ~, ~] = ...
+    computeKspaceGrid3D(FOV_acquired, matrix_size_acquired);
+kfreq_orderedIdx = kOrderedIdx(:, 1);
+kphase_orderedIdx = kOrderedIdx(:, 2);
+kslice_orderedIdx = kOrderedIdx(:, 3);
 
-ordKsx_kx = kx_vec(kx_orderedIdx);
-ordKsx_ky = ky_vec(ky_orderedIdx); 
-ordKsx_kz = kz_vec(kz_orderedIdx);
+ordKspace_freq = kfreq_vec(kfreq_orderedIdx);
+ordKspace_phase = kphase_vec(kphase_orderedIdx);
+ordKspace_slice = kslice_vec(kslice_orderedIdx);
+
+k_fps = [ordKspace_freq, ordKspace_phase, ordKspace_slice]';
+[k_xyz, fps_to_xyz] = mapKspaceFpsToXyz(k_fps, freq_phase_slice);
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
 t_PE = TR-(matrix_size_acquired(1)*dt_s); %TODO: rename these variables for clarity
@@ -78,7 +68,7 @@ phantom = BreastPhantom(Sampling_Table.Timing);
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 
-K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
+K_ordered = phantom.kspace(k_xyz(1, :), k_xyz(2, :), k_xyz(3, :));
 
 Sampling_Table.Kspace_Value = K_ordered';
 
@@ -120,7 +110,8 @@ padsize = matrix_size_complete - matrix_size_acquired;
 final_kspace = padarray(unTWISTed_Kspace,padsize,0);
 
 % Perform the inverse 3D FFT on all timepoints and coils at once
-final_kspace_shifted = ifftshift(ifftshift(ifftshift(final_kspace, 1), 2), 3);
+final_kspace_xyz = permute(final_kspace, [fps_to_xyz, 4]);
+final_kspace_shifted = ifftshift(ifftshift(ifftshift(final_kspace_xyz, 1), 2), 3);
 unTWISTed_IMspace = ifft(ifft(ifft(final_kspace_shifted, [], 1), [], 2), [], 3);
 unTWISTed_IMspace = fftshift(fftshift(fftshift(unTWISTed_IMspace, 1), 2), 3);
 

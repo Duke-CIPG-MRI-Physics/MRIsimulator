@@ -119,25 +119,7 @@ disp(['   Nominal resoluton (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' 
 [t_s] = orderRectilinearKspace(matrix_acq_os_fps, dt_s, TR_s); % Scott - rename to calculateKspaceSampleTimes_rectilinear
 t_s = t_s(:); % use sampling timestamps as the phantom time base
 
-encodingFullStr = '';
-for iDim = 1:3
-    switch freq_phase_slice(iDim)
-        case 1
-            thisDimStr = 'R/L';
-        case 2
-            thisDimStr = 'A/P';
-        case 3
-            thisDimStr = 'S/I';
-        otherwise
-            error('freq_phase_slice can only be numbers 1-3')
-    end
-    if(iDim == 1)
-        encodingFullStr = thisDimStr;
-    else
-        encodingFullStr = [encodingFullStr ' x ' thisDimStr];
-    end
-end
-
+encodingFullStr = formatEncodingString(freq_phase_slice);
 disp(['   Encoding          (f x ph x sl):' encodingFullStr])
 
 figure();
@@ -165,10 +147,7 @@ legend('Frequency','Phase','Slice')
 %% Permute dimmensions to convert FPS to XYZ
 disp('Permuting');
 kspaceSize = size(kfreq);
-k_xyz = zeros(3, numel(k_fps(1, :)));
-k_xyz(freq_phase_slice(1), :) = k_fps(1, :);
-k_xyz(freq_phase_slice(2), :) = k_fps(2, :);
-k_xyz(freq_phase_slice(3), :) = k_fps(3, :);
+[k_xyz, fps_to_xyz] = mapKspaceFpsToXyz(k_fps, freq_phase_slice);
 clear k_fps kfreq kPhase kSlice;
 
 disp('kspaceSanityCheck x, y, z')
@@ -187,8 +166,6 @@ K = phantom.kspace(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:));
 K = reshape(K,matrix_acq_os_fps);
 
 %% 6) Reconstruct 3D image via inverse FFT
-fps_to_xyz = zeros(1, 3);
-fps_to_xyz(freq_phase_slice) = 1:3;
 K_xyz = permute(K, fps_to_xyz);
 
 fprintf('Performing 3D inverse FFT...\n');
