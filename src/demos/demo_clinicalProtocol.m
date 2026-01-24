@@ -189,9 +189,13 @@ K = phantom.kspace(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:));
 K = reshape(K,matrix_acq_os_fps);
 
 %% 6) Reconstruct 3D image via inverse FFT
+fps_to_xyz = zeros(1, 3);
+fps_to_xyz(freq_phase_slice) = 1:3;
+K_xyz = permute(K, fps_to_xyz);
+
 fprintf('Performing 3D inverse FFT...\n');
 clear k_xyz phantom;
-img_viaKspace = fftshift(ifftn(ifftshift(K)));
+img_viaKspace = fftshift(ifftn(ifftshift(K_xyz)));
 
 
 
