@@ -109,9 +109,11 @@ final_kspace = padarray(unTWISTed_Kspace,padsize,0);
 
 % Perform the inverse 3D FFT on all timepoints and coils at once
 final_kspace = permute(final_kspace, [fps_to_xyz, 4]);
-final_kspace = ifftshift(ifftshift(ifftshift(final_kspace, 1), 2), 3);
-unTWISTed_IMspace = ifft(ifft(ifft(final_kspace, [], 1), [], 2), [], 3);
-unTWISTed_IMspace = fftshift(fftshift(fftshift(unTWISTed_IMspace, 1), 2), 3);
+final_kspace = ifftshift(final_kspace, [1 2 3]);
+unTWISTed_IMspace = ifft(final_kspace, [], 1);
+unTWISTed_IMspace = ifft(unTWISTed_IMspace, [], 2);
+unTWISTed_IMspace = ifft(unTWISTed_IMspace, [], 3);
+unTWISTed_IMspace = fftshift(unTWISTed_IMspace, [1 2 3]);
 
 %% --- 8. Resolving Oversampling
 % crop_amount = matrix_size_acquired-IMmatrix_crop_size;
