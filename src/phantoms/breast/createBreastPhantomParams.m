@@ -42,9 +42,37 @@ function params = createBreastPhantomParams()
     params.vesselDiameter_mm = 5;
     params.vesselRadius_mm = 0.5 * params.vesselDiameter_mm;
     params.totalVesselLength_mm = 100;
+    params.vesselSegmentCount = 3;
     params.breastRollPitchYaw = [0, 90, 90];
     params.enhancedIntensity = 2.5;
     params.unenhancedIntensity = 0.3;
     params.breastVesselVelocity_cm_s = 1/10.66;
     params.startInjectionTime_s = 30 * 10.66;
+    % vesselSegments define connected vessel segments that fill sequentially.
+    params.vesselSegments = buildDefaultVesselSegments(params);
+end
+
+function segments = buildDefaultVesselSegments(params)
+    segmentLength_mm = params.totalVesselLength_mm / params.vesselSegmentCount;
+    startZ_mm = -0.5 * params.totalVesselLength_mm + 0.5 * segmentLength_mm;
+    segments = repmat(struct('length_mm', segmentLength_mm, ...
+        'radius_mm', params.vesselRadius_mm, ...
+        'pose', struct()), 1, params.vesselSegmentCount);
+
+    for idx = 1:params.vesselSegmentCount
+        centerZ_mm = startZ_mm + (idx - 1) * segmentLength_mm;
+        segments(idx).pose = createPoseStruct(0, 0, centerZ_mm, ...
+            params.breastRollPitchYaw(1), ...
+            params.breastRollPitchYaw(2), ...
+            params.breastRollPitchYaw(3));
+    end
+end
+
+function pose = createPoseStruct(x_mm, y_mm, z_mm, roll, pitch, yaw)
+    pose = struct('center', struct('x_mm', x_mm, ...
+        'y_mm', y_mm, ...
+        'z_mm', z_mm), ...
+        'roll_deg', roll, ...
+        'pitch_deg', pitch, ...
+        'yaw_deg', yaw);
 end
