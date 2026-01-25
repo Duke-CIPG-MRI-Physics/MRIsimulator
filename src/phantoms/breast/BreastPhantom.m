@@ -206,11 +206,16 @@ classdef BreastPhantom < MultipleMaterialPhantom
             end
             S = zeros(size(kx));
 
+            totalChunks = ceil(numSamples / maxChunkSize);
+            chunkIndex = 0;
             for idxStart = 1:maxChunkSize:numSamples
+                chunkIndex = chunkIndex + 1;
                 idxEnd = min(idxStart + maxChunkSize - 1, numSamples);
                 idx = idxStart:idxEnd;
                 obj.updateShapesForTime(t_s(idx));
                 S(idx) = obj.kspace(kx(idx), ky(idx), kz(idx));
+                fprintf('kspaceAtTime: %.1f%% of chunks complete\n', ...
+                    100 * chunkIndex / totalChunks);
             end
         end
     end
