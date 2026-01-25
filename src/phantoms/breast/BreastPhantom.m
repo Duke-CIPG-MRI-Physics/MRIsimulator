@@ -198,7 +198,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
         end
 
         function S = kspaceAtTime(obj, kx, ky, kz, t_s)
-            maxChunkSize = 100000;
+            maxChunkSize = 250000;
             numSamples = numel(t_s);
             if ~isequal(size(kx), size(ky), size(kz), size(t_s))
                 error('BreastPhantom:KspaceAtTimeSizeMismatch', ...
@@ -212,9 +212,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 idxEnd = min(idxStart + maxChunkSize - 1, numSamples);
                 idx = idxStart:idxEnd;
                 percentComplete = 100 * chunkIndex / numChunks;
-                fprintf(['kspaceAtTime progress: chunk %d of %d (samples %d-%d of %d)' ...
-                    ', %.1f%% complete.\n'], ...
-                    chunkIndex, numChunks, idxStart, idxEnd, numSamples, percentComplete);
+                fprintf(['kspaceAtTime: chunk %d of %d, %.1f%% complete.\n'], ...
+                    chunkIndex, numChunks, percentComplete);
                 obj.updateShapesForTime(t_s(idx));
                 S(idx) = obj.kspace(kx(idx), ky(idx), kz(idx));
             end

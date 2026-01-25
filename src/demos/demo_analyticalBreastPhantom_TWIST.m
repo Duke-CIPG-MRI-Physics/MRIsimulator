@@ -65,12 +65,15 @@ phantom = BreastPhantom(breastPhantomParams);
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 TWISTed_Kspace = zeros([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
+
+% Sample phantom at measured time points
 TWISTed_Kspace(Sampling_Table.("Linear Index")) = ...
     phantom.kspaceAtTime(k_spatFreq_xyz(1, :), k_spatFreq_xyz(2, :), ...
     k_spatFreq_xyz(3, :),Sampling_Table.Timing')';
 
-%% ---  6. Updating K-Space from each measurement to undo TWIST
+clear k_spatFreq_xyz Sampling_Table phantom
 
+%% ---  6. Updating K-Space from each measurement to undo TWIST
 fprintf('\nUndoing TWIST...')
 
 % Initialize the output array
@@ -98,16 +101,16 @@ for ii_timepoint = 2:size(TWISTed_Kspace,4)
     unTWISTed_Kspace(:,:,:,ii_timepoint,:) = dest_slice;
 end
 
-clear('dest_slice','source_slice','update_mask')
+clear dest_slice source_slice update_mask TWISTed_Kspace
 
 %% --- 7. Resolving %resolution
 padsize = matrix_size_complete - matrix_size_acquired;
 final_kspace = padarray(unTWISTed_Kspace,padsize,0);
 
 % Perform the inverse 3D FFT on all timepoints and coils at once
-final_kspace_xyz = permute(final_kspace, [fps_to_xyz, 4]);
-final_kspace_shifted = ifftshift(ifftshift(ifftshift(final_kspace_xyz, 1), 2), 3);
-unTWISTed_IMspace = ifft(ifft(ifft(final_kspace_shifted, [], 1), [], 2), [], 3);
+final_kspace = permute(final_kspace, [fps_to_xyz, 4]);
+final_kspace = ifftshift(ifftshift(ifftshift(final_kspace, 1), 2), 3);
+unTWISTed_IMspace = ifft(ifft(ifft(final_kspace, [], 1), [], 2), [], 3);
 unTWISTed_IMspace = fftshift(fftshift(fftshift(unTWISTed_IMspace, 1), 2), 3);
 
 %% --- 8. Resolving Oversampling
