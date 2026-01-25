@@ -6,17 +6,6 @@ clc;
 % savepath
 
 % parameters from clinical ultrafast protocol
-% FOV_read_mm = 350;
-% FOV_phase_pct = 100;
-% oversampling_phase_pct = 20; 
-% oversampling_slice_pct = 33.3; 
-% slices_per_slab = 240;
-% slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
-% base_resolution = 224; % 224 default
-% phase_resolution_pct = 100;
-% slice_resolution_pct = 80;
-% freq_phase_slice = [1 3 2]; % 1 = R/L, 2=A/P, 3 = S/I (use 2 1 3 for R/L PE, S/I slice)
-
 FOV_read_mm = 350;
 FOV_phase_pct = 100;
 oversampling_phase_pct = 20; 
@@ -27,6 +16,17 @@ base_resolution = 224; % 224 default
 phase_resolution_pct = 100;
 slice_resolution_pct = 80;
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I (use 2 1 3 for R/L PE, S/I slice)
+
+% FOV_read_mm = 350;
+% FOV_phase_pct = 100;
+% oversampling_phase_pct = 20; 
+% oversampling_slice_pct = 33.3; 
+% slices_per_slab = 240;
+% slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
+% base_resolution = 224; % 224 default
+% phase_resolution_pct = 100;
+% slice_resolution_pct = 80;
+% freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I (use 2 1 3 for R/L PE, S/I slice)
 
 % TODO - interpolation is off in current protocol, but we could consider it as an option in the future...
 
@@ -121,9 +121,6 @@ disp(['   Nominal resoluton (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' 
 encodingFullStr = formatEncodingString(freq_phase_slice);
 disp(['   Encoding          (f x ph x sl):' encodingFullStr])
 
-figure();
-plot(t_s)
-
 %% 5) Construct the breast phantom with the embedded enhancing vessel
 disp('Constructing phantom');
 breastPhantomParams = createBreastPhantomParams();
@@ -135,28 +132,11 @@ disp('Constructing k-space grid');
 [~, ~, ~, kfreq, kPhase, kSlice] = computeKspaceGrid3D(FOV_oversampled_fps, matrix_acq_os_fps);
 k_fps = [kfreq(:) kPhase(:) kSlice(:)]';
 
-% disp('kspaceSanityCheck Freq, phase, slice')
-% nptsPlot = 2000;
-% figure();
-% plot(t_s(1:nptsPlot),k_fps(1,1:nptsPlot));
-% hold on
-% plot(t_s(1:nptsPlot),k_fps(2,1:nptsPlot));
-% plot(t_s(1:nptsPlot),k_fps(3,1:nptsPlot));
-% legend('Frequency','Phase','Slice')
-
 %% Permute dimmensions to convert FPS to XYZ
 disp('Permuting');
 kspaceSize = size(kfreq);
 [k_xyz, fps_to_xyz] = mapKspaceFpsToXyz(k_fps, freq_phase_slice);
 clear k_fps kfreq kPhase kSlice;
-
-% disp('kspaceSanityCheck x, y, z')
-% figure();
-% plot(t_s(1:nptsPlot),k_xyz(1,1:nptsPlot));
-% hold on
-% plot(t_s(1:nptsPlot),k_xyz(2,1:nptsPlot));
-% plot(t_s(1:nptsPlot),k_xyz(3,1:nptsPlot));
-% legend('x (X/Y)','y (A/P)','z(S/I)')
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
