@@ -53,9 +53,9 @@ k_fps = [ordKspace_freq, ordKspace_phase, ordKspace_slice]';
 %% 5) Construct the breast phantom with the embedded enhancing vessel
 t_PE = TR-(matrix_size_acquired(1)*dt_s); %TODO: rename these variables for clarity
 t_s = t_PE+dt_s:dt_s:TR;
-multipliers = 1:height(Sampling_Table)/matrix_size_acquired(1);
+TR_counts = 1:height(Sampling_Table)/matrix_size_acquired(1);
 
-matrix_result = t_s(:) + (multipliers * TR);
+matrix_result = t_s(:) + (TR_counts * TR);
 
 Sampling_Table.Timing = matrix_result(:);
 
@@ -63,12 +63,12 @@ Sampling_Table.Timing = matrix_result(:);
 % [sortedT,sortIdx] = sort(Sampling_Table.Timing);
 % phantom = BreastPhantom(sortedT);
 
-phantom = BreastPhantom(Sampling_Table.Timing);
+phantom = BreastPhantom();
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 
-K_ordered = phantom.kspace(k_xyz(1, :), k_xyz(2, :), k_xyz(3, :));
+K_ordered = phantom.kspace(k_xyz(1, :), k_xyz(2, :), k_xyz(3, :),Sampling_Table.Timing);
 
 Sampling_Table.Kspace_Value = K_ordered';
 

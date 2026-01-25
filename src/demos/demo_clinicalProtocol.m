@@ -127,7 +127,7 @@ plot(t_s)
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
 disp('Constructing phantom');
-phantom = BreastPhantom(t_s);
+phantom = BreastPhantom();
 
 
 %% 3) Build WORLD k-space grid and map to the rectilinear ordering
@@ -160,8 +160,8 @@ clear k_fps kfreq kPhase kSlice;
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
+K = phantom.kspaceAtTime(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:),t_s);
 clear t_s;
-K = phantom.kspace(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:));
 K = reshape(K,matrix_acq_os_fps);
 
 %% Permute so that image is always oriented with dims:

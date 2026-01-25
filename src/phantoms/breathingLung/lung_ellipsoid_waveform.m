@@ -1,4 +1,4 @@
-function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t_s, lungParameters)
+function [R_mm, H_mm] = lung_ellipsoid_waveform(t_s, lungParameters)
 %LUNG_ELLIPSOID_WAVEFORM  Lung ellipsoid geometry vs time.
 %
 %   [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t_s, lungParameters)
@@ -37,7 +37,7 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     end
 
     requiredFields = {'f_bpm', 'VT_L', 'Vres_L', 'Vbase_L', ...
-        'bellyFrac', 'inspFrac', 'lungSeparation_mm'};
+        'bellyFrac', 'inspFrac'};
     for idxField = 1:numel(requiredFields)
         if ~isfield(lungParameters, requiredFields{idxField})
             error('lung_ellipsoid_waveform:MissingField', ...
@@ -51,7 +51,6 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     Vbase_L = lungParameters.Vbase_L;
     bellyFrac = lungParameters.bellyFrac;
     inspFrac  = lungParameters.inspFrac;
-    lungSeparation_mm = lungParameters.lungSeparation_mm;
 
     validateattributes(f_bpm, {'numeric'}, {'real', 'finite', 'nonnegative'});
     validateattributes(VT_L, {'numeric'}, {'real', 'finite'});
@@ -59,8 +58,7 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     validateattributes(Vbase_L, {'numeric'}, {'real', 'finite', 'positive'});
     validateattributes(bellyFrac, {'numeric'}, {'real', 'finite'});
     validateattributes(inspFrac, {'numeric'}, {'real', 'finite'});
-    validateattributes(lungSeparation_mm, {'numeric'}, {'real', 'finite', 'nonnegative'});
-
+    
     N = numel(t_s);
     if any(diff(t_s) < 0)
         error('t_s must be strictly increasing.');
@@ -68,8 +66,7 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
 
     paramNames = {'f_bpm', 'VT_L', 'Vres_L', 'Vbase_L', ...
         'bellyFrac', 'inspFrac', 'lungSeparation_mm'};
-    paramValues = {f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac, ...
-        lungSeparation_mm};
+    paramValues = {f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac};
 
     nonScalarSize = [];
     for idxParam = 1:numel(paramValues)
@@ -200,26 +197,6 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     % Convert to millimeters for output
     R_mm = 1000 .* R_m;
     H_mm = 1000 .* H_m;
-
-    lungPosition_mm = R_mm + lungSeparation_mm;
-
-    lungParams = struct('a_mm', R_mm, ...
-        'b_mm', R_mm, ...
-        'c_mm', H_mm, ...
-        'R_mm', R_mm, ...
-        'H_mm', H_mm, ...
-        'lungPosition_mm', lungPosition_mm);
-
-    rightEllipsoidParams = lungParams;
-    rightEllipsoidParams.pose = struct('center', struct('x_mm', lungPosition_mm, ...
-        'y_mm', 0, ...
-        'z_mm', 0), ...
-        'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
-    leftEllipsoidParams = lungParams;
-    leftEllipsoidParams.pose = struct('center', struct('x_mm', -lungPosition_mm, ...
-        'y_mm', 0, ...
-        'z_mm', 0), ...
-        'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
 
     % Optional sanity check:
     % V_check = (4/3)*pi.*R_m.^2.*H_m;
