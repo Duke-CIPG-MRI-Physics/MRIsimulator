@@ -97,12 +97,6 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
     ensureChannelCompatibility(EDV_rows, numChannels, 'opts.EDV_ml');
     ensureChannelCompatibility(ESV_rows, numChannels, 'opts.ESV_ml');
 
-    EDV_full = extractParamSlice(EDV_ml, 1:numSamples, numChannels);
-    ESV_full = extractParamSlice(ESV_ml, 1:numSamples, numChannels);
-    if any(ESV_full >= EDV_full, 'all')
-        error('ESV_ml must be < EDV_ml at all time points.');
-    end
-
     % ---------------------------------------------------------------------
     % 1) Build cumulative phase from HR(t)
     % ---------------------------------------------------------------------

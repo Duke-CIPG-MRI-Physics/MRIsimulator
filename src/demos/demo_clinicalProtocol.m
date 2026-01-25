@@ -117,7 +117,6 @@ disp(['   Nominal resoluton (f x ph x sl):' num2str(nominal_resolution_mm(1)) ' 
 %% Order k-space 
 % * NOTE * this does not use TWIST, PI, PF yet so its much slower!
 [t_s] = orderRectilinearKspace(matrix_acq_os_fps, dt_s, TR_s); % Scott - rename to calculateKspaceSampleTimes_rectilinear
-t_s = t_s(:); % use sampling timestamps as the phantom time base
 
 encodingFullStr = formatEncodingString(freq_phase_slice);
 disp(['   Encoding          (f x ph x sl):' encodingFullStr])
@@ -161,7 +160,7 @@ clear k_fps kfreq kPhase kSlice;
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-K = phantom.kspaceAtTime(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:),t_s);
+K = phantom.kspaceAtTime(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:),t_s(:));
 clear t_s;
 K = reshape(K,matrix_acq_os_fps);
 
