@@ -86,6 +86,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             % enhancingVessel  = CompositeAnalyticalShape3D([unenhancedCylinder, enhancedCylinder], [], ...
             %     breastIntensity , breastParamsBoth);
 
+            obj.setBreastGeometryFromParams(params);
             obj.setShapes([obj.thorax obj.leftAndRightBreastTissue obj.enhancingVessel]);
 
             obj.updateShapesForTime(0);
@@ -154,25 +155,6 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.thorax.setShapeParameters(thoraxPose);
 
             %% Breasts
-            xRightBreast = params.breast_radius_mm + 0.5 * params.breast_gap_mm;
-            breastParams = struct('radius_mm', params.breast_radius_mm, 'length_mm', params.breast_depth_mm);
-            breastParamsRight = BreastPhantom.addPoseToParameters(breastParams, ...
-                xRightBreast, 0, 0, ...
-                0, 90, 90);
-            breastParamsLeft = BreastPhantom.addPoseToParameters(breastParams, ...
-                -xRightBreast, 0, 0, ...
-                0, 90, 90);
-            obj.breastRight.setShapeParameters(breastParamsRight);
-            obj.breastLeft.setShapeParameters(breastParamsLeft);
-
-            breastParamsBoth = BreastPhantom.addPoseToParameters(breastParams, ...
-                0, 0.5 * params.breast_depth_mm, 0, ...
-                notRotated(1),notRotated(2),notRotated(3));
-            obj.leftAndRightBreastTissue.setShapeParameters(breastParamsBoth);
-            obj.enhancingVessel.setShapeParameters(breastParamsBoth);
-
-
-    
             timePostInj_s = max(t_s - params.startInjectionTime_s, 0);
             enhancedLength_mm = min(params.breastVesselVelocity_cm_s * 10 .* timePostInj_s, ...
                 params.totalVesselLength_mm);
@@ -222,6 +204,27 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 obj.updateShapesForTime(t_s(idx));
                 S(idx) = obj.kspace(kx(idx), ky(idx), kz(idx));
             end
+        end
+    end
+
+    methods (Access = private)
+        function setBreastGeometryFromParams(obj, params)
+            xRightBreast = params.breast_radius_mm + 0.5 * params.breast_gap_mm;
+            breastParams = struct('radius_mm', params.breast_radius_mm, 'length_mm', params.breast_depth_mm);
+            breastParamsRight = BreastPhantom.addPoseToParameters(breastParams, ...
+                xRightBreast, 0, 0, ...
+                0, 90, 90);
+            breastParamsLeft = BreastPhantom.addPoseToParameters(breastParams, ...
+                -xRightBreast, 0, 0, ...
+                0, 90, 90);
+            obj.breastRight.setShapeParameters(breastParamsRight);
+            obj.breastLeft.setShapeParameters(breastParamsLeft);
+
+            breastParamsBoth = BreastPhantom.addPoseToParameters(breastParams, ...
+                0, 0.5 * params.breast_depth_mm, 0, ...
+                0, 0, 0);
+            obj.leftAndRightBreastTissue.setShapeParameters(breastParamsBoth);
+            obj.enhancingVessel.setShapeParameters(breastParamsBoth);
         end
     end
 
