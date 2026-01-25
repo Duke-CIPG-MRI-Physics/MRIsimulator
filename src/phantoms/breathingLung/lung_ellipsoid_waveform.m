@@ -1,4 +1,4 @@
-function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t_s, lungParameters)
+function [R_mm, H_mm] = lung_ellipsoid_waveform(t_s, lungParameters)
 %LUNG_ELLIPSOID_WAVEFORM  Lung ellipsoid geometry vs time.
 %
 %   [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t_s, lungParameters)
@@ -37,7 +37,7 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     end
 
     requiredFields = {'f_bpm', 'VT_L', 'Vres_L', 'Vbase_L', ...
-        'bellyFrac', 'inspFrac', 'lungSeparation_mm'};
+        'bellyFrac', 'inspFrac'};
     for idxField = 1:numel(requiredFields)
         if ~isfield(lungParameters, requiredFields{idxField})
             error('lung_ellipsoid_waveform:MissingField', ...
@@ -51,7 +51,6 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     Vbase_L = lungParameters.Vbase_L;
     bellyFrac = lungParameters.bellyFrac;
     inspFrac  = lungParameters.inspFrac;
-    lungSeparation_mm = lungParameters.lungSeparation_mm;
 
     validateattributes(f_bpm, {'numeric'}, {'real', 'finite', 'nonnegative'});
     validateattributes(VT_L, {'numeric'}, {'real', 'finite'});
@@ -59,8 +58,7 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     validateattributes(Vbase_L, {'numeric'}, {'real', 'finite', 'positive'});
     validateattributes(bellyFrac, {'numeric'}, {'real', 'finite'});
     validateattributes(inspFrac, {'numeric'}, {'real', 'finite'});
-    validateattributes(lungSeparation_mm, {'numeric'}, {'real', 'finite', 'nonnegative'});
-
+    
     N = numel(t_s);
     if any(diff(t_s) < 0)
         error('t_s must be strictly increasing.');
@@ -68,8 +66,7 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
 
     paramNames = {'f_bpm', 'VT_L', 'Vres_L', 'Vbase_L', ...
         'bellyFrac', 'inspFrac', 'lungSeparation_mm'};
-    paramValues = {f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac, ...
-        lungSeparation_mm};
+    paramValues = {f_bpm, VT_L, Vres_L, Vbase_L, bellyFrac, inspFrac};
 
     nonScalarSize = [];
     for idxParam = 1:numel(paramValues)
@@ -105,19 +102,33 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     % Clamp inspFrac to avoid exactly 0 or 1
     inspFrac = max(min(inspFrac, 0.99), 0.01);
 
+    %% Expand scalars for vectorized evaluation
+    if isscalar(f_bpm)
+        f_bpm = repmat(f_bpm, nonScalarSize);
+    end
+    if isscalar(VT_L)
+        VT_L = repmat(VT_L, nonScalarSize);
+    end
+    if isscalar(Vbase_L)
+        Vbase_L = repmat(Vbase_L, nonScalarSize);
+    end
+    if isscalar(bellyFrac)
+        bellyFrac = repmat(bellyFrac, nonScalarSize);
+    end
+    if isscalar(inspFrac)
+        inspFrac = repmat(inspFrac, nonScalarSize);
+    end
+
     % ---------------------------------------------------------------------
     % 1) Breathing phase B_phase from instantaneous frequency f_bpm(t)
     % ---------------------------------------------------------------------
     waveformSize = nonScalarSize;
 
     f_Hz = f_bpm / 60;          % [Hz]
-    B_phase = zeros(waveformSize);      % [rad]
-    dt = diff(t_s);
-
-    for k = 2:N
-        f_Hz_km1 = valueAtIndex(f_Hz, k-1);
-        B_phase(k) = B_phase(k-1) + 2*pi*f_Hz_km1*dt(k-1);
-    end
+    dt = diff(t_s(:));
+    f_Hz_vec = f_Hz(:);
+    B_phase_vec = [0; cumsum(2*pi*f_Hz_vec(1:end-1) .* dt)];
+    B_phase = reshape(B_phase_vec, waveformSize);      % [rad]
 
     % Within-cycle phase φ in [0,1)
     phi_cycle = mod(B_phase, 2*pi) / (2*pi);   % dimensionless
@@ -125,22 +136,17 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     % ---------------------------------------------------------------------
     % 2) Dimensionless volume waveform g(φ, inspFrac) in [0,1]
     % ---------------------------------------------------------------------
-    g = zeros(waveformSize);
-
-    for k = 1:N
-        alpha = valueAtIndex(inspFrac, k);        % local inspiratory fraction
-        phi  = phi_cycle(k);
-
-        if phi < alpha
-            % Inspiration: 0 <= phi < alpha
-            s = phi / alpha;        % [0,1]
-            g(k) = 0.5*(1 - cos(pi*s));   % 0 -> 1
-        else
-            % Expiration: alpha <= phi < 1
-            s = (phi - alpha) / (1 - alpha);  % [0,1]
-            g(k) = 0.5*(1 + cos(pi*s));       % 1 -> 0
-        end
-    end
+    phi_vec = phi_cycle(:);
+    alpha_vec = inspFrac(:);
+    g_vec = zeros(numel(phi_vec), 1);
+    isInspiration = phi_vec < alpha_vec;
+    s = zeros(numel(phi_vec), 1);
+    s(isInspiration) = phi_vec(isInspiration) ./ alpha_vec(isInspiration);
+    g_vec(isInspiration) = 0.5 * (1 - cos(pi * s(isInspiration)));
+    s(~isInspiration) = (phi_vec(~isInspiration) - alpha_vec(~isInspiration)) ...
+        ./ (1 - alpha_vec(~isInspiration));
+    g_vec(~isInspiration) = 0.5 * (1 + cos(pi * s(~isInspiration)));
+    g = reshape(g_vec, waveformSize);
 
     % ---------------------------------------------------------------------
     % 3) Total lung volume V_L(t) [L]
@@ -201,37 +207,7 @@ function [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t
     R_mm = 1000 .* R_m;
     H_mm = 1000 .* H_m;
 
-    lungPosition_mm = R_mm + lungSeparation_mm;
-
-    lungParams = struct('a_mm', R_mm, ...
-        'b_mm', R_mm, ...
-        'c_mm', H_mm, ...
-        'R_mm', R_mm, ...
-        'H_mm', H_mm, ...
-        'lungPosition_mm', lungPosition_mm);
-
-    rightEllipsoidParams = lungParams;
-    rightEllipsoidParams.pose = struct('center', struct('x_mm', lungPosition_mm, ...
-        'y_mm', 0, ...
-        'z_mm', 0), ...
-        'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
-    leftEllipsoidParams = lungParams;
-    leftEllipsoidParams.pose = struct('center', struct('x_mm', -lungPosition_mm, ...
-        'y_mm', 0, ...
-        'z_mm', 0), ...
-        'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
-
     % Optional sanity check:
     % V_check = (4/3)*pi.*R_m.^2.*H_m;
     % maxRelErr = max(abs(V_check - V_m3)./max(V_m3, eps));
-end
-
-% -------------------------------------------------------------------------
-function value = valueAtIndex(param, idx)
-%VALUEATINDEX Return a scalar parameter value, tolerating scalar inputs.
-    if isscalar(param)
-        value = param;
-    else
-        value = param(idx);
-    end
 end

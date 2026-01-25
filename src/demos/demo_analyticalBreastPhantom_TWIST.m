@@ -33,49 +33,47 @@ PF_Factor = 1; %[6/8 6/8]
 
 Sampling_Table = Ultrafast_Sampling(matrix_size_acquired,pA,Nb,Time_Measured,TR,R,PF_Factor);
 
-kOrderedIdx = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
+k_idx_fps = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
 
 %% 3) Build WORLD k-space grid and map to the TWIST ordering
 disp('Building WORLD k-space')
-[kfreq_vec, kphase_vec, kslice_vec, ~, ~, ~] = ...
-    computeKspaceGrid3D(FOV_acquired, matrix_size_acquired);
-kfreq_orderedIdx = kOrderedIdx(:, 1);
-kphase_orderedIdx = kOrderedIdx(:, 2);
-kslice_orderedIdx = kOrderedIdx(:, 3);
+k_spatFreq_freq = computeKspaceGrid1D(FOV_acquired(1), matrix_size_acquired(1));
+k_spatFreq_phase = computeKspaceGrid1D(FOV_acquired(2), matrix_size_acquired(2));
+k_spatFreq_slice = computeKspaceGrid1D(FOV_acquired(3), matrix_size_acquired(3));
 
-ordKspace_freq = kfreq_vec(kfreq_orderedIdx);
-ordKspace_phase = kphase_vec(kphase_orderedIdx);
-ordKspace_slice = kslice_vec(kslice_orderedIdx);
-
-k_fps = [ordKspace_freq, ordKspace_phase, ordKspace_slice]';
-[k_xyz, fps_to_xyz] = mapKspaceFpsToXyz(k_fps, freq_phase_slice);
+k_spatFreq_fps = [k_spatFreq_freq(k_idx_fps(:, 1)); 
+    k_spatFreq_phase(k_idx_fps(:, 2)); 
+    k_spatFreq_slice(k_idx_fps(:, 3))];
+[k_spatFreq_xyz, fps_to_xyz] = mapKspaceFpsToXyz(k_spatFreq_fps, freq_phase_slice);
+clear k_spatFreq_fps k_spatFreq_freq k_spatFreq_phase k_spatFreq_slice k_idx_fps
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
 t_PE = TR-(matrix_size_acquired(1)*dt_s); %TODO: rename these variables for clarity
 t_s = t_PE+dt_s:dt_s:TR;
-multipliers = 1:height(Sampling_Table)/matrix_size_acquired(1);
-
-matrix_result = t_s(:) + (multipliers * TR);
-
+TR_counts = 1:height(Sampling_Table)/matrix_size_acquired(1);
+matrix_result = t_s(:) + (TR_counts * TR);
 Sampling_Table.Timing = matrix_result(:);
+clear TR_counts t_s matrix_result
 
 % % Force Timing to be increasing
 % [sortedT,sortIdx] = sort(Sampling_Table.Timing);
 % phantom = BreastPhantom(sortedT);
 
-phantom = BreastPhantom(Sampling_Table.Timing);
+breastPhantomParams = createBreastPhantomParams();
+phantom = BreastPhantom(breastPhantomParams);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-
-K_ordered = phantom.kspace(k_xyz(1, :), k_xyz(2, :), k_xyz(3, :));
-
-Sampling_Table.Kspace_Value = K_ordered';
-
 TWISTed_Kspace = zeros([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
-TWISTed_Kspace(Sampling_Table.("Linear Index")) = Sampling_Table.Kspace_Value;
-%% ---  6. Updating K-Space from each measurement to undo TWIST
 
+% Sample phantom at measured time points
+TWISTed_Kspace(Sampling_Table.("Linear Index")) = ...
+    phantom.kspaceAtTime(k_spatFreq_xyz(1, :), k_spatFreq_xyz(2, :), ...
+    k_spatFreq_xyz(3, :),Sampling_Table.Timing')';
+
+clear k_spatFreq_xyz Sampling_Table phantom
+
+%% ---  6. Updating K-Space from each measurement to undo TWIST
 fprintf('\nUndoing TWIST...')
 
 % Initialize the output array
@@ -103,17 +101,23 @@ for ii_timepoint = 2:size(TWISTed_Kspace,4)
     unTWISTed_Kspace(:,:,:,ii_timepoint,:) = dest_slice;
 end
 
-clear('dest_slice','source_slice','update_mask')
+clear dest_slice source_slice update_mask TWISTed_Kspace
 
 %% --- 7. Resolving %resolution
 padsize = matrix_size_complete - matrix_size_acquired;
 final_kspace = padarray(unTWISTed_Kspace,padsize,0);
 
 % Perform the inverse 3D FFT on all timepoints and coils at once
-final_kspace_xyz = permute(final_kspace, [fps_to_xyz, 4]);
-final_kspace_shifted = ifftshift(ifftshift(ifftshift(final_kspace_xyz, 1), 2), 3);
-unTWISTed_IMspace = ifft(ifft(ifft(final_kspace_shifted, [], 1), [], 2), [], 3);
-unTWISTed_IMspace = fftshift(fftshift(fftshift(unTWISTed_IMspace, 1), 2), 3);
+final_kspace = permute(final_kspace, [fps_to_xyz, 4]);
+final_kspace = ifftshift(final_kspace, 1);
+final_kspace = ifftshift(final_kspace, 2);
+final_kspace = ifftshift(final_kspace, 3);
+unTWISTed_IMspace = ifft(final_kspace, [], 1);
+unTWISTed_IMspace = ifft(unTWISTed_IMspace, [], 2);
+unTWISTed_IMspace = ifft(unTWISTed_IMspace, [], 3);
+unTWISTed_IMspace = fftshift(unTWISTed_IMspace, 1);
+unTWISTed_IMspace = fftshift(unTWISTed_IMspace, 2);
+unTWISTed_IMspace = fftshift(unTWISTed_IMspace, 3);
 
 %% --- 8. Resolving Oversampling
 % crop_amount = matrix_size_acquired-IMmatrix_crop_size;

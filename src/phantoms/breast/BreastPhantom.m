@@ -7,191 +7,239 @@ classdef BreastPhantom < MultipleMaterialPhantom
     %   cardiac_ellipsoid_waveform, which evaluates long time vectors in
     %   ~0.001 Gb, 15,625-sample chunks to keep memory usage minimal.
 
-    properties (Access = private)
+    properties (Access = protected)
+        phantomParams
+        beatingHeart
+        rightLung
+        leftLung
+        fatInner
+        fatOuter
+        fatComposite
+        tissueComposite
+        thorax
+        breastRight
+        breastLeft
+        leftAndRightBreastTissue
+        enhancedCylinder
+        unenhancedCylinder
+        enhancingVessel
     end
 
     methods
-        function obj = BreastPhantom(t_s)
+        function obj = BreastPhantom(params)
             arguments
-                t_s (1,:) double {mustBeFinite}
+                params struct = createBreastPhantomParams();
             end
 
             obj@MultipleMaterialPhantom();
+            obj.phantomParams = params;
 
-            %% Create heart
-            cardiacOpts = struct('HR_bpm', 70/10.66, ...
-                'EDV_ml', 150,...
-                'ESV_ml', 75,...
-                'systFrac', 0.35, ...
-                'q_ED', 50/27, ...
-                'GLS_peak', -0.20, ...
-                'GCS_peak', -0.25);
-            heartIntensity = 1;
-            heartWallThickness_mm = 8;
+            % Convenience arrays
             centered = [0, 0, 0];
             notRotated = [0, 0, 0];
 
-            cardiacParams = @()BreastPhantom.addPoseToParameters( ...
-                cardiac_ellipsoid_waveform(t_s, cardiacOpts), centered, notRotated);
-            beatingHeart = AnalyticalEllipsoid3D(heartIntensity, cardiacParams);
+            placeholderEllipsoid = BreastPhantom.addPoseToParameters( ...
+                struct('a_mm', 1, 'b_mm', 1, 'c_mm', 1), ...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            obj.beatingHeart = AnalyticalEllipsoid3D(params.heartIntensity, placeholderEllipsoid);
+            obj.rightLung = AnalyticalEllipsoid3D(params.lungIntensity, placeholderEllipsoid);
+            obj.leftLung = AnalyticalEllipsoid3D(params.lungIntensity, placeholderEllipsoid);
 
-            %% Create lungs
-            pulmonaryOpts = struct('f_bpm', 12/10.66, ...
-                'VT_L', 0.4,...
-                'Vres_L', 0.8, ...
-                'Vbase_L', 1.5, ...
-                'bellyFrac', 0.6, ...
-                'inspFrac', 1/3, ...
-                'GCS_peak', 0.4);
-            lungIntensity = 0.1;
+            placeholderEllipticalCylinder = BreastPhantom.addPoseToParameters( ...
+                struct('a_mm', 1, 'b_mm', 1, 'length_mm', 1), ...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            obj.fatInner = AnalyticalEllipticalCylinder3D([], placeholderEllipticalCylinder);
+            obj.fatOuter = AnalyticalEllipticalCylinder3D([], placeholderEllipticalCylinder);
 
-            % ROBBIE = here are the cardiac values
-            % beatingHeart.getShapeParameters.a_mm -< I think a is the r/l
-            % and a/p direction and b is the s/i direction 
-
-            % TODO make this a function handle so its not directly
-            % evaluated yet.
-            pulmonaryOpts.lungSeparation_mm = beatingHeart.getShapeParameters.a_mm + heartWallThickness_mm; 
-
-            lungShapeParameters = BreastPhantom.addPoseToParameters(struct(), centered, notRotated);
-            breathingLung = BreathingLung(t_s, pulmonaryOpts, ...
-                lungIntensity, lungShapeParameters);
-
-            %% Create thorax
-            bodyShift = -80;
-            tissueGap_lr_mm = 30;
-            phantomDepth_mm = 300;
-            fatIntensity = 2;
-            tissueIntensity = 0.5;
-            heart_ap_mm = beatingHeart.getShapeParameters.b_mm;
-            lungRadius = breathingLung.getLeftLung().getShapeParameters().R_mm;
-
-            chest_ap_inner_mm = max(heart_ap_mm, lungRadius) + tissueGap_lr_mm;
-            chest_lr_inner_mm = 2 * lungRadius + pulmonaryOpts.lungSeparation_mm + tissueGap_lr_mm;
+            obj.fatComposite = CompositeAnalyticalShape3D(obj.fatOuter, obj.fatInner, params.fatIntensity);
+            obj.tissueComposite = CompositeAnalyticalShape3D(obj.fatInner, [obj.beatingHeart, obj.leftLung, obj.rightLung], ...
+               params.tissueIntensity);
             
-            % ROBBIE - sanity check that the chest dimmensions make sense
-            % in the oversampled FOV
+            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3)));
+            obj.thorax = MultipleMaterialPhantom([obj.beatingHeart, obj.leftLung, obj.rightLung, obj.fatComposite, obj.tissueComposite], ...
+                thoraxPose);
+
+            placeholderCylinder = BreastPhantom.addPoseToParameters( ...
+                struct('radius_mm', 1, 'length_mm', 1), ...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            obj.breastRight = AnalyticalCylinder3D([], placeholderCylinder);
+            obj.breastLeft = AnalyticalCylinder3D([], placeholderCylinder);
+
+            % Use vessel intensity deltas so we can avoid subtracting and re-adding
+            % identical cylinder k-space when combining with breast tissue.
+            enhancedDelta = params.enhancedIntensity - params.breastIntensity;
+            unenhancedDelta = params.unenhancedIntensity - params.breastIntensity;
+            obj.enhancedCylinder = AnalyticalCylinder3D(enhancedDelta, placeholderCylinder);
+            obj.unenhancedCylinder = AnalyticalCylinder3D(unenhancedDelta, placeholderCylinder);
+
+            obj.leftAndRightBreastTissue = CompositeAnalyticalShape3D([obj.breastRight, obj.breastLeft], ...
+                AnalyticalShape3D.empty(1,0), params.breastIntensity, placeholderCylinder);
+
+            obj.enhancingVessel = MultipleMaterialPhantom([obj.enhancedCylinder, obj.unenhancedCylinder], ...
+                placeholderCylinder);
+
+            % enhancingVessel  = CompositeAnalyticalShape3D([unenhancedCylinder, enhancedCylinder], [], ...
+            %     breastIntensity , breastParamsBoth);
+
+            obj.setBreastGeometryFromParams(params);
+            obj.setShapes([obj.thorax obj.leftAndRightBreastTissue obj.enhancingVessel]);
+
+            obj.updateShapesForTime(0);
+        end
+
+        function updateShapesForTime(obj, t_s)
+            % updateShapesForTime  Update all sub-shape parameters at time t_s.
+            %   updateShapesForTime(obj, t_s) recomputes geometry for the
+            %   specified time(s) in seconds.
+            validateattributes(t_s, {'numeric'}, {'real', 'finite', 'vector'}, ...
+                mfilename, 't_s');
+
+            params = obj.phantomParams;
+            
+            %% Heart
+            centered = [0, 0, 0];
+            notRotated = [0, 0, 0];
+            heartParams = cardiac_ellipsoid_waveform(t_s, params.cardiacOpts);
+            heartParams = BreastPhantom.addPoseToParameters(heartParams, ...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            obj.beatingHeart.setShapeParameters(heartParams);
+
+            %% Lungs
+            [lungRadius_mm, lungHeight_mm] = lung_ellipsoid_waveform(t_s, params.pulmonaryOpts);
+
+            lungSeparation_mm = heartParams.a_mm + params.heartWallThickness_mm;
+            lungPosition_mm = lungRadius_mm + lungSeparation_mm;
+            lungShapeParams = struct('a_mm', lungRadius_mm, 'b_mm', lungRadius_mm, 'c_mm', lungHeight_mm);
+            rightLungParams = BreastPhantom.addPoseToParameters(lungShapeParams, ...
+                lungPosition_mm, zeros(size(lungPosition_mm)), zeros(size(lungPosition_mm)), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            
+            leftLungParams = BreastPhantom.addPoseToParameters(lungShapeParams, ...
+                -lungPosition_mm, zeros(size(lungPosition_mm)), zeros(size(lungPosition_mm)), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            obj.rightLung.setShapeParameters(rightLungParams);
+            obj.leftLung.setShapeParameters(leftLungParams);
+
+            %% Thorax and fat
+            heart_ap_mm = heartParams.b_mm;
+            chest_ap_inner_mm = max(heart_ap_mm, lungRadius_mm) + params.tissueGap_lr_mm;
+            chest_lr_inner_mm = 2 * lungRadius_mm + lungSeparation_mm + params.tissueGap_lr_mm;
 
             fatInnerParams = struct('a_mm', chest_lr_inner_mm, ...
-                'b_mm', chest_ap_inner_mm, 'length_mm', phantomDepth_mm);
-            fatInnerParams = BreastPhantom.addPoseToParameters(fatInnerParams, [0, 0, 0], [0, 0, 0]);
-            fat_inner = AnalyticalEllipticalCylinder3D([], fatInnerParams);
+                'b_mm', chest_ap_inner_mm, 'length_mm', params.phantomDepth_mm);
+            fatInnerParams = BreastPhantom.addPoseToParameters(fatInnerParams, ...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            obj.fatInner.setShapeParameters(fatInnerParams);
 
             fatThickness_mm = 10;
             chest_ap_outer_mm = chest_ap_inner_mm + fatThickness_mm;
             chest_lr_outer_mm = chest_lr_inner_mm + fatThickness_mm;
             fatOuterParams = struct('a_mm', chest_lr_outer_mm, ...
-                'b_mm', chest_ap_outer_mm, 'length_mm', phantomDepth_mm);
-            fatOuterParams = BreastPhantom.addPoseToParameters(fatOuterParams, [0, 0, 0], [0, 0, 0]);
-            fat_outer = AnalyticalEllipticalCylinder3D([], fatOuterParams);
+                'b_mm', chest_ap_outer_mm, 'length_mm', params.phantomDepth_mm);
+            fatOuterParams = BreastPhantom.addPoseToParameters(fatOuterParams, ...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            obj.fatOuter.setShapeParameters(fatOuterParams);
 
-            fatComposite = CompositeAnalyticalShape3D(fat_outer, fat_inner, fatIntensity);
-            tissueComposite = CompositeAnalyticalShape3D(fat_inner, [beatingHeart, breathingLung], ...
-               tissueIntensity);
-            
-            thoraxCenter = [zeros(size(chest_ap_outer_mm)); -chest_ap_outer_mm; zeros(size(chest_ap_outer_mm))];
-            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(thoraxCenter, [0, 0, 0]));
-            thorax = MultipleMaterialPhantom([beatingHeart, breathingLung, fatComposite, tissueComposite], ...
-                thoraxPose);
+            thoraxCenter = [zeros(size(chest_ap_outer_mm)), -chest_ap_outer_mm, zeros(size(chest_ap_outer_mm))];
+            thoraxPose = struct('pose', BreastPhantom.createPoseStruct(...
+                zeros(size(chest_ap_outer_mm)), -chest_ap_outer_mm, zeros(size(chest_ap_outer_mm)), ...
+                notRotated(1),notRotated(2),notRotated(3)));
+            obj.thorax.setShapeParameters(thoraxPose);
 
-            breast_gap_mm = 60;
-            breast_radius_mm = 60;
-            breast_depth_mm = 125;
+            %% Breasts
+            timePostInj_s = max(t_s - params.startInjectionTime_s, 0);
+            enhancedLength_mm = min(params.breastVesselVelocity_cm_s * 10 .* timePostInj_s, ...
+                params.totalVesselLength_mm);
+            unenhancedLength_mm = max(params.totalVesselLength_mm - enhancedLength_mm, 0);
 
-            right_breast_center = [breast_radius_mm + 0.5 * breast_gap_mm, 0, 0];
-            left_breast_center = [-right_breast_center(1), right_breast_center(2:3)];
+            rightBreastCenter_z = 0;
 
-            breastParams = struct('radius_mm', breast_radius_mm, 'length_mm', breast_depth_mm);
-            breastParamsRight = BreastPhantom.addPoseToParameters(breastParams, right_breast_center, [0, 90, 90]);
-            breastParamsLeft = BreastPhantom.addPoseToParameters(breastParams, left_breast_center, [0, 90, 90]);
-            breast_right = AnalyticalCylinder3D([], breastParamsRight);
-            breast_left = AnalyticalCylinder3D([], breastParamsLeft);
+            % case 'enhanced'
+            center_enhanced_mm = rightBreastCenter_z - 0.5 .* unenhancedLength_mm;
+            % case 'unenhanced'
+            center_unenhanced_mm = rightBreastCenter_z + 0.5 .* enhancedLength_mm;
 
-            breastCenter = [0, 0.5 * breast_depth_mm, 0];
-            breastParamsBoth = BreastPhantom.addPoseToParameters(breastParams, breastCenter, [0, 0, 0]);
+            enhancedVesselParams = struct('radius_mm', params.vesselRadius_mm, ...
+                'length_mm', enhancedLength_mm);
+            enhancedVesselParams.pose = BreastPhantom.createPoseStruct(...
+                0, 0, center_enhanced_mm, ...
+                params.breastRollPitchYaw(1), params.breastRollPitchYaw(2), params.breastRollPitchYaw(3));
 
-            vesselDiameter_mm = 5;
-            vesselRadius_mm = 0.5 * vesselDiameter_mm;
-            totalVesselLength_mm = 100;
-            breastRollPitchYaw = [0, 90, 90];
-            enhancedIntensity = 2.5;
-            unenhancedIntensity = 0.3;
-            breastVesselVelocity_cm_s = 1/10.66;
-            startInjectionTime_s = 30*10.66;
-            
-            min_max_t = [min(t_s) max(t_s)]
+            unenhancedVesselParams = struct('radius_mm', params.vesselRadius_mm, ...
+                'length_mm', unenhancedLength_mm);
+            unenhancedVesselParams.pose = BreastPhantom.createPoseStruct(...
+                0, 0, center_unenhanced_mm, ...
+                params.breastRollPitchYaw(1), params.breastRollPitchYaw(2), params.breastRollPitchYaw(3));
 
-            enhancedParamsHandle = @() localVesselParameters('enhanced', t_s);
-            unenhancedParamsHandle = @() localVesselParameters('unenhanced', t_s);
+            %% Vessel enhancement
+            obj.enhancedCylinder.setShapeParameters(enhancedVesselParams);
+            obj.unenhancedCylinder.setShapeParameters(unenhancedVesselParams);
+        end
 
-            enhancedCylinder = AnalyticalCylinder3D(enhancedIntensity, enhancedParamsHandle);
-            unenhancedCylinder = AnalyticalCylinder3D(unenhancedIntensity, unenhancedParamsHandle);
-
-            % enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder, enhancedCylinder]);
-            % enhancingVessel = MultipleMaterialPhantom([unenhancedCylinder]);
-
-            breastIntensity = 0.5;
-            leftAndRightBreastTissue = CompositeAnalyticalShape3D([breast_right, breast_left], [unenhancedCylinder, enhancedCylinder], ...
-                breastIntensity , breastParamsBoth);
-
-            enhancingVessel = MultipleMaterialPhantom([enhancedCylinder, unenhancedCylinder], breastParamsBoth);
-
-            % enhancingVessel  = CompositeAnalyticalShape3D([unenhancedCylinder, enhancedCylinder], [], ...
-            %     breastIntensity , breastParamsBoth);
-
-            obj.setShapes([thorax leftAndRightBreastTissue enhancingVessel]);
-
-            function params = localVesselParameters(segment, t_s)
-                elapsedTime_s = max(t_s - startInjectionTime_s,0);
-                enhancedLength_mm = min(breastVesselVelocity_cm_s*10 .* elapsedTime_s, totalVesselLength_mm);
-                unenhancedLength_mm = max(totalVesselLength_mm - enhancedLength_mm, 0);
-
-                switch lower(segment)
-                    case 'enhanced'
-                        length_mm = enhancedLength_mm;
-                        center_mm = repmat(right_breast_center, numel(length_mm), 1)';
-                        center_mm(3,:) = center_mm(3,:) - 0.5 .* unenhancedLength_mm;
-                    case 'unenhanced'
-                        length_mm = unenhancedLength_mm;
-                        center_mm = repmat(right_breast_center, numel(length_mm), 1)';
-                        center_mm(3,:) = center_mm(3,:) + 0.5 .* enhancedLength_mm;
-                    otherwise
-                        error('BreastPhantom:InvalidVesselSegment', ...
-                            'Segment must be ''enhanced'' or ''unenhanced''.');
-                end
-
-                params = struct('radius_mm', vesselRadius_mm, 'length_mm', length_mm);
-                params.pose = BreastPhantom.createPoseStruct(center_mm, breastRollPitchYaw);
+        function S = kspaceAtTime(obj, kx, ky, kz, t_s)
+            maxChunkSize = 250000;
+            numSamples = numel(t_s);
+            if ~isequal(size(kx), size(ky), size(kz), size(t_s))
+                error('BreastPhantom:KspaceAtTimeSizeMismatch', ...
+                    'kx, ky, kz, and t_s must have identical sizes.');
             end
+            S = zeros(size(kx));
+
+            numChunks = ceil(numSamples / maxChunkSize);
+            for idxStart = 1:maxChunkSize:numSamples
+                chunkIndex = ceil(idxStart / maxChunkSize);
+                idxEnd = min(idxStart + maxChunkSize - 1, numSamples);
+                idx = idxStart:idxEnd;
+                percentComplete = 100 * chunkIndex / numChunks;
+                fprintf(['kspaceAtTime: chunk %d of %d, %.1f%% complete.\n'], ...
+                    chunkIndex, numChunks, percentComplete);
+                obj.updateShapesForTime(t_s(idx));
+                S(idx) = obj.kspace(kx(idx), ky(idx), kz(idx));
+            end
+        end
+    end
+
+    methods (Access = private)
+        function setBreastGeometryFromParams(obj, params)
+            xRightBreast = params.breast_radius_mm + 0.5 * params.breast_gap_mm;
+            breastParams = struct('radius_mm', params.breast_radius_mm, 'length_mm', params.breast_depth_mm);
+            breastParamsRight = BreastPhantom.addPoseToParameters(breastParams, ...
+                xRightBreast, 0, 0, ...
+                0, 90, 90);
+            breastParamsLeft = BreastPhantom.addPoseToParameters(breastParams, ...
+                -xRightBreast, 0, 0, ...
+                0, 90, 90);
+            obj.breastRight.setShapeParameters(breastParamsRight);
+            obj.breastLeft.setShapeParameters(breastParamsLeft);
+
+            breastParamsBoth = BreastPhantom.addPoseToParameters(breastParams, ...
+                0, 0.5 * params.breast_depth_mm, 0, ...
+                0, 0, 0);
+            obj.leftAndRightBreastTissue.setShapeParameters(breastParamsBoth);
+            obj.enhancingVessel.setShapeParameters(breastParamsBoth);
         end
     end
 
     methods (Access = private, Static)
-        function params = addPoseToParameters(params, centerVec, rollPitchYaw)
-            params.pose = BreastPhantom.createPoseStruct(centerVec, rollPitchYaw);
+        function params = addPoseToParameters(params, x_mm, y_mm, z_mm, roll, pitch, yaw)
+            params.pose = BreastPhantom.createPoseStruct(x_mm, y_mm, z_mm, roll, pitch, yaw);
         end
 
-        function pose = createPoseStruct(centerVec, rollPitchYaw)
-            if size(centerVec, 1) == 3 && size(centerVec, 2) ~= 3
-                x_mm = centerVec(1, :);
-                y_mm = centerVec(2, :);
-                z_mm = centerVec(3, :);
-            elseif size(centerVec, 2) == 3
-                x_mm = centerVec(:, 1);
-                y_mm = centerVec(:, 2);
-                z_mm = centerVec(:, 3);
-            else
-                error('BreastPhantom:InvalidCenterVec', ...
-                    'centerVec must be 3xN (axis rows) or Nx3 (axis columns).');
-            end
-
+        function pose = createPoseStruct(x_mm, y_mm, z_mm, roll, pitch, yaw)
             pose = struct('center', struct('x_mm', x_mm, ...
                 'y_mm', y_mm, ...
                 'z_mm', z_mm), ...
-                'roll_deg', rollPitchYaw(1), ...
-                'pitch_deg', rollPitchYaw(2), ...
-                'yaw_deg', rollPitchYaw(3));
+                'roll_deg', roll, ...
+                'pitch_deg', pitch, ...
+                'yaw_deg', yaw);
         end
     end
-
 end

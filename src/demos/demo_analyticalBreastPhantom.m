@@ -50,7 +50,8 @@ ordKsx_kz = kz_vec(kz_orderedIdx);
 t_s = (1:length(ordKsx_kx))*0.0001;
 mat_t = max(t_s(:))
 t_s = reshape(t_s,size(ordKsx_kx)); % force time and k-space to be the same size;
-phantom = BreastPhantom(t_s);
+breastPhantomParams = createBreastPhantomParams();
+phantom = BreastPhantom(breastPhantomParams);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
