@@ -47,7 +47,7 @@ ordKspace_freq = kfreq_vec(kfreq_orderedIdx);
 ordKspace_phase = kphase_vec(kphase_orderedIdx);
 ordKspace_slice = kslice_vec(kslice_orderedIdx);
 
-k_fps = [ordKspace_freq, ordKspace_phase, ordKspace_slice]';
+k_fps = [ordKspace_freq; ordKspace_phase; ordKspace_slice];
 [k_xyz, fps_to_xyz] = mapKspaceFpsToXyz(k_fps, freq_phase_slice);
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
@@ -69,7 +69,7 @@ phantom = BreastPhantom(breastPhantomParams);
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 
-K_ordered = phantom.kspace(k_xyz(1, :), k_xyz(2, :), k_xyz(3, :),Sampling_Table.Timing);
+K_ordered = phantom.kspaceAtTime(k_xyz(1, :), k_xyz(2, :), k_xyz(3, :),Sampling_Table.Timing');
 
 Sampling_Table.Kspace_Value = K_ordered';
 
