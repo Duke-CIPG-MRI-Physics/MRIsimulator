@@ -178,7 +178,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             % case 'enhanced'
             center_enhanced_mm = rightBreastCenter_z - 0.5 .* unenhancedLength_mm;
             % case 'unenhanced'
-            center_unenhanced_mm = rightBreastCenter_z + 0.5 .* enhancedLength_mm(:);
+            center_unenhanced_mm = rightBreastCenter_z + 0.5 .* enhancedLength_mm;
 
             enhancedVesselParams = struct('radius_mm', params.vesselRadius_mm, ...
                 'length_mm', enhancedLength_mm);
@@ -200,9 +200,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
         function S = kspaceAtTime(obj, kx, ky, kz, t_s)
             maxChunkSize = 1625;
             numSamples = numel(t_s);
-            if ~isequal(numel(kx), numel(ky), numel(kz), numel(t_s))
+            if ~isequal(size(kx), size(ky), size(kz), size(t_s))
                 error('BreastPhantom:KspaceAtTimeSizeMismatch', ...
-                    'kx, ky, kz, and t_s must have the same number of elements.');
+                    'kx, ky, kz, and t_s must have identical sizes.');
             end
             S = zeros(size(kx));
 

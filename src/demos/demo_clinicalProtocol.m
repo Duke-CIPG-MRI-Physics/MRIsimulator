@@ -160,7 +160,7 @@ clear k_fps kfreq kPhase kSlice;
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-K = phantom.kspaceAtTime(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:),t_s(:));
+K = phantom.kspaceAtTime(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:), t_s);
 clear t_s;
 K = reshape(K,matrix_acq_os_fps);
 
