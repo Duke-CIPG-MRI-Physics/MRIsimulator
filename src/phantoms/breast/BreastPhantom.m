@@ -86,17 +86,16 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 mfilename, 't_s');
 
             params = obj.phantomParams;
-            time_s = t_s(:);
-
+            
             %% Heart
             centered = [0, 0, 0];
             notRotated = [0, 0, 0];
-            heartParams = cardiac_ellipsoid_waveform(time_s, params.cardiacOpts);
+            heartParams = cardiac_ellipsoid_waveform(t_s, params.cardiacOpts);
             heartParams = BreastPhantom.addPoseToParameters(heartParams, centered, notRotated);
             obj.beatingHeart.setShapeParameters(heartParams);
 
             %% Lungs
-            [lungRadius_mm, lungHeight_mm] = lung_ellipsoid_waveform(time_s, params.pulmonaryOpts);
+            [lungRadius_mm, lungHeight_mm] = lung_ellipsoid_waveform(t_s, params.pulmonaryOpts);
             lungRadius_mm = lungRadius_mm(:);
             lungHeight_mm = lungHeight_mm(:);
 
@@ -147,14 +146,15 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.enhancingVessel.setShapeParameters(breastParamsBoth);
 
             %% Vessel enhancement
-            enhancedParams = obj.vesselParameters('enhanced', time_s, params, rightBreastCenter);
-            unenhancedParams = obj.vesselParameters('unenhanced', time_s, params, rightBreastCenter);
+            enhancedParams = obj.vesselParameters('enhanced', t_s, params, rightBreastCenter);
+            unenhancedParams = obj.vesselParameters('unenhanced', t_s, params, rightBreastCenter);
             obj.enhancedCylinder.setShapeParameters(enhancedParams);
             obj.unenhancedCylinder.setShapeParameters(unenhancedParams);
         end
 
         function S = kspaceAtTime(obj, kx, ky, kz, t_s)
-            obj.updateShapesForTime(t_s);
+            
+            % obj.updateShapesForTime(t_s);
             S = obj.kspace(kx, ky, kz);
         end
     end
