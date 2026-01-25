@@ -127,7 +127,8 @@ plot(t_s)
 
 %% 5) Construct the breast phantom with the embedded enhancing vessel
 disp('Constructing phantom');
-phantom = BreastPhantom();
+breastPhantomParams = createBreastPhantomParams();
+phantom = BreastPhantom(breastPhantomParams);
 
 
 %% 3) Build WORLD k-space grid and map to the rectilinear ordering

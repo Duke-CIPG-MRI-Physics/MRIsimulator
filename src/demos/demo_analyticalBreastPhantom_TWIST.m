@@ -63,7 +63,8 @@ Sampling_Table.Timing = matrix_result(:);
 % [sortedT,sortIdx] = sort(Sampling_Table.Timing);
 % phantom = BreastPhantom(sortedT);
 
-phantom = BreastPhantom();
+breastPhantomParams = createBreastPhantomParams();
+phantom = BreastPhantom(breastPhantomParams);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
