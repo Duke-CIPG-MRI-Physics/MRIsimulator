@@ -153,9 +153,20 @@ classdef BreastPhantom < MultipleMaterialPhantom
         end
 
         function S = kspaceAtTime(obj, kx, ky, kz, t_s)
-            
-            % obj.updateShapesForTime(t_s);
-            S = obj.kspace(kx, ky, kz);
+            maxChunkSize = 15625;
+            numSamples = numel(t_s);
+            if ~isequal(size(kx), size(ky), size(kz), size(t_s))
+                error('BreastPhantom:KspaceAtTimeSizeMismatch', ...
+                    'kx, ky, kz, and t_s must be the same size.');
+            end
+            S = zeros(size(kx));
+
+            for idxStart = 1:maxChunkSize:numSamples
+                idxEnd = min(idxStart + maxChunkSize - 1, numSamples);
+                idx = idxStart:idxEnd;
+                obj.updateShapesForTime(t_s(idx));
+                S(idx) = obj.kspace(kx(idx), ky(idx), kz(idx));
+            end
         end
     end
 
