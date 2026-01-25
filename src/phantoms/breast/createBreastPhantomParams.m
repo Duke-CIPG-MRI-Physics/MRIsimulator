@@ -15,8 +15,6 @@ function params = createBreastPhantomParams()
         'GCS_peak', -0.25);
     params.heartIntensity = 1;
     params.heartWallThickness_mm = 8;
-    params.centered = [0, 0, 0];
-    params.notRotated = [0, 0, 0];
 
     %% Lungs
     params.pulmonaryOpts = struct('f_bpm', 12/10.66, ...
@@ -29,7 +27,6 @@ function params = createBreastPhantomParams()
     params.lungIntensity = 0.1;
 
     %% Thorax
-    params.bodyShift = -80;
     params.tissueGap_lr_mm = 30;
     params.phantomDepth_mm = 300;
     params.fatIntensity = 2;
