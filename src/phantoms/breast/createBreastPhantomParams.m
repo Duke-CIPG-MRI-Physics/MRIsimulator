@@ -53,17 +53,17 @@ function params = createBreastPhantomParams()
 
     %% Breast
     params.breast_gap_mm = 60;
-    params.breast_radius_mm = 60;
-    params.breast_depth_mm = 125;
+    params.breast_radius_mm = 70;
+    params.breast_depth_mm = 140;
     params.breastIntensity = 0.5;
 
     %% Vessel
     params.vesselDiameter_mm = 5;
     params.vesselRadius_mm = 0.5 * params.vesselDiameter_mm;
-    params.vesselSegmentCount = 3;
-    params.individualVesselLength_mm = 100 / params.vesselSegmentCount;
+    params.vesselSegmentCount = 5;
+    params.individualVesselLength_mm = 100;
     params.totalVesselLength_mm = params.individualVesselLength_mm * params.vesselSegmentCount;
-    params.vessel_offset_rl_mm = 20;
+    params.vessel_offset_rl_mm = 25;
     params.breastRollPitchYaw = [0, 90, 90];
     params.enhancedIntensity = 2.5;
     params.unenhancedIntensity = 0.3;
