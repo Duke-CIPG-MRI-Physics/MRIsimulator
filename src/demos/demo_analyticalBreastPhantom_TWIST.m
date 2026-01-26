@@ -9,8 +9,8 @@ disp(encodingFullStr)
 
 breastPhantomParams = createBreastPhantomParams();
 
-load('fast_scan_parameters.mat') 
-%load('base_scan_parameters.mat')
+% load('fast_scan_parameters.mat') 
+load('Breast_Ultrafast_scan_parameters.mat')
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] = convert_Siemens_parameters(scan_parameters);
 
 % Contrast parameters
@@ -26,7 +26,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = 0.05;
 Nb = 10;
-Time_Measured = 120; %sec
+Time_Measured = 300; %sec
 R = 1; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
@@ -124,28 +124,25 @@ clear k_spatFreq_xyz Sampling_Table phantom
 fprintf('\nUndoing TWIST...')
 
 % Loop only through timepoints (vectorized over coils)
-for ii_timepoint = 2:size(kspace,4)
-    % % 1. Start with the data measured for the current time point
-    % currentData = kspace(:,:,:,ii_timepoint,:);
-    % 
-    % % 2. We will use the previous data to fill in unmeasured data
-    % previousData = kspace(:,:,:,ii_timepoint-1,:);
-    % 
-    % % 3. Any nan values were not calculated this time frame, so fill them
-    % % in from the previous time frame
-    % currentData(isnan(currentData)) = previousData(isnan(currentData));
-    % 
-    % % 4. Assign the updated slice back into the main array.
-    % kspace(:,:,:,ii_timepoint,:) = currentData;
-
-    % More memory efficient calculation of the steps above
-    kspace(:,:,:,ii_timepoint,:) = kspace(:,:,:,ii_timepoint,:).*(~isnan(kspace(:,:,:,ii_timepoint,:))) ...
-        + kspace(:,:,:,ii_timepoint-1,:).*(isnan(kspace(:,:,:,ii_timepoint,:)));
-end
-
-clear currentData previousData 
+kspace = fillmissing(kspace, 'previous', 4); % This magic line undoes TWIST!
+% for ii_timepoint = 2:size(kspace,4)
+%     % 1. Start with the data measured for the current time point
+%     currentData = kspace(:,:,:,ii_timepoint,:);
+% 
+%     % 2. We will use the previous data to fill in unmeasured data
+%     previousData = kspace(:,:,:,ii_timepoint-1,:);
+% 
+%     % 3. Any nan values were not calculated this time frame, so fill them
+%     % in from the previous time frame
+%     currentData(isnan(currentData)) = previousData(isnan(currentData));
+% 
+%     % 4. Assign the updated slice back into the main array.
+%     kspace(:,:,:,ii_timepoint,:) = currentData;
+% end
+% clear currentData previousData 
 
 %% FFT and zero padd, one 3D volume at a time to reduce memory spikes
+
 kspace = permute(kspace, [fps_to_xyz, 4 5]);
 twistImage = zeros([matrix_size_complete(fps_to_xyz) size(kspace,[4 5])]);
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
