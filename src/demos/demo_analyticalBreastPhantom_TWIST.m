@@ -107,7 +107,7 @@ clear k_spatFreq_xyz Sampling_Table phantom
 fprintf('\nUndoing TWIST...')
 
 % Initialize the output array
-unTWISTed_Kspace = zeros(size(TWISTed_Kspace));
+unTWISTed_Kspace = nan(size(TWISTed_Kspace));
 
 % The first timepoint is the baseline for all coils
 unTWISTed_Kspace(:,:,:,1,:) = TWISTed_Kspace(:,:,:,1,:);
@@ -141,15 +141,12 @@ nTimes = size(unTWISTed_Kspace,4);
 nCoils = size(unTWISTed_Kspace,5);
 for iTime = 1:nTimes
     for iCoil = 1:nCoils
-        padded_kspace = padarray(unTWISTed_Kspace(:,:,:,iTime,iCoil), padsize, 0);
-        padded_kspace = ifftshift(padded_kspace, 1);
-        padded_kspace = ifftshift(padded_kspace, 2);
-        padded_kspace = ifftshift(padded_kspace, 3);
+        % Zeropad, then ifftshift kspace
+        padded_kspace = padarray(unTWISTed_Kspace(:,:,:,iTime,iCoil), 0.5*padsize, 0);
+        padded_kspace = ifftshift(padded_kspace);
 
-        imspace = ifft(padded_kspace, [], 1);
-        imspace = ifft(imspace, [], 2);
-        imspace = ifft(imspace, [], 3);
-        unTWISTed_IMspace(:,:,:,iTime,iCoil) = fftshift(fftshift(fftshift(imspace, 1), 2), 3);
+        % Take IFFT, then fftshift
+        unTWISTed_IMspace(:,:,:,iTime,iCoil) = fftshift(ifftn(padded_kspace));
     end
 end
 
