@@ -108,18 +108,22 @@ fprintf('\nUndoing TWIST...')
 
 % Loop only through timepoints (vectorized over coils)
 for ii_timepoint = 2:size(kspace,4)
-    % 1. Start with the data measured for the current time point
-    currentData = kspace(:,:,:,ii_timepoint,:);
+    % % 1. Start with the data measured for the current time point
+    % currentData = kspace(:,:,:,ii_timepoint,:);
+    % 
+    % % 2. We will use the previous data to fill in unmeasured data
+    % previousData = kspace(:,:,:,ii_timepoint-1,:);
+    % 
+    % % 3. Any nan values were not calculated this time frame, so fill them
+    % % in from the previous time frame
+    % currentData(isnan(currentData)) = previousData(isnan(currentData));
+    % 
+    % % 4. Assign the updated slice back into the main array.
+    % kspace(:,:,:,ii_timepoint,:) = currentData;
 
-    % 2. We will use the previous data to fill in unmeasured data
-    previousData = kspace(:,:,:,ii_timepoint-1,:);
-
-    % 3. Any nan values were not calculated this time frame, so fill them
-    % in from the previous time frame
-    currentData(isnan(currentData)) = previousData(isnan(currentData));
-
-    % 5. Assign the updated slice back into the main array.
-    kspace(:,:,:,ii_timepoint,:) = currentData;
+    % More memory efficient calculation of the steps above
+    kspace(:,:,:,ii_timepoint,:) = kspace(:,:,:,ii_timepoint,:).*(~isnan(kspace(:,:,:,ii_timepoint,:))) ...
+        + kspace(:,:,:,ii_timepoint-1,:).*(~isnan(kspace(:,:,:,ii_timepoint,:)));
 end
 
 clear currentData previousData 
