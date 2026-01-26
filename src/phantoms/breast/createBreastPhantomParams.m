@@ -60,8 +60,9 @@ function params = createBreastPhantomParams()
     %% Vessel
     params.vesselDiameter_mm = 5;
     params.vesselRadius_mm = 0.5 * params.vesselDiameter_mm;
-    params.totalVesselLength_mm = 100;
     params.vesselSegmentCount = 3;
+    params.individualVesselLength_mm = 100 / params.vesselSegmentCount;
+    params.totalVesselLength_mm = params.individualVesselLength_mm * params.vesselSegmentCount;
     params.vessel_offset_rl_mm = 20;
     params.breastRollPitchYaw = [0, 90, 90];
     params.enhancedIntensity = 2.5;
@@ -74,8 +75,7 @@ function params = createBreastPhantomParams()
     params.vesselChainCenterLeft_mm = [0 0 0];
     params.vesselPhantomRollPitchYawRight_deg = [0 0 0];
     params.vesselPhantomRollPitchYawLeft_deg = [0 0 90];
-    segmentLengths_mm = repmat(params.totalVesselLength_mm / params.vesselSegmentCount, ...
-        1, params.vesselSegmentCount);
+    segmentLengths_mm = repmat(params.individualVesselLength_mm, 1, params.vesselSegmentCount);
     params.vesselSegmentsRight = createBreastVesselSegments( ...
         segmentLengths_mm, params.vesselRadius_mm, params.vessel_offset_rl_mm, ...
         params.vesselChainCenterRight_mm, params.vesselRollPitchYawRight_deg);
