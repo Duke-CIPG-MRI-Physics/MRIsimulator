@@ -254,6 +254,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
         end
 
         function params = normalizeVesselParams(params)
+            if ~isfield(params, 'vessel_offset_rl_mm') || isempty(params.vessel_offset_rl_mm)
+                params.vessel_offset_rl_mm = 0;
+            end
             if ~isfield(params, 'vesselSegments') || isempty(params.vesselSegments)
                 params.vesselSegments = BreastPhantom.buildDefaultVesselSegments(params);
             end
@@ -266,7 +269,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             segmentLength_mm = params.totalVesselLength_mm / segmentCount;
             segmentLengths_mm = repmat(segmentLength_mm, 1, segmentCount);
             segments = createBreastVesselSegments(segmentLengths_mm, params.vesselRadius_mm, ...
-                [0 0 0], params.breastRollPitchYaw);
+                params.vessel_offset_rl_mm, [0 0 0], params.breastRollPitchYaw);
         end
 
         function segments = ensureVesselSegmentDefaults(segments, params)
