@@ -22,7 +22,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
         leftAndRightBreastTissue
         enhancedCylinders
         unenhancedCylinders
-        enhancingVessel
+        enhancingVessels
     end
 
     methods
@@ -64,12 +64,12 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.thorax = MultipleMaterialPhantom([obj.beatingHeart, obj.leftLung, obj.rightLung, obj.fatComposite, obj.tissueComposite], ...
                 thoraxPose);
 
-            placeholderCylinder = BreastPhantom.addPoseToParameters( ...
+            individualVesselParams = BreastPhantom.addPoseToParameters( ...
                 struct('radius_mm', 1, 'length_mm', 1), ...
                 centered(1),centered(2),centered(3), ...
                 notRotated(1),notRotated(2),notRotated(3));
-            obj.breastRight = AnalyticalCylinder3D([], placeholderCylinder);
-            obj.breastLeft = AnalyticalCylinder3D([], placeholderCylinder);
+            obj.breastRight = AnalyticalCylinder3D([], individualVesselParams);
+            obj.breastLeft = AnalyticalCylinder3D([], individualVesselParams);
 
             % Use vessel intensity deltas so we can avoid subtracting and re-adding
             % identical cylinder k-space when combining with breast tissue.
@@ -79,21 +79,25 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.enhancedCylinders = AnalyticalCylinder3D.empty(1, 0);
             obj.unenhancedCylinders = AnalyticalCylinder3D.empty(1, 0);
             for idx = 1:numSegments
-                obj.enhancedCylinders(idx) = AnalyticalCylinder3D(enhancedDelta, placeholderCylinder);
-                obj.unenhancedCylinders(idx) = AnalyticalCylinder3D(unenhancedDelta, placeholderCylinder);
+                obj.enhancedCylinders(idx) = AnalyticalCylinder3D(enhancedDelta, individualVesselParams);
+                obj.unenhancedCylinders(idx) = AnalyticalCylinder3D(unenhancedDelta, individualVesselParams);
             end
 
             obj.leftAndRightBreastTissue = CompositeAnalyticalShape3D([obj.breastRight, obj.breastLeft], ...
-                AnalyticalShape3D.empty(1,0), params.breastIntensity, placeholderCylinder);
+                AnalyticalShape3D.empty(1,0), params.breastIntensity, individualVesselParams);
 
-            obj.enhancingVessel = MultipleMaterialPhantom([obj.enhancedCylinders, obj.unenhancedCylinders], ...
-                placeholderCylinder);
+            vesselsParams = BreastPhantom.addPoseToParameters( ...
+                struct(), ...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3));
+            obj.enhancingVessels = MultipleMaterialPhantom([obj.enhancedCylinders, obj.unenhancedCylinders], ...
+                vesselsParams);
 
-            % enhancingVessel  = CompositeAnalyticalShape3D([unenhancedCylinder, enhancedCylinder], [], ...
+            % enhancingVessels  = CompositeAnalyticalShape3D([unenhancedCylinder, enhancedCylinder], [], ...
             %     breastIntensity , breastParamsBoth);
 
             obj.setBreastGeometryFromParams(params);
-            obj.setShapes([obj.thorax obj.leftAndRightBreastTissue obj.enhancingVessel]);
+            obj.setShapes([obj.thorax obj.leftAndRightBreastTissue obj.enhancingVessels]);
 
             obj.updateShapesForTime(0);
         end
@@ -234,7 +238,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 0, 0.5 * params.breast_depth_mm, 0, ...
                 0, 0, 0);
             obj.leftAndRightBreastTissue.setShapeParameters(breastParamsBoth);
-            obj.enhancingVessel.setShapeParameters(breastParamsBoth);
+            obj.enhancingVessels.setShapeParameters(breastParamsBoth);
         end
     end
 
