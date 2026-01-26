@@ -108,7 +108,46 @@ grid on
 
 phantom = BreastPhantom(breastPhantomParams);
 
-%% 6) Compute analytic k-space for the phantom in ordered acquisition space
+%% Perform TWIST, calculating two time frames at a time to minimize memory overhead
+maxChumkSize = 500000;
+previousMask = (Sampling_Table.Bj == 0);
+
+previousKspace = nan(matrix_size_acquired);
+previousIdx = sub2ind(matrix_size_acquired, ...
+    Sampling_Table.Frequency(previousMask), ...          
+    Sampling_Table.("Row (phase)")(previousMask), ...    
+    Sampling_Table.("Column (slice)")(previousMask));
+previousKspace(previousIdx) = phantom.kspaceAtTime(k_spatFreq_xyz(1, previousMask), ...
+    k_spatFreq_xyz(2, previousMask), ...
+    k_spatFreq_xyz(3, previousMask), ...
+    Sampling_Table.Timing(previousMask)', ...
+    maxChumkSize)';
+
+nTimes = max(Sampling_Table.Bj)+1;
+for iTime = 2:nTimes
+    % Calculate current Kspace Samples, putting k-space points in correct locations
+    currentMask = (Sampling_Table.Bj == (iTime - 1));
+    currentKspace = nan(matrix_size_acquired);
+
+    currentIdx = sub2ind(matrix_size_acquired, ...
+        Sampling_Table.Frequency(currentMask), ...
+        Sampling_Table.("Row (phase)")(currentMask), ...
+        Sampling_Table.("Column (slice)")(currentMask));
+    currentKspace(currentIdx) = phantom.kspaceAtTime(k_spatFreq_xyz(1, currentMask), ...
+        k_spatFreq_xyz(2, currentMask), ...
+        k_spatFreq_xyz(3, currentMask), ...
+        Sampling_Table.Timing(currentMask)', ...
+        maxChumkSize)';
+    
+    % Fill in missing k-space points. 
+    curentKspace(isnan(curentKspace)) = previousKspace(isnan(curentKspace));
+
+    % zeropad
+
+    % Take iFFT to calculate image
+end
+
+% analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
 kspace = nan([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
 
