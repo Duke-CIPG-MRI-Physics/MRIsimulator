@@ -31,8 +31,16 @@ R = 1; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
 Sampling_Table = Ultrafast_Sampling(matrix_size_acquired,pA,Nb,Time_Measured,TR,R,PF_Factor);
-
 k_idx_fps = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
+
+% Calculate the time for a single twist frame
+samplesInFrame = histcounts(Sampling_Table.Bj,-0.5:1:(max(Sampling_Table.Bj(:))+0.5));
+samplesPerFrame = max(samplesInFrame(2:end)); % ignore first frame which measures all data
+framesPerRecon = ceil(samplesInFrame(1)/samplesPerFrame);
+trsPerFrame = samplesPerFrame/scan_parameters("Base Resolution");
+timePerFrame = trsPerFrame*TR;
+timePerRecon = framesPerRecon*timePerFrame;
+
 
 %% 3) Build WORLD k-space grid and map to the TWIST ordering
 disp('Building WORLD k-space')
@@ -72,18 +80,21 @@ xlabel('Time [s]')
 
 yyaxis right
 frameNumbers = unique(Sampling_Table.Bj);
-frameNumbers = frameNumbers(frameNumbers > 0);
 for frameIdx = 1:numel(frameNumbers)
     frameNumber = frameNumbers(frameIdx);
     frameTimes_s = timing_s(Sampling_Table.Bj == frameNumber);
     if isempty(frameTimes_s)
         continue;
     end
-    frameStart_s = min(frameTimes_s);
+    frameDataStart_s = min(frameTimes_s);
     frameEnd_s = max(frameTimes_s);
-    rectTime_s = [frameStart_s frameStart_s frameEnd_s frameEnd_s];
+    reconStart_s = frameEnd_s-timePerRecon;
+    rectTime_s = [ reconStart_s frameDataStart_s ];
+    rectAmp = [frameNumber frameNumber];
+    plot(rectTime_s, rectAmp, '-', 'LineWidth', 1.0);
+    rectTime_s = [frameDataStart_s frameDataStart_s frameEnd_s frameEnd_s];
     rectAmp = [0 frameNumber frameNumber 0];
-    plot(rectTime_s, rectAmp, 'LineWidth', 1.0);
+    plot(rectTime_s, rectAmp, '-', 'LineWidth', 2.0);
     hold on
 end
 ylabel('TWIST frame index')
