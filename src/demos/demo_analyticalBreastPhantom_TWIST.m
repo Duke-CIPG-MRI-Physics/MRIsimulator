@@ -107,44 +107,49 @@ clear k_spatFreq_xyz Sampling_Table phantom
 fprintf('\nUndoing TWIST...')
 
 % Initialize the output array
-unTWISTed_Kspace = nan(size(TWISTed_Kspace));
+unTWISTed_Kspace = zeros(size(TWISTed_Kspace));
 
 % The first timepoint is the baseline for all coils
 unTWISTed_Kspace(:,:,:,1,:) = TWISTed_Kspace(:,:,:,1,:);
 
 % Loop only through timepoints (vectorized over coils)
-nTimes = size(TWISTed_Kspace,4);
-nCoils = size(TWISTed_Kspace,5);
 for ii_timepoint = 2:size(TWISTed_Kspace,4)
     % 1. Create a temporary variable for the current timepoint's slice,
     % starting with data from the previous timepoint.
-    previous_data = unTWISTed_Kspace(:,:,:,ii_timepoint-1,:);
+    dest_slice = unTWISTed_Kspace(:,:,:,ii_timepoint-1,:);
 
     % 2. Get the new sparse measurements for the current timepoint
-    current_data = TWISTed_Kspace(:,:,:,ii_timepoint,:);
+    source_slice = TWISTed_Kspace(:,:,:,ii_timepoint,:);
 
     % 3. Create a logical mask of where the new measurements exist
-    fillFromPrevious = isnan(current_data);
+    update_mask = (source_slice ~= 0);
 
     % 4. Use the mask to update the destination slice with the new values.
-    current_data(fillFromPrevious) = previous_data(fillFromPrevious);
+    dest_slice(update_mask) = source_slice(update_mask);
 
     % 5. Assign the updated slice back into the main array.
-    unTWISTed_Kspace(:,:,:,ii_timepoint,:) = current_data;
+    unTWISTed_Kspace(:,:,:,ii_timepoint,:) = dest_slice;
 end
 
-clear previous_data current_data fillFromPrevious TWISTed_Kspace
+clear dest_slice source_slice update_mask TWISTed_Kspace
 
 %% FFT and zero padd, one 3D volume at a time to reduce memory spikes
 unTWISTed_Kspace = permute(unTWISTed_Kspace, [fps_to_xyz, 4 5]);
 unTWISTed_IMspace = zeros([matrix_size_complete(fps_to_xyz) size(unTWISTed_Kspace,[4 5])]);
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
+nTimes = size(unTWISTed_Kspace,4);
+nCoils = size(unTWISTed_Kspace,5);
 for iTime = 1:nTimes
     for iCoil = 1:nCoils
-        padded_kspace = padarray(unTWISTed_Kspace(:,:,:,iTime,iCoil),0.5*padsize,0);
-        padded_kspace = fftshift(padded_kspace);
-        
-        unTWISTed_IMspace(:,:,:,iTime,iCoil)  = fftshift(ifft(padded_kspace));
+        padded_kspace = padarray(unTWISTed_Kspace(:,:,:,iTime,iCoil), padsize, 0);
+        padded_kspace = ifftshift(padded_kspace, 1);
+        padded_kspace = ifftshift(padded_kspace, 2);
+        padded_kspace = ifftshift(padded_kspace, 3);
+
+        imspace = ifft(padded_kspace, [], 1);
+        imspace = ifft(imspace, [], 2);
+        imspace = ifft(imspace, [], 3);
+        unTWISTed_IMspace(:,:,:,iTime,iCoil) = fftshift(fftshift(fftshift(imspace, 1), 2), 3);
     end
 end
 
