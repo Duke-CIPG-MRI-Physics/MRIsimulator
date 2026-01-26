@@ -264,16 +264,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
         function segments = buildDefaultVesselSegments(params)
             segmentCount = params.vesselSegmentCount;
             segmentLength_mm = params.totalVesselLength_mm / segmentCount;
-            startZ_mm = -0.5 * params.totalVesselLength_mm + 0.5 * segmentLength_mm;
-
-            segments = repmat(struct('length_mm', segmentLength_mm, ...
-                'radius_mm', params.vesselRadius_mm, ...
-                'pose', struct()), 1, segmentCount);
-            for idx = 1:segmentCount
-                centerZ_mm = startZ_mm + (idx - 1) * segmentLength_mm;
-                segments(idx).pose = BreastPhantom.createPoseStruct(0, 0, centerZ_mm, ...
-                    params.breastRollPitchYaw(1), params.breastRollPitchYaw(2), params.breastRollPitchYaw(3));
-            end
+            segmentLengths_mm = repmat(segmentLength_mm, 1, segmentCount);
+            segments = createBreastVesselSegments(segmentLengths_mm, params.vesselRadius_mm, ...
+                [0 0 0], params.breastRollPitchYaw);
         end
 
         function segments = ensureVesselSegmentDefaults(segments, params)
