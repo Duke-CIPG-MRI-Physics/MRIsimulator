@@ -94,10 +94,10 @@ phantom = BreastPhantom(breastPhantomParams);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-TWISTed_Kspace = zeros([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
+kspace = nan([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
 
 % Sample phantom at measured time points
-TWISTed_Kspace(Sampling_Table.("Linear Index")) = ...
+kspace(Sampling_Table.("Linear Index")) = ...
     phantom.kspaceAtTime(k_spatFreq_xyz(1, :), k_spatFreq_xyz(2, :), ...
     k_spatFreq_xyz(3, :),Sampling_Table.Timing')';
 
@@ -106,47 +106,38 @@ clear k_spatFreq_xyz Sampling_Table phantom
 %% ---  6. Updating K-Space from each measurement to undo TWIST
 fprintf('\nUndoing TWIST...')
 
-% Initialize the output array
-unTWISTed_Kspace = nan(size(TWISTed_Kspace));
-
-% The first timepoint is the baseline for all coils
-unTWISTed_Kspace(:,:,:,1,:) = TWISTed_Kspace(:,:,:,1,:);
-
 % Loop only through timepoints (vectorized over coils)
-for ii_timepoint = 2:size(TWISTed_Kspace,4)
-    % 1. Create a temporary variable for the current timepoint's slice,
-    % starting with data from the previous timepoint.
-    dest_slice = unTWISTed_Kspace(:,:,:,ii_timepoint-1,:);
+for ii_timepoint = 2:size(kspace,4)
+    % 1. Start with the data measured for the current time point
+    currentData = kspace(:,:,:,ii_timepoint,:);
 
-    % 2. Get the new sparse measurements for the current timepoint
-    source_slice = TWISTed_Kspace(:,:,:,ii_timepoint,:);
+    % 2. We will use the previous data to fill in unmeasured data
+    previousData = kspace(:,:,:,ii_timepoint-1,:);
 
-    % 3. Create a logical mask of where the new measurements exist
-    update_mask = (source_slice ~= 0);
-
-    % 4. Use the mask to update the destination slice with the new values.
-    dest_slice(update_mask) = source_slice(update_mask);
+    % 3. Any nan values were not calculated this time frame, so fill them
+    % in from the previous time frame
+    currentData(isnan(currentData)) = previousData(isnan(currentData));
 
     % 5. Assign the updated slice back into the main array.
-    unTWISTed_Kspace(:,:,:,ii_timepoint,:) = dest_slice;
+    kspace(:,:,:,ii_timepoint,:) = currentData;
 end
 
-clear dest_slice source_slice update_mask TWISTed_Kspace
+clear currentData previousData 
 
 %% FFT and zero padd, one 3D volume at a time to reduce memory spikes
-unTWISTed_Kspace = permute(unTWISTed_Kspace, [fps_to_xyz, 4 5]);
-unTWISTed_IMspace = zeros([matrix_size_complete(fps_to_xyz) size(unTWISTed_Kspace,[4 5])]);
+kspace = permute(kspace, [fps_to_xyz, 4 5]);
+twistImage = zeros([matrix_size_complete(fps_to_xyz) size(kspace,[4 5])]);
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
-nTimes = size(unTWISTed_Kspace,4);
-nCoils = size(unTWISTed_Kspace,5);
+nTimes = size(kspace,4);
+nCoils = size(kspace,5);
 for iTime = 1:nTimes
     for iCoil = 1:nCoils
         % Zeropad, then ifftshift kspace
-        padded_kspace = padarray(unTWISTed_Kspace(:,:,:,iTime,iCoil), 0.5*padsize, 0);
+        padded_kspace = padarray(kspace(:,:,:,iTime,iCoil), 0.5*padsize, 0);
         padded_kspace = ifftshift(padded_kspace);
 
         % Take IFFT, then fftshift
-        unTWISTed_IMspace(:,:,:,iTime,iCoil) = fftshift(ifftn(padded_kspace));
+        twistImage(:,:,:,iTime,iCoil) = fftshift(ifftn(padded_kspace));
     end
 end
 
@@ -162,7 +153,7 @@ end
 
 
 %% display
-imslice(abs(unTWISTed_IMspace))
+imslice(abs(twistImage))
 
 % figure()
 % subplot(1,3,1)
