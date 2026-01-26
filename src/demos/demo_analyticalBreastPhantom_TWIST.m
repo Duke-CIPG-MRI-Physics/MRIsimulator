@@ -7,12 +7,11 @@ freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I
 encodingFullStr = formatEncodingString(freq_phase_slice);
 disp(encodingFullStr)
 
+breastPhantomParams = createBreastPhantomParams();
 
-
-load('Breast_Ultrafast_scan_parameters.mat') 
-%load('base_scan_parameters.mat')
+% load('fast_scan_parameters.mat') 
+load('Breast_Ultrafast_scan_parameters.mat')
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] = convert_Siemens_parameters(scan_parameters);
-
 
 % Contrast parameters
 rBW_HzPerPix = 570;
@@ -32,8 +31,16 @@ R = 1; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
 Sampling_Table = Ultrafast_Sampling(matrix_size_acquired,pA,Nb,Time_Measured,TR,R,PF_Factor);
-
 k_idx_fps = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
+
+% Calculate the time for a single twist frame
+samplesInFrame = histcounts(Sampling_Table.Bj,-0.5:1:(max(Sampling_Table.Bj(:))+0.5));
+samplesPerFrame = max(samplesInFrame(2:end)); % ignore first frame which measures all data
+framesPerRecon = ceil(samplesInFrame(1)/samplesPerFrame);
+trsPerFrame = samplesPerFrame/scan_parameters("Base Resolution");
+timePerFrame = trsPerFrame*TR;
+timePerRecon = framesPerRecon*timePerFrame;
+
 
 %% 3) Build WORLD k-space grid and map to the TWIST ordering
 disp('Building WORLD k-space')
@@ -55,69 +62,102 @@ matrix_result = t_s(:) + (TR_counts * TR);
 Sampling_Table.Timing = matrix_result(:);
 clear TR_counts t_s matrix_result
 
+% Update startInjectionTime_s to be relative to first frame ending
+endOfSecondFrame = max(Sampling_Table(Sampling_Table.Bj == 0,:).Timing);
+
+breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
+
+
 % % Force Timing to be increasing
 % [sortedT,sortIdx] = sort(Sampling_Table.Timing);
 % phantom = BreastPhantom(sortedT);
 
-breastPhantomParams = createBreastPhantomParams();
+
+%% Contrast timing visualization
+timing_s = Sampling_Table.Timing;
+contrastLength_mm = calculatePlugFlowInVessels(timing_s, breastPhantomParams);
+
+figure('Name', 'TWIST Contrast Plug Flow and Frame Timing');
+yyaxis left
+frameNumbers = unique(Sampling_Table.Bj);
+for frameIdx = 1:numel(frameNumbers)
+    frameNumber = frameNumbers(frameIdx);
+    frameTimes_s = timing_s(Sampling_Table.Bj == frameNumber);
+    if isempty(frameTimes_s)
+        continue;
+    end
+    frameDataStart_s = min(frameTimes_s);
+    frameEnd_s = max(frameTimes_s);
+    reconStart_s = frameEnd_s-timePerRecon;
+    rectTime_s = [ reconStart_s frameDataStart_s ];
+    rectAmp = [frameNumber frameNumber];
+    plot(rectTime_s, rectAmp, '-', 'LineWidth', 1.0);
+    hold on
+    rectTime_s = [frameDataStart_s frameDataStart_s frameEnd_s frameEnd_s];
+    rectAmp = [0 frameNumber+1 frameNumber+1 0];
+    plot(rectTime_s, rectAmp, '-', 'LineWidth', 2.0);
+end
+ylabel('TWIST frame index')
+ylim([0 max(frameNumbers) + 1])
+
+yyaxis right
+plot(timing_s, contrastLength_mm, 'LineWidth', 3);
+ylabel('Contrast length [mm]')
+xlabel('Time [s]')
+grid on
+
 phantom = BreastPhantom(breastPhantomParams);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-TWISTed_Kspace = zeros([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
+kspace = nan([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
 
 % Sample phantom at measured time points
-TWISTed_Kspace(Sampling_Table.("Linear Index")) = ...
+maxChumkSize = 500000;
+kspace(Sampling_Table.("Linear Index")) = ...
     phantom.kspaceAtTime(k_spatFreq_xyz(1, :), k_spatFreq_xyz(2, :), ...
-    k_spatFreq_xyz(3, :),Sampling_Table.Timing')';
+    k_spatFreq_xyz(3, :),Sampling_Table.Timing', maxChumkSize)';
 
 clear k_spatFreq_xyz Sampling_Table phantom
 
 %% ---  6. Updating K-Space from each measurement to undo TWIST
 fprintf('\nUndoing TWIST...')
 
-% Initialize the output array
-unTWISTed_Kspace = zeros(size(TWISTed_Kspace));
-
-% The first timepoint is the baseline for all coils
-unTWISTed_Kspace(:,:,:,1,:) = TWISTed_Kspace(:,:,:,1,:);
-
 % Loop only through timepoints (vectorized over coils)
-for ii_timepoint = 2:size(TWISTed_Kspace,4)
-    % 1. Create a temporary variable for the current timepoint's slice,
-    % starting with data from the previous timepoint.
-    dest_slice = unTWISTed_Kspace(:,:,:,ii_timepoint-1,:);
+kspace = fillmissing(kspace, 'previous', 4); % This magic line undoes TWIST!
+% for ii_timepoint = 2:size(kspace,4)
+%     % 1. Start with the data measured for the current time point
+%     currentData = kspace(:,:,:,ii_timepoint,:);
+% 
+%     % 2. We will use the previous data to fill in unmeasured data
+%     previousData = kspace(:,:,:,ii_timepoint-1,:);
+% 
+%     % 3. Any nan values were not calculated this time frame, so fill them
+%     % in from the previous time frame
+%     currentData(isnan(currentData)) = previousData(isnan(currentData));
+% 
+%     % 4. Assign the updated slice back into the main array.
+%     kspace(:,:,:,ii_timepoint,:) = currentData;
+% end
+% clear currentData previousData 
 
-    % 2. Get the new sparse measurements for the current timepoint
-    source_slice = TWISTed_Kspace(:,:,:,ii_timepoint,:);
+%% FFT and zero padd, one 3D volume at a time to reduce memory spikes
 
-    % 3. Create a logical mask of where the new measurements exist
-    update_mask = (source_slice ~= 0);
+kspace = permute(kspace, [fps_to_xyz, 4 5]);
+twistImage = zeros([matrix_size_complete(fps_to_xyz) size(kspace,[4 5])]);
+padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
+nTimes = size(kspace,4);
+nCoils = size(kspace,5);
+for iTime = 1:nTimes
+    for iCoil = 1:nCoils
+        % Zeropad, then ifftshift kspace
+        padded_kspace = padarray(kspace(:,:,:,iTime,iCoil), 0.5*padsize, 0);
+        padded_kspace = ifftshift(padded_kspace);
 
-    % 4. Use the mask to update the destination slice with the new values.
-    dest_slice(update_mask) = source_slice(update_mask);
-
-    % 5. Assign the updated slice back into the main array.
-    unTWISTed_Kspace(:,:,:,ii_timepoint,:) = dest_slice;
+        % Take IFFT, then fftshift
+        twistImage(:,:,:,iTime,iCoil) = fftshift(ifftn(padded_kspace));
+    end
 end
-
-clear dest_slice source_slice update_mask TWISTed_Kspace
-
-%% --- 7. Resolving %resolution
-padsize = matrix_size_complete - matrix_size_acquired;
-final_kspace = padarray(unTWISTed_Kspace,padsize,0);
-
-% Perform the inverse 3D FFT on all timepoints and coils at once
-final_kspace = permute(final_kspace, [fps_to_xyz, 4]);
-final_kspace = ifftshift(final_kspace, 1);
-final_kspace = ifftshift(final_kspace, 2);
-final_kspace = ifftshift(final_kspace, 3);
-unTWISTed_IMspace = ifft(final_kspace, [], 1);
-unTWISTed_IMspace = ifft(unTWISTed_IMspace, [], 2);
-unTWISTed_IMspace = ifft(unTWISTed_IMspace, [], 3);
-unTWISTed_IMspace = fftshift(unTWISTed_IMspace, 1);
-unTWISTed_IMspace = fftshift(unTWISTed_IMspace, 2);
-unTWISTed_IMspace = fftshift(unTWISTed_IMspace, 3);
 
 %% --- 8. Resolving Oversampling
 % crop_amount = matrix_size_acquired-IMmatrix_crop_size;
@@ -131,7 +171,7 @@ unTWISTed_IMspace = fftshift(unTWISTed_IMspace, 3);
 
 
 %% display
-imslice(abs(unTWISTed_IMspace))
+imslice(abs(twistImage))
 
 % figure()
 % subplot(1,3,1)

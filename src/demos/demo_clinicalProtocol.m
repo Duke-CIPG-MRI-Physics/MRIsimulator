@@ -12,7 +12,7 @@ oversampling_phase_pct = 20;
 oversampling_slice_pct = 33.3; 
 slices_per_slab = 240;
 slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
-base_resolution = 224; % 224 default
+base_resolution = 160; % 224 default
 phase_resolution_pct = 100;
 slice_resolution_pct = 80;
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I (use 2 1 3 for R/L PE, S/I slice)
@@ -126,6 +126,27 @@ disp('Constructing phantom');
 breastPhantomParams = createBreastPhantomParams();
 phantom = BreastPhantom(breastPhantomParams);
 
+%% 6) Visualize contrast plug-flow timing relative to acquisition
+t_s = breastPhantomParams.startInjectionTime_s + t_s - min(t_s); % start injection at beggining of acquisition, regardless of injection time
+contrastLength_mm = calculatePlugFlowInVessels(t_s, breastPhantomParams);
+acqStart_s = min(t_s);
+acqEnd_s = max(t_s);
+rectTime_s = [acqStart_s acqStart_s acqEnd_s acqEnd_s];
+rectAmp = [0 1 1 0];
+
+figure('Name', 'Contrast Plug Flow and Acquisition Window');
+yyaxis left
+plot(t_s, contrastLength_mm, 'LineWidth', 1.5);
+ylabel('Contrast length [mm]')
+xlabel('Time [s]')
+ylim([0 max(contrastLength_mm)]);
+
+yyaxis right
+plot(rectTime_s, rectAmp, 'LineWidth', 1.5);
+ylabel('K-space acquisition window')
+ylim([0 1])
+grid on
+
 
 %% 3) Build WORLD k-space grid and map to the rectilinear ordering
 disp('Constructing k-space grid');
@@ -140,7 +161,8 @@ clear k_fps kfreq kPhase kSlice;
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-K = phantom.kspaceAtTime(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:), t_s);
+maxChunkSize = 250000;
+K = phantom.kspaceAtTime(k_xyz(1,:), k_xyz(2,:), k_xyz(3,:), t_s, 250000);
 clear t_s;
 K = reshape(K,matrix_acq_os_fps);
 
