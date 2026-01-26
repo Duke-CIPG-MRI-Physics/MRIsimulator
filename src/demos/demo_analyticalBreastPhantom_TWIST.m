@@ -26,7 +26,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = 0.05;
 Nb = 10;
-Time_Measured = 300; %sec
+Time_Measured = 120; %sec
 R = 1; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
@@ -113,9 +113,10 @@ fprintf('Evaluating analytic k-space...\n');
 kspace = nan([matrix_size_acquired,max(Sampling_Table.Bj)+1]);
 
 % Sample phantom at measured time points
+maxChumkSize = 500000;
 kspace(Sampling_Table.("Linear Index")) = ...
     phantom.kspaceAtTime(k_spatFreq_xyz(1, :), k_spatFreq_xyz(2, :), ...
-    k_spatFreq_xyz(3, :),Sampling_Table.Timing')';
+    k_spatFreq_xyz(3, :),Sampling_Table.Timing', maxChumkSize)';
 
 clear k_spatFreq_xyz Sampling_Table phantom
 
@@ -139,7 +140,7 @@ for ii_timepoint = 2:size(kspace,4)
 
     % More memory efficient calculation of the steps above
     kspace(:,:,:,ii_timepoint,:) = kspace(:,:,:,ii_timepoint,:).*(~isnan(kspace(:,:,:,ii_timepoint,:))) ...
-        + kspace(:,:,:,ii_timepoint-1,:).*(~isnan(kspace(:,:,:,ii_timepoint,:)));
+        + kspace(:,:,:,ii_timepoint-1,:).*(isnan(kspace(:,:,:,ii_timepoint,:)));
 end
 
 clear currentData previousData 
