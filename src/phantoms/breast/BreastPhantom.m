@@ -225,10 +225,14 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 0, 0.5 * params.breast_depth_mm, 0, ...
                 0, 0, 0);
             obj.leftAndRightBreastTissue.setShapeParameters(breastParamsBoth);
+            rightVesselRotation = params.vesselPhantomRollPitchYawRight_deg;
+            leftVesselRotation = params.vesselPhantomRollPitchYawLeft_deg;
             obj.enhancingVesselsRight.setShapeParameters(BreastPhantom.addPoseToParameters( ...
-                struct(), xRightBreast, 0.5 * params.breast_depth_mm, 0, 0, 0, 0));
+                struct(), xRightBreast, 0.5 * params.breast_depth_mm, 0, ...
+                rightVesselRotation(1), rightVesselRotation(2), rightVesselRotation(3)));
             obj.enhancingVesselsLeft.setShapeParameters(BreastPhantom.addPoseToParameters( ...
-                struct(), -xRightBreast, 0.5 * params.breast_depth_mm, 0, 0, 0, 0));
+                struct(), -xRightBreast, 0.5 * params.breast_depth_mm, 0, ...
+                leftVesselRotation(1), leftVesselRotation(2), leftVesselRotation(3)));
         end
 
         function updateVesselSegments(obj, segments, enhancedCylinders, unenhancedCylinders, flowLength_mm)
@@ -293,6 +297,12 @@ classdef BreastPhantom < MultipleMaterialPhantom
             end
             if ~isfield(params, 'vesselChainCenterLeft_mm') || isempty(params.vesselChainCenterLeft_mm)
                 params.vesselChainCenterLeft_mm = [0 0 0];
+            end
+            if ~isfield(params, 'vesselPhantomRollPitchYawRight_deg') || isempty(params.vesselPhantomRollPitchYawRight_deg)
+                params.vesselPhantomRollPitchYawRight_deg = [0 0 0];
+            end
+            if ~isfield(params, 'vesselPhantomRollPitchYawLeft_deg') || isempty(params.vesselPhantomRollPitchYawLeft_deg)
+                params.vesselPhantomRollPitchYawLeft_deg = [0 0 90];
             end
             if ~isfield(params, 'vesselSegmentsRight') || isempty(params.vesselSegmentsRight)
                 if isfield(params, 'vesselSegments') && ~isempty(params.vesselSegments)

@@ -11,7 +11,8 @@ function params = createBreastPhantomParams()
     %       non-overlapping chain aligned to a center point and roll/pitch/yaw.
     %       By default, segments are offset in the right-left (x) direction
     %       by vessel_offset_rl_mm, with every other segment rotated 180 deg
-    %       about the y-axis (pitch).
+    %       about the y-axis (pitch). The left chain is additionally rotated
+    %       180 deg about the z-axis (yaw) to mirror the right chain.
     %
     %   Example:
     %       params = createBreastPhantomParams();
@@ -68,9 +69,11 @@ function params = createBreastPhantomParams()
     params.breastVesselVelocity_cm_s = 1/10.66;
     params.startInjectionTime_s = 30 * 10.66;
     params.vesselRollPitchYawRight_deg = params.breastRollPitchYaw;
-    params.vesselRollPitchYawLeft_deg = params.breastRollPitchYaw;
+    params.vesselRollPitchYawLeft_deg = params.breastRollPitchYaw + [0 0 180];
     params.vesselChainCenterRight_mm = [0 0 0];
     params.vesselChainCenterLeft_mm = [0 0 0];
+    params.vesselPhantomRollPitchYawRight_deg = [0 0 0];
+    params.vesselPhantomRollPitchYawLeft_deg = [0 0 90];
     segmentLengths_mm = repmat(params.totalVesselLength_mm / params.vesselSegmentCount, ...
         1, params.vesselSegmentCount);
     params.vesselSegmentsRight = createBreastVesselSegments( ...
