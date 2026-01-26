@@ -7,7 +7,7 @@ freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I
 encodingFullStr = formatEncodingString(freq_phase_slice);
 disp(encodingFullStr)
 
-
+breastPhantomParams = createBreastPhantomParams();
 
 load('fast_scan_parameters.mat') 
 %load('base_scan_parameters.mat')
@@ -62,11 +62,16 @@ matrix_result = t_s(:) + (TR_counts * TR);
 Sampling_Table.Timing = matrix_result(:);
 clear TR_counts t_s matrix_result
 
+% Update startInjectionTime_s to be relative to first frame ending
+endOfSecondFrame = max(Sampling_Table(Sampling_Table.Bj == 0,:).Timing);
+
+breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
+
+
 % % Force Timing to be increasing
 % [sortedT,sortIdx] = sort(Sampling_Table.Timing);
 % phantom = BreastPhantom(sortedT);
 
-breastPhantomParams = createBreastPhantomParams();
 
 %% Contrast timing visualization
 timing_s = Sampling_Table.Timing;
@@ -74,11 +79,6 @@ contrastLength_mm = calculatePlugFlowInVessels(timing_s, breastPhantomParams);
 
 figure('Name', 'TWIST Contrast Plug Flow and Frame Timing');
 yyaxis left
-plot(timing_s, contrastLength_mm, 'LineWidth', 1.5);
-ylabel('Contrast length [mm]')
-xlabel('Time [s]')
-
-yyaxis right
 frameNumbers = unique(Sampling_Table.Bj);
 for frameIdx = 1:numel(frameNumbers)
     frameNumber = frameNumbers(frameIdx);
@@ -92,13 +92,18 @@ for frameIdx = 1:numel(frameNumbers)
     rectTime_s = [ reconStart_s frameDataStart_s ];
     rectAmp = [frameNumber frameNumber];
     plot(rectTime_s, rectAmp, '-', 'LineWidth', 1.0);
-    rectTime_s = [frameDataStart_s frameDataStart_s frameEnd_s frameEnd_s];
-    rectAmp = [0 frameNumber frameNumber 0];
-    plot(rectTime_s, rectAmp, '-', 'LineWidth', 2.0);
     hold on
+    rectTime_s = [frameDataStart_s frameDataStart_s frameEnd_s frameEnd_s];
+    rectAmp = [0 frameNumber+1 frameNumber+1 0];
+    plot(rectTime_s, rectAmp, '-', 'LineWidth', 2.0);
 end
 ylabel('TWIST frame index')
 ylim([0 max(frameNumbers) + 1])
+
+yyaxis right
+plot(timing_s, contrastLength_mm, 'LineWidth', 3);
+ylabel('Contrast length [mm]')
+xlabel('Time [s]')
 grid on
 
 phantom = BreastPhantom(breastPhantomParams);
