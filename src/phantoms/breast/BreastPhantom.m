@@ -185,8 +185,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 obj.enhancedCylindersLeft, obj.unenhancedCylindersLeft, flowLength_mm);
         end
 
-        function S = kspaceAtTime(obj, kx, ky, kz, t_s)
-            maxChunkSize = 250000;
+        function S = kspaceAtTime(obj, kx, ky, kz, t_s, maxChunkSize)
             numSamples = numel(t_s);
             if ~isequal(size(kx), size(ky), size(kz), size(t_s))
                 error('BreastPhantom:KspaceAtTimeSizeMismatch', ...
