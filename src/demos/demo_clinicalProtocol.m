@@ -13,7 +13,7 @@ oversampling_slice_pct = 33.3;
 slices_per_slab = 240;
 slice_thickness_mm = 1; % Note this is the reconstructed slice thickness, not the nominal slice thickness 
 base_resolution = 160; % 224 default
-phase_resolution_pct = 80;
+phase_resolution_pct = 100;
 slice_resolution_pct = 80;
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I (use 2 1 3 for R/L PE, S/I slice)
 
