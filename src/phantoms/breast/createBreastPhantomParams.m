@@ -4,6 +4,21 @@ function params = createBreastPhantomParams()
     %   params = createBreastPhantomParams() returns a struct of geometry,
     %   contrast, and timing parameters used by BreastPhantom to construct
     %   the thoracic/breast analytic phantom.
+    %
+    %   Vessel segments:
+    %       The vessel is modeled as a chain of connected segments that fill
+    %       sequentially. Use createBreastVesselSegments to generate a
+    %       non-overlapping chain aligned to a center point and roll/pitch/yaw.
+    %       By default, segments are offset in the right-left (x) direction
+    %       by vessel_offset_rl_mm, with every other segment rotated 180 deg
+    %       about the y-axis (pitch).
+    %
+    %   Example:
+    %       params = createBreastPhantomParams();
+    %       segmentLengths_mm = [30, 40, 30];
+    %       params.vesselSegments = createBreastVesselSegments( ...
+    %           segmentLengths_mm, params.vesselRadius_mm, params.vessel_offset_rl_mm, ...
+    %           [0 0 0], [0 90 90]);
 
     %% Create heart
     params.cardiacOpts = struct('HR_bpm', 70/10.66, ...
@@ -42,9 +57,16 @@ function params = createBreastPhantomParams()
     params.vesselDiameter_mm = 5;
     params.vesselRadius_mm = 0.5 * params.vesselDiameter_mm;
     params.totalVesselLength_mm = 100;
+    params.vesselSegmentCount = 3;
+    params.vessel_offset_rl_mm = 20;
     params.breastRollPitchYaw = [0, 90, 90];
     params.enhancedIntensity = 2.5;
     params.unenhancedIntensity = 0.3;
     params.breastVesselVelocity_cm_s = 1/10.66;
     params.startInjectionTime_s = 30 * 10.66;
+    segmentLengths_mm = repmat(params.totalVesselLength_mm / params.vesselSegmentCount, ...
+        1, params.vesselSegmentCount);
+    params.vesselSegments = createBreastVesselSegments( ...
+        segmentLengths_mm, params.vesselRadius_mm, params.vessel_offset_rl_mm, ...
+        [0 0 0], params.breastRollPitchYaw);
 end
