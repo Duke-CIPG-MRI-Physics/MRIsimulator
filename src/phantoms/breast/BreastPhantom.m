@@ -162,8 +162,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             %% Breasts
             %% Vessel enhancement
-            timePostInj_s = max(t_s - params.startInjectionTime_s, 0);
-            flowLength_mm = params.breastVesselVelocity_cm_s * 10 .* timePostInj_s;
+            flowLength_mm = calculatePlugFlowInVessels(t_s, params);
             cumulativeLength_mm = 0;
 
             for idx = 1:numel(params.vesselSegments)
