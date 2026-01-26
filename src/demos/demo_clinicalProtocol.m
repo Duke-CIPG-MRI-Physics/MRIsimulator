@@ -126,6 +126,26 @@ disp('Constructing phantom');
 breastPhantomParams = createBreastPhantomParams();
 phantom = BreastPhantom(breastPhantomParams);
 
+%% 6) Visualize contrast plug-flow timing relative to acquisition
+t_sorted_s = sort(t_s(:));
+contrastLength_mm = calculatePlugFlowInVessels(t_sorted_s, breastPhantomParams);
+acqStart_s = min(t_sorted_s);
+acqEnd_s = max(t_sorted_s);
+rectTime_s = [acqStart_s acqStart_s acqEnd_s acqEnd_s];
+rectAmp = [0 1 1 0];
+
+figure('Name', 'Contrast Plug Flow and Acquisition Window');
+yyaxis left
+plot(t_sorted_s, contrastLength_mm, 'LineWidth', 1.5);
+ylabel('Contrast length [mm]')
+xlabel('Time [s]')
+
+yyaxis right
+plot(rectTime_s, rectAmp, 'LineWidth', 1.5);
+ylabel('K-space acquisition window')
+ylim([-0.1 1.1])
+grid on
+
 
 %% 3) Build WORLD k-space grid and map to the rectilinear ordering
 disp('Constructing k-space grid');

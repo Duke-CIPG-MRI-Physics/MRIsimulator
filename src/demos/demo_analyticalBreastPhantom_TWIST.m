@@ -60,6 +60,38 @@ clear TR_counts t_s matrix_result
 % phantom = BreastPhantom(sortedT);
 
 breastPhantomParams = createBreastPhantomParams();
+
+%% Contrast timing visualization
+timing_s = Sampling_Table.Timing;
+[timingSorted_s, ~] = sort(timing_s(:));
+contrastLength_mm = calculatePlugFlowInVessels(timingSorted_s, breastPhantomParams);
+
+figure('Name', 'TWIST Contrast Plug Flow and Frame Timing');
+yyaxis left
+plot(timingSorted_s, contrastLength_mm, 'LineWidth', 1.5);
+ylabel('Contrast length [mm]')
+xlabel('Time [s]')
+
+yyaxis right
+frameNumbers = unique(Sampling_Table.Bj);
+frameNumbers = frameNumbers(frameNumbers > 0);
+for frameIdx = 1:numel(frameNumbers)
+    frameNumber = frameNumbers(frameIdx);
+    frameTimes_s = timing_s(Sampling_Table.Bj == frameNumber);
+    if isempty(frameTimes_s)
+        continue;
+    end
+    frameStart_s = min(frameTimes_s);
+    frameEnd_s = max(frameTimes_s);
+    rectTime_s = [frameStart_s frameStart_s frameEnd_s frameEnd_s];
+    rectAmp = [0 frameNumber frameNumber 0];
+    plot(rectTime_s, rectAmp, 'LineWidth', 1.0);
+    hold on
+end
+ylabel('TWIST frame index')
+ylim([0 max(frameNumbers) + 1])
+grid on
+
 phantom = BreastPhantom(breastPhantomParams);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
