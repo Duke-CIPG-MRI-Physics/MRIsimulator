@@ -1,8 +1,9 @@
-function [A1_idx_outerIn, A2_idx_innerOut] = calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, piAcceleration)
+function [A1_idx_outerIn, A2_idx_innerOut, samplingMask] = calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, piAcceleration, partialFourier)
 % calculateTwistSamplingOrder2D  Determine TWIST sampling order for 2D k-space.
 %
-%   [A1_idx_outerIn, A2_idx_innerOut] = calculateTwistSamplingOrder2D( ...
-%       pA, pB, FOV_acquired, matrix_size_acquired, piAcceleration)
+%   [A1_idx_outerIn, A2_idx_innerOut, samplingMask] = ...
+%       calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, ...
+%       matrix_size_acquired, piAcceleration, partialFourier)
 %
 %   Inputs:
 %       pA                   : scalar double, fraction of k-space in A region.
@@ -10,16 +11,19 @@ function [A1_idx_outerIn, A2_idx_innerOut] = calculateTwistSamplingOrder2D(pA, p
 %       FOV_acquired         : 1x3 double, field-of-view in mm [read, phase, slice].
 %       matrix_size_acquired : 1x3 double, matrix size [read, phase, slice].
 %       piAcceleration       : 1x2 double or scalar, parallel imaging [phase, slice].
+%       partialFourier       : 1x2 double or scalar, sampled fraction [phase, slice].
 %
 %   Outputs:
 %       A1_idx_outerIn       : linear indices for A region (outer-in ordering).
 %       A2_idx_innerOut      : linear indices for A region (inner-out ordering).
+%       samplingMask         : logical mask of sampled phase/slice k-space.
 arguments
     pA (1,1) double {mustBePositive}
     pB (1,1) double {mustBePositive}
     FOV_acquired (1,3) double {mustBePositive}
     matrix_size_acquired (1,3) double {mustBeInteger, mustBePositive}
     piAcceleration (1,:) double {mustBeInteger, mustBePositive}
+    partialFourier (1,:) double {mustBePositive, mustBeLessThanOrEqual(partialFourier, 1)} = [1 1]
 end
 
 if pA > 1 || pB > 1
@@ -32,6 +36,13 @@ if isscalar(piAcceleration)
 elseif numel(piAcceleration) ~= 2
     error('calculateTwistSamplingOrder2D:InvalidPIAcceleration', ...
         'piAcceleration must be a scalar or a 1x2 vector [R_phase R_slice].');
+end
+
+if isscalar(partialFourier)
+    partialFourier = [partialFourier partialFourier];
+elseif numel(partialFourier) ~= 2
+    error('calculateTwistSamplingOrder2D:InvalidPartialFourier', ...
+        'partialFourier must be a scalar or a 1x2 vector [PF_phase PF_slice].');
 end
 
 % Compute total number of phase/slice encodes
@@ -92,15 +103,20 @@ slice_samples(slice_center:-piAcceleration(2):1) = true;
 pi_samples = phase_samples_grid & slice_samples_grid;
 
 % Calculate partial Fourier masks such that the fraction of k-space
-% indicated is not sampled in each direction.W
+% indicated is not sampled in each direction.
+phase_partial_fourier = makePartialFourierMask(nPhase, partialFourier(1));
+slice_partial_fourier = makePartialFourierMask(nSlice, partialFourier(2));
+[slice_partial_fourier_grid, phase_partial_fourier_grid] = meshgrid(slice_partial_fourier, phase_partial_fourier);
+partial_fourier_samples = phase_partial_fourier_grid & slice_partial_fourier_grid;
 
+samplingMask = pi_samples & partial_fourier_samples;
 
 %% Calculate B region
 % Frames covering B given pB
 nFrames = max(1, ceil(1 / pB));
 
 % B region the parallel imaging samples that are not in A
-B_mask = pi_samples & (~A_mask)
+B_mask = samplingMask & (~A_mask);
 
 figure();
 subplot(1,3,1);
@@ -118,10 +134,22 @@ nVoxB_perFrame = ceil(nVoxB_all / nFrames);  % Note that some TWIST frames will 
 bRegion = true(matrix_size_acquired(2:3));
 bRegion(A1_idx_outerIn) = false;
 bRegion(A2_idx_innerOut) = false;
-bRegion(~pi_samples) = false();
+bRegion(~samplingMask) = false;
 
 % Sort B region in rings
 [~, sortedBIdx] = sortrows([R(bRegion), theta(bRegion)]);
 
 bSortedIdx = sortedIdx(nVoxA+1:end)
+end
+
+function mask = makePartialFourierMask(nSamples, fraction)
+if fraction >= 1
+    mask = true(nSamples, 1);
+    return;
+end
+
+nSamplesToKeep = ceil(nSamples * fraction);
+nSamplesToDrop = nSamples - nSamplesToKeep;
+mask = false(nSamples, 1);
+mask(nSamplesToDrop + 1:end) = true;
 end
