@@ -115,11 +115,11 @@ B_mask_all = pi_samples & partial_fourier_samples & (~A_mask);
 nFrames = max(1, ceil(1 / pB));
 
 figure();
-subplot(1,3,1);
+subplot(2,2,1);
 imagesc(A_mask)
-subplot(1,3,2);
+subplot(2,2,2);
 imagesc(B_mask_all)
-subplot(1,3,3);
+subplot(2,2,3);
 nVoxB_all = sum(B_mask_all(:));
 
 % Approximate B encodes per frame (integer)
@@ -133,10 +133,18 @@ for iB = 1:nFrames
     B1_idx_innerOut = sortedbIdxN(iB:2*nFrames:end);
     B2_idx_outerIn = flipud(sortedbIdxN(iB+nFrames:2*nFrames:end));
 
-    B_mask(B1_idx_innerOut) = 2*iB-1;
+    B_mask(B1_idx_innerOut) = iB;
     imagesc(B_mask)
-    B_mask(B2_idx_outerIn) = 2*iB;
+    B_mask(B2_idx_outerIn) = iB+0.02;
     imagesc(B_mask)
+
+subplot(2,2,4);
+thisFrame = zeros(size(B_mask));
+thisFrame(B1_idx_innerOut) = 1;
+thisFrame(B2_idx_outerIn) = 2;
+imagesc(thisFrame);
+
+    test = 1;
 end
 end
 
