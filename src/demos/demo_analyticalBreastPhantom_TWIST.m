@@ -9,8 +9,8 @@ disp(encodingFullStr)
 
 breastPhantomParams = createBreastPhantomParams();
 
-load('fast_scan_parameters.mat') 
-% load('Breast_Ultrafast_scan_parameters.mat')
+% load('fast_scan_parameters.mat') 
+load('Breast_Ultrafast_scan_parameters.mat')
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] = convert_Siemens_parameters(scan_parameters);
 
 % Contrast parameters
@@ -106,12 +106,16 @@ ylabel('Contrast length [mm]')
 xlabel('Time [s]')
 grid on
 
+
+%% Construct breast phantom
 phantom = BreastPhantom(breastPhantomParams);
 
 %% Perform TWIST, calculating two time frames at a time to minimize memory overhead
-maxChumkSize = 500000;
+maxChumkSize = 2500000;
 previousMask = (Sampling_Table.Bj == 0);
+nTimes = max(Sampling_Table.Bj)+1;
 
+disp(['Reconstructing TWIST frame 1 of ' num2str(nTimes)])
 currentKspace = nan(matrix_size_acquired);
 currentIdx = sub2ind(matrix_size_acquired, ...
     Sampling_Table.Frequency(previousMask), ...          
@@ -125,7 +129,7 @@ currentKspace(currentIdx) = phantom.kspaceAtTime(k_spatFreq_xyz(1, previousMask)
 
 % initialize TWIST image with first frame by permuting to XYZ from FPS, 
 % zeropading, ifftshifting k-space, taking IFFT, and fftshifting to get image
-nTimes = max(Sampling_Table.Bj)+1;
+
 twistImage = zeros([matrix_size_complete(fps_to_xyz) nTimes]);
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
 twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
@@ -133,6 +137,8 @@ twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
 previousKspace = currentKspace;
 
 for iTime = 2:nTimes
+    disp(['Reconstructing TWIST frame ' num2str(iTime) ' of ' num2str(nTimes)])
+
     % Calculate current Kspace Samples, putting k-space points in correct locations
     currentMask = (Sampling_Table.Bj == (iTime - 1));
     currentKspace = nan(matrix_size_acquired);

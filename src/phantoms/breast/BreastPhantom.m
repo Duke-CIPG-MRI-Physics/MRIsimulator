@@ -199,8 +199,10 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 idxEnd = min(idxStart + maxChunkSize - 1, numSamples);
                 idx = idxStart:idxEnd;
                 percentComplete = 100 * chunkIndex / numChunks;
-                fprintf(['kspaceAtTime: chunk %d of %d, %.1f%% complete.\n'], ...
-                    chunkIndex, numChunks, percentComplete);
+                if(numChunks > 1)
+                    fprintf(['   calculating analytical k-space chunk %d of %d, %.1f%% complete.\n'], ...
+                        chunkIndex, numChunks, percentComplete);
+                end
                 obj.updateShapesForTime(t_s(idx));
                 S(idx) = obj.kspace(kx(idx), ky(idx), kz(idx));
             end
