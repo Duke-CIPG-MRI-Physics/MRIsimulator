@@ -72,8 +72,7 @@ minStepSize = min(spatialFreq_phase(2)-spatialFreq_phase(1),...
 R = round(R); % bins into rings of thickness 1
 
 % Sort into rings of R, then sort by angle theta
-[tempSorted, sortedIdx] = sortrows([R(:), theta(:)]);
-tempSorted
+[~, sortedIdx] = sortrows([R(:), theta(:)]);
 
 %% Calculate A region pixels, which loop around the rings, first going from the outer edge of k-space
 % into the center of k-space, then going from the center back out to
@@ -102,44 +101,45 @@ slice_samples(slice_center:-piAcceleration(2):1) = true;
 [slice_samples_grid, phase_samples_grid] = meshgrid(slice_samples, phase_samples);
 pi_samples = phase_samples_grid & slice_samples_grid;
 
-% Calculate partial Fourier masks such that the fraction of k-space
+%% Calculate partial Fourier masks such that the fraction of k-space
 % indicated is not sampled in each direction.
 phase_partial_fourier = makePartialFourierMask(nPhase, partialFourier(1));
 slice_partial_fourier = makePartialFourierMask(nSlice, partialFourier(2));
 [slice_partial_fourier_grid, phase_partial_fourier_grid] = meshgrid(slice_partial_fourier, phase_partial_fourier);
 partial_fourier_samples = phase_partial_fourier_grid & slice_partial_fourier_grid;
 
-samplingMask = pi_samples & partial_fourier_samples;
+B_mask_all = pi_samples & partial_fourier_samples & (~A_mask);
 
-%% Calculate B region
+%% Calculate B regions for each frame
 % Frames covering B given pB
 nFrames = max(1, ceil(1 / pB));
-
-% B region the parallel imaging samples that are not in A
-B_mask = samplingMask & (~A_mask);
 
 figure();
 subplot(1,3,1);
 imagesc(A_mask)
 subplot(1,3,2);
-imagesc(B_mask)
-
-nVoxB_all = sum(B_mask(:));
+imagesc(B_mask_all)
+subplot(1,3,3);
+nVoxB_all = sum(B_mask_all(:));
 
 % Approximate B encodes per frame (integer)
 nVoxB_perFrame = ceil(nVoxB_all / nFrames);  % Note that some TWIST frames will have fewer voxels
+NbVOX = sum(B_mask_all(:));
 
+B_mask = zeros(matrix_size_acquired(2:3));
 
+sortedbIdxN = sortedIdx(B_mask_all);
+for iB = 1:nFrames
+    B1_idx_outerIn = sortedbIdxN(iB:2*nFrames:end);
+    B1_idx_outerIn = flipud(B1_idx_outerIn);
+    B2_idx_innerOut = sortedbIdxN(iB+nFrames:2*nFrames:end);
 
-bRegion = true(matrix_size_acquired(2:3));
-bRegion(A1_idx_outerIn) = false;
-bRegion(A2_idx_innerOut) = false;
-bRegion(~samplingMask) = false;
-
-% Sort B region in rings
-[~, sortedBIdx] = sortrows([R(bRegion), theta(bRegion)]);
-
-bSortedIdx = sortedIdx(nVoxA+1:end)
+    B_mask(B1_idx_outerIn) = 2*iB-1;
+    imagesc(B_mask)
+    B_mask(B2_idx_innerOut) = 2*iB;
+    imagesc(B_mask)
+    test =1;
+end
 end
 
 function mask = makePartialFourierMask(nSamples, fraction)
