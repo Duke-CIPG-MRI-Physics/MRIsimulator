@@ -76,7 +76,7 @@ A_mask = zeros(matrix_size_acquired(2:3));
 A_mask(A1_idx_outerIn) = 1;
 A_mask(A2_idx_innerOut) = 2;
 
-%% Calculate parallel imaging sampling
+%% Calculate parallel imaging sampling masks
 nPhase = matrix_size_acquired(2);
 nSlice = matrix_size_acquired(3);
 phase_center = floor(nPhase / 2) + 1;
@@ -91,11 +91,8 @@ slice_samples(slice_center:-piAcceleration(2):1) = true;
 [slice_samples_grid, phase_samples_grid] = meshgrid(slice_samples, phase_samples);
 pi_samples = phase_samples_grid & slice_samples_grid;
 
-figure();
-subplot(1,3,1);
-imagesc(A_mask)
-subplot(1,3,2);
-imagesc(pi_samples)
+% Calculate partial Fourier masks such that the fraction of k-space
+% indicated is not sampled in each direction.W
 
 
 %% Calculate B region
@@ -105,9 +102,13 @@ nFrames = max(1, ceil(1 / pB));
 % B region the parallel imaging samples that are not in A
 B_mask = pi_samples & (~A_mask)
 
+figure();
+subplot(1,3,1);
+imagesc(A_mask)
+subplot(1,3,2);
+imagesc(B_mask)
 
-
-nVoxB_all = nPhaseSliceEncodes - nVoxA;
+nVoxB_all = sum(B_mask(:));
 
 % Approximate B encodes per frame (integer)
 nVoxB_perFrame = ceil(nVoxB_all / nFrames);  % Note that some TWIST frames will have fewer voxels

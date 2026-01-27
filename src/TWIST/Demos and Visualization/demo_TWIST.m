@@ -1,3 +1,5 @@
+clc; clear all; close all; 
+
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I 
 encodingFullStr = formatEncodingString(freq_phase_slice);
 disp(encodingFullStr)
@@ -24,4 +26,4 @@ R = [2 3];
 PF_Factor = [6/8 6/8];
 
 
-[A1_idx_outerIn, A2_idx_innerOut] = calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, R);
+[A1_idx_outerIn, A2_idx_innerOut] = calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, R, PF_Factor);
