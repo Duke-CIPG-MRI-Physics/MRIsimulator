@@ -128,17 +128,15 @@ NbVOX = sum(B_mask_all(:));
 
 B_mask = zeros(matrix_size_acquired(2:3));
 
-sortedbIdxN = sortedIdx(B_mask_all);
+sortedbIdxN = sortedIdx(B_mask_all(sortedIdx));
 for iB = 1:nFrames
-    B1_idx_outerIn = sortedbIdxN(iB:2*nFrames:end);
-    B1_idx_outerIn = flipud(B1_idx_outerIn);
-    B2_idx_innerOut = sortedbIdxN(iB+nFrames:2*nFrames:end);
+    B1_idx_innerOut = sortedbIdxN(iB:2*nFrames:end);
+    B2_idx_outerIn = flipud(sortedbIdxN(iB+nFrames:2*nFrames:end));
 
-    B_mask(B1_idx_outerIn) = 2*iB-1;
+    B_mask(B1_idx_innerOut) = 2*iB-1;
     imagesc(B_mask)
-    B_mask(B2_idx_innerOut) = 2*iB;
+    B_mask(B2_idx_outerIn) = 2*iB;
     imagesc(B_mask)
-    test =1;
 end
 end
 
