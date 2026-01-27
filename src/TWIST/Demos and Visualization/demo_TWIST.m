@@ -26,4 +26,7 @@ R = [2 3];
 PF_Factor = [6/8 6/8];
 
 
-[A1_idx_outerIn, A2_idx_innerOut] = calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, R, PF_Factor);
+[A1_idx_outerIn, A2_idx_innerOut, B1_idx_innerOut,B2_idx_outerIn] = ...
+    calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, R, PF_Factor);
+
+

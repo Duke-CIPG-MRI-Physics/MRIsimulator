@@ -1,4 +1,4 @@
-function [A1_idx_outerIn, A2_idx_innerOut, samplingMask] = calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, piAcceleration, partialFourier)
+function [A1_idx_outerIn, A2_idx_innerOut, B1_idx_innerOut,B2_idx_outerIn] = calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, piAcceleration, partialFourier)
 % calculateTwistSamplingOrder2D  Determine TWIST sampling order for 2D k-space.
 %
 %   [A1_idx_outerIn, A2_idx_innerOut, samplingMask] = ...
@@ -130,19 +130,22 @@ B_mask = zeros(matrix_size_acquired(2:3));
 
 sortedbIdxN = sortedIdx(B_mask_all(sortedIdx));
 for iB = 1:nFrames
-    B1_idx_innerOut = sortedbIdxN(iB:2*nFrames:end);
-    B2_idx_outerIn = flipud(sortedbIdxN(iB+nFrames:2*nFrames:end));
+    B1_idx_innerOut{iB} = sortedbIdxN(iB:2*nFrames:end);
+    B2_idx_outerIn{iB} = flipud(sortedbIdxN(iB+nFrames:2*nFrames:end));
 
-    B_mask(B1_idx_innerOut) = iB;
+    B_mask(B1_idx_innerOut{iB}) = iB;
     imagesc(B_mask)
-    B_mask(B2_idx_outerIn) = iB+0.02;
+    B_mask(B2_idx_outerIn{iB}) = iB+0.02;
     imagesc(B_mask)
 
-subplot(2,2,4);
-thisFrame = zeros(size(B_mask));
-thisFrame(B1_idx_innerOut) = 1;
-thisFrame(B2_idx_outerIn) = 2;
-imagesc(thisFrame);
+    % B goes inner to outer, then outer to inner
+
+    subplot(2,2,4);
+    thisFrame = zeros(size(B_mask));
+    thisFrame(B1_idx_innerOut{iB}) = 1:length(B1_idx_innerOut{iB}(:));
+    thisFrame(B2_idx_outerIn{iB}) = 1:length(B2_idx_outerIn{iB}(:));
+    imagesc(thisFrame);
+    colorbar()
 
     test = 1;
 end
