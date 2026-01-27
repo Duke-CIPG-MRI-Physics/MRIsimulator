@@ -1,4 +1,38 @@
 function [A1_idx_outerIn, A2_idx_innerOut] = calculateTwistSamplingOrder2D(pA, pB, FOV_acquired, matrix_size_acquired, piAcceleration)
+% calculateTwistSamplingOrder2D  Determine TWIST sampling order for 2D k-space.
+%
+%   [A1_idx_outerIn, A2_idx_innerOut] = calculateTwistSamplingOrder2D( ...
+%       pA, pB, FOV_acquired, matrix_size_acquired, piAcceleration)
+%
+%   Inputs:
+%       pA                   : scalar double, fraction of k-space in A region.
+%       pB                   : scalar double, fraction of k-space in B region.
+%       FOV_acquired         : 1x3 double, field-of-view in mm [read, phase, slice].
+%       matrix_size_acquired : 1x3 double, matrix size [read, phase, slice].
+%       piAcceleration       : 1x2 double or scalar, parallel imaging [phase, slice].
+%
+%   Outputs:
+%       A1_idx_outerIn       : linear indices for A region (outer-in ordering).
+%       A2_idx_innerOut      : linear indices for A region (inner-out ordering).
+arguments
+    pA (1,1) double {mustBePositive}
+    pB (1,1) double {mustBePositive}
+    FOV_acquired (1,3) double {mustBePositive}
+    matrix_size_acquired (1,3) double {mustBeInteger, mustBePositive}
+    piAcceleration (1,:) double {mustBeInteger, mustBePositive}
+end
+
+if pA > 1 || pB > 1
+    error('calculateTwistSamplingOrder2D:InvalidFraction', ...
+        'pA and pB must be fractions in the range (0, 1].');
+end
+
+if isscalar(piAcceleration)
+    piAcceleration = [piAcceleration 1];
+elseif numel(piAcceleration) ~= 2
+    error('calculateTwistSamplingOrder2D:InvalidPIAcceleration', ...
+        'piAcceleration must be a scalar or a 1x2 vector [R_phase R_slice].');
+end
 
 % Compute total number of phase/slice encodes
 nPhaseSliceEncodes = prod(matrix_size_acquired(2:3));  % nPhase * nSlice
@@ -43,9 +77,19 @@ A_mask(A1_idx_outerIn) = 1;
 A_mask(A2_idx_innerOut) = 2;
 
 %% Calculate parallel imaging sampling
-pi_phases = (abs(mod(mPhase,piAcceleration(1))) < 1E-10);
-pi_slices = (abs(mod(mSlice,piAcceleration(2))) < 1E-10);
-pi_samples = pi_phases & pi_slices;
+nPhase = matrix_size_acquired(2);
+nSlice = matrix_size_acquired(3);
+phase_center = floor(nPhase / 2) + 1;
+slice_center = floor(nSlice / 2) + 1;
+
+phase_samples = false(nPhase, 1);
+slice_samples = false(1, nSlice);
+phase_samples(phase_center:piAcceleration(1):nPhase) = true;
+phase_samples(phase_center:-piAcceleration(1):1) = true;
+slice_samples(slice_center:piAcceleration(2):nSlice) = true;
+slice_samples(slice_center:-piAcceleration(2):1) = true;
+[slice_samples_grid, phase_samples_grid] = meshgrid(slice_samples, phase_samples);
+pi_samples = phase_samples_grid & slice_samples_grid;
 
 figure();
 subplot(1,3,1);
