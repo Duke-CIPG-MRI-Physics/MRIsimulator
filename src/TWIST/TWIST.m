@@ -1,4 +1,4 @@
-function [TWIST_sampling_order] = TWIST(pA,N,Matrix_Size_Acquired,FOV_acquired)
+function [TWIST_sampling_order] = TWIST(pA,N,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor)
 %Roberto Carrascosa, Duke University, June 2025
 % This function implements the TWIST sampling scheme for MRI
 % according to:
@@ -42,6 +42,13 @@ arguments
         Matrix_Size_Acquired (1,3) {mustBeNumeric, mustBePositive, mustBeInteger}
 
         FOV_acquired (1,3) {mustBeNumeric, mustBePositive}
+
+        %GRAPPA acceleration factors: [phase (rows), slice (columns)]
+        R (1,2) {mustBeNumeric,mustBeInteger,mustBePositive} 
+    
+        %Partial Fourier acceleration factors: [phase (rows), slice (columns)]
+        %Defaults to [1,1]
+        PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor,1), mustBeGreaterThan(PF_Factor,.5)}
 end
 
 
@@ -66,10 +73,24 @@ theta = abs(theta);
 
 kr = round(kr/1)*1;  % Integer bins for radius
 
-%% --- Define A and B Sampling Regions ---
-%If pa = .05, define a critical elipse where the two radii both reach the
-%same critical frequency in k-space regardless of FOV and matrix size. And
-%that critical frequency, f_crit = f_max/pA
+%% --- Define Region A---
+%If pa = .05, n_pixels_in_A / n_pixels_acquired = .05. Now that you know
+%  number of pixels you're working with,
+%  define a critical elipse where the two radii both reach the
+%  same critical frequency in k-space regardless of FOV and matrix size.
+
+
+%first we must calculate n_pixels_acquired based on PF
+Undersampled_Matrix_Size = [round(Matrix_Size_Acquired(2) * PF_Factor(1)), round(Matrix_Size_Acquired(3) * PF_Factor(2))];
+n_pixels_acquired = Undersampled_Matrix_Size(1)*Undersampled_Matrix_Size(2);
+
+%next we calculate how many pixels we will be included in A
+n_pixels_in_A = pA * n_pixels_acquired;
+
+%and lastly we define a critical elipse where the two radii both reach the
+%  same critical frequency in k-space regardless of FOV and matrix size.
+%  Where the number of pixels in the elipse = n_pixels_in_A
+
 kspace_pixel_size = 1./FOV_acquired; 
 kspace_extent = kspace_pixel_size .* (Matrix_Size_Acquired-1)/2;
 
@@ -77,18 +98,23 @@ phase_frequencies = -kspace_extent(2):kspace_pixel_size(2):kspace_extent(2);
 slice_frequencies = (-kspace_extent(3):kspace_pixel_size(3):kspace_extent(3))';
 
 [phase_mesh,slice_mesh] = meshgrid(slice_frequencies,phase_frequencies);
-
 frequency_grid = sqrt(phase_mesh.^2+slice_mesh.^2);
 
-f_crit = pA * max(frequency_grid(:));
-regionA = frequency_grid<f_crit;
+%now we grow region A until the defined area is reached
+
+f_crit = 0;
+area = 0;
+while area < n_pixels_in_A
+    f_crit = f_crit + .0001;
+    test_region = frequency_grid<f_crit;
+    area = sum(test_region(:));
+end
+
+regionA = test_region;
 
 
 
-% max_kz_ky = max(kr(centerPixel(2), end), kr(end, centerPixel(3)));
-% kc = pA * max_kz_ky;
-% regionA = (kr < kc);
-
+%% --- Define Region B
 regionB = ~regionA;
 
 %% --- Radial and Angular Sorting ---

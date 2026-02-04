@@ -39,7 +39,7 @@ end
 
 %% --- TWIST
 
-Sampling_Table = TWIST(pA,N,Matrix_Size_Acquired,FOV_acquired);
+Sampling_Table = TWIST(pA,N,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor);
 
 %% --- Timing Setup and Estimate
 
