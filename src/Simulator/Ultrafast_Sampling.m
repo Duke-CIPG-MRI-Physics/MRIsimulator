@@ -1,4 +1,4 @@
-function [Sampling_Table,PF_ask,GRAPPA_ask] = Ultrafast_Sampling(Complete_Matrix_Size,pA,N,Time_Measured,TR,R,PF_Factor)
+function [Sampling_Table,PF_ask,GRAPPA_ask] = Ultrafast_Sampling(Matrix_Size_Acquired,FOV_acquired,pA,N,Time_Measured,TR,R,PF_Factor)
 %This function implements full sampling trajectory for Ultrafast MRI
 %Imaging using TWIST,GRAPPA, and Partial Fourier
 %   GRAPPA and PF are optional input. Due to MATLAB limitations, the way to
@@ -8,7 +8,9 @@ function [Sampling_Table,PF_ask,GRAPPA_ask] = Ultrafast_Sampling(Complete_Matrix
 arguments (Input)
 
     %Complete_Matrix_Size is the final image size [frequency,phase,slice]
-    Complete_Matrix_Size (1,3) {mustBeNumeric, mustBePositive, mustBeInteger}
+    Matrix_Size_Acquired (1,3) {mustBeNumeric, mustBePositive, mustBeInteger}
+
+    FOV_acquired (1,3) {mustBeNumeric, mustBePositive}
 
     % pA defines size of TWIST 'A' region
     pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0), mustBeLessThanOrEqual(pA, 1)}
@@ -31,18 +33,18 @@ arguments (Input)
 
 end
 
-if N > ((Complete_Matrix_Size(2)*Complete_Matrix_Size(3)))/2
+if N > ((Matrix_Size_Acquired(2)*Matrix_Size_Acquired(3)))/2
     error('N too large, must be smaller than (#phase*#slice)/2')
 end
 
 %% --- TWIST
 
-Sampling_Table = TWIST(pA,N,Complete_Matrix_Size);
+Sampling_Table = TWIST(pA,N,Matrix_Size_Acquired,FOV_acquired);
 
 %% --- Timing Setup and Estimate
 
 %TWIST
-Preparation_Scan_Time = TR*Complete_Matrix_Size(2)*Complete_Matrix_Size(3);
+Preparation_Scan_Time = TR*Matrix_Size_Acquired(2)*Matrix_Size_Acquired(3);
 TWIST_Temporal_Resolution =  TR*(sum(Sampling_Table.Bj ~= 0))/N;
 Num_Measurements_TWIST = ceil(Time_Measured/TWIST_Temporal_Resolution);
 Measurement_Time = TWIST_Temporal_Resolution*Num_Measurements_TWIST;
@@ -147,7 +149,7 @@ end
 if GRAPPA_ask == 'y'
 
 fprintf('Removing GRAPPA Lines...\n')
-Sampling_Table = GRAPPA_Undersample(Complete_Matrix_Size,Sampling_Table,R);
+Sampling_Table = GRAPPA_Undersample(Matrix_Size_Acquired,Sampling_Table,R);
 
 elseif PF_ask == 'n'
     fprintf('Skipping GRAPPA...\n')
@@ -158,7 +160,7 @@ end
 if PF_ask == 'y'
    
 fprintf('Removing PF Areas...\n')
-Sampling_Table = PF_Undersample(Complete_Matrix_Size,Sampling_Table,PF_Factor);
+Sampling_Table = PF_Undersample(Matrix_Size_Acquired,Sampling_Table,PF_Factor);
 
 elseif PF_ask == 'n'
     fprintf('Skipping Partial Fourier...\n')
@@ -217,7 +219,7 @@ disp(Timing_Actual)
 %each entry by the number of Frequency encodes, this does not impact the
 %calculation of scan time
 
-N_freqs = Complete_Matrix_Size(1); % We want to duplicate each row 3 times
+N_freqs = Matrix_Size_Acquired(1); % We want to duplicate each row 3 times
 
 % Step 1: Expand the table
 % We generate a list of indices where each index is repeated N times
@@ -233,7 +235,7 @@ Sampling_Table.Frequency = repmat((1:N_freqs)', original_height, 1);
 
 %Correct linear index column for addded dimension
 % Order: [Frequency, Phase, Slice, Time]
-sz_4D = [Complete_Matrix_Size(1), Complete_Matrix_Size(2), Complete_Matrix_Size(3), max(Sampling_Table.Bj)+1];
+sz_4D = [Matrix_Size_Acquired(1), Matrix_Size_Acquired(2), Matrix_Size_Acquired(3), max(Sampling_Table.Bj)+1];
 
 Sampling_Table.("Linear Index") = sub2ind(sz_4D, ...
     Sampling_Table.Frequency, ...          % Dim 1
