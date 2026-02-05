@@ -148,9 +148,9 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.thorax.setShapeParameters(thoraxPose);
 
             %% Breasts
-            % lesionIntensity = params.lesionIntensityFunction(t_s);
-            % BreastPhantom.validateLesionIntensity(lesionIntensity, t_s);
-            % obj.lesionRight.setIntensity(lesionIntensity);
+            lesionIntensity = params.lesionIntensityFunction(t_s);
+            BreastPhantom.validateLesionIntensity(lesionIntensity, t_s);
+            obj.lesionRight.setIntensity(lesionIntensity);
             
         end
 
