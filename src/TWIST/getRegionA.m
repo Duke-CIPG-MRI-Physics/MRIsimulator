@@ -2,6 +2,15 @@ function [regionA] = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R
 %Calculates region A for TWIST
 %If pA = .05, n_pixels_in_A / n_pixels_acquired = .05
 
+%% CHEATING CODE
+%Please remove this section once GRAPPA and PF have been properly
+%implemented
+
+PF_Factor = [6/8 6/8];
+R = [2 3];
+
+
+%%
 %first we must calculate n_pixels_acquired based on PF
 if length(PF_Factor)>1
     Undersampled_Matrix_Size = [round(Matrix_Size_Acquired(2) * PF_Factor(1)), round(Matrix_Size_Acquired(3) * PF_Factor(2))];
@@ -43,5 +52,6 @@ regionA(regionA_table(:,1)) = 1;
 regionA = boolean(regionA);
 
 imshow(regionA)
+title('Region A in acquired matrix')
 
 end
