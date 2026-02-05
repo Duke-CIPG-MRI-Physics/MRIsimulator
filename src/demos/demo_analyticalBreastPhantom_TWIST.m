@@ -81,6 +81,10 @@ phantom = BreastPhantom(breastPhantomParams);
 maxChumkSize = 500000;
 previousMask = (Sampling_Table.Bj == 0);
 
+
+nTimes = max(Sampling_Table.Bj)+1;
+fprintf(['Reconstructing TWIST time %d of %d (%.1f%% complete).\n'], ...
+        1, nTimes, 0/nTimes*100);
 currentKspace = nan(matrix_size_acquired);
 currentIdx = sub2ind(matrix_size_acquired, ...
     Sampling_Table.Frequency(previousMask), ...          
@@ -94,7 +98,6 @@ currentKspace(currentIdx) = phantom.kspaceAtTime(k_spatFreq_xyz(1, previousMask)
 
 % initialize TWIST image with first frame by permuting to XYZ from FPS, 
 % zeropading, ifftshifting k-space, taking IFFT, and fftshifting to get image
-nTimes = max(Sampling_Table.Bj)+1;
 twistImage = zeros([matrix_size_complete(fps_to_xyz) nTimes]);
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
 twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
@@ -102,6 +105,9 @@ twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
 previousKspace = currentKspace;
 
 for iTime = 2:nTimes
+    fprintf(['Reconstructing TWIST time %d of %d (%.1f%% complete).\n'], ...
+        iTime, nTimes, (iTime-1)/nTimes*100);
+
     % Calculate current Kspace Samples, putting k-space points in correct locations
     currentMask = (Sampling_Table.Bj == (iTime - 1));
     currentKspace = nan(matrix_size_acquired);
