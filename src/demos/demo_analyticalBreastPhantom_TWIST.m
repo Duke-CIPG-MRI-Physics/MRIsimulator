@@ -66,14 +66,15 @@ clear TR_counts
 endOfSecondFrame = max(Sampling_Table(Sampling_Table.Bj == 0,:).Timing);
 
 % Injected contrast parameters
-breastPhantomParams.startEnhancement_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
-breastPhantomParams.enhancementDuration_s = 10;
-breastPhantomParams.unenhancedIntensity = 0.4;
-breastPhantomParams.enhancedIntensity = 0.4;
-breastPhantomParams.lesionIntensityFunction = @(t_s) min(2, max(0, 2 .* ...
-    (t_s-breastPhantomParams.startEnhancement_s) ./ ...
-    breastPhantomParams.enhancementDuration_s)) - ...
-    breastPhantomParams.breastIntensity; % subtracting intensity allows us to avoid needing to subtract shapes
+breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
+breastPhantomParams.lesionArrivalDelay_s = 6;
+breastPhantomParams.lesionWashinType = "fast";
+breastPhantomParams.lesionWashoutType = "washout";
+breastPhantomParams.lesionPeakEnhancement = 1.6;
+breastPhantomParams.lesionBaselineDeltaIntensity = 0;
+breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
+    t_s, breastPhantomParams, breastPhantomParams.lesionWashinType, ...
+    breastPhantomParams.lesionWashoutType, breastPhantomParams.lesionKineticOverrides);
 
 figure();
 plot(Sampling_Table.Timing(:),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(:)) ...

@@ -13,7 +13,8 @@ function params = createBreastPhantomParams()
     %   Example:
     %       params = createBreastPhantomParams();
     %       params.lesionRadius_mm = 8;
-    %       params.lesionIntensityFunction = @(t_s) min(2, max(0, 2 .* t_s ./ 60));
+    %       params.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
+    %           t_s, params, "fast", "washout");
 
     %% Create heart
     params.cardiacOpts = struct('HR_bpm', 70/10.66, ...
@@ -51,4 +52,10 @@ function params = createBreastPhantomParams()
     %% Lesion
     params.lesionRadius_mm = 10;
     params.startInjectionTime_s = 0;
+    params.lesionArrivalDelay_s = 8;
+    params.lesionPeakEnhancement = 1.6;
+    params.lesionBaselineDeltaIntensity = 0;
+    params.lesionWashinType = "medium";
+    params.lesionWashoutType = "plateau";
+    params.lesionKineticOverrides = struct();
 end
