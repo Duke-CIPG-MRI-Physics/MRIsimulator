@@ -73,46 +73,8 @@ theta = abs(theta);
 
 kr = round(kr/1)*1;  % Integer bins for radius
 
-%% --- Define Region A---
-%If pa = .05, n_pixels_in_A / n_pixels_acquired = .05. Now that you know
-%  number of pixels you're working with,
-%  define a critical elipse where the two radii both reach the
-%  same critical frequency in k-space regardless of FOV and matrix size.
-
-
-%first we must calculate n_pixels_acquired based on PF
-Undersampled_Matrix_Size = [round(Matrix_Size_Acquired(2) * PF_Factor(1)), round(Matrix_Size_Acquired(3) * PF_Factor(2))];
-n_pixels_acquired = Undersampled_Matrix_Size(1)*Undersampled_Matrix_Size(2);
-
-%next we calculate how many pixels we will be included in A
-n_pixels_in_A = pA * n_pixels_acquired;
-
-%and lastly we define a critical elipse where the two radii both reach the
-%  same critical frequency in k-space regardless of FOV and matrix size.
-%  Where the number of pixels in the elipse = n_pixels_in_A
-
-kspace_pixel_size = 1./FOV_acquired; 
-kspace_extent = kspace_pixel_size .* (Matrix_Size_Acquired-1)/2;
-
-phase_frequencies = -kspace_extent(2):kspace_pixel_size(2):kspace_extent(2);
-slice_frequencies = (-kspace_extent(3):kspace_pixel_size(3):kspace_extent(3))';
-
-[phase_mesh,slice_mesh] = meshgrid(slice_frequencies,phase_frequencies);
-frequency_grid = sqrt(phase_mesh.^2+slice_mesh.^2);
-
-%now we grow region A until the defined area is reached
-
-f_crit = 0;
-area = 0;
-while area < n_pixels_in_A
-    f_crit = f_crit + .0001;
-    test_region = frequency_grid<f_crit;
-    area = sum(test_region(:));
-end
-
-regionA = test_region;
-
-
+%% --- Get Region A---
+regionA = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R);
 
 %% --- Define Region B
 regionB = ~regionA;
