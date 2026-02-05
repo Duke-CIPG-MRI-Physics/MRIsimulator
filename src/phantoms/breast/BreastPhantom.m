@@ -150,7 +150,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             %% Breasts
             lesionIntensity = params.lesionIntensityFunction(t_s);
             BreastPhantom.validateLesionIntensity(lesionIntensity, t_s);
-            obj.lesionRight.setIntensity(lesionIntensity);
+            obj.lesionRight.setIntensity(@() params.lesionIntensityFunction(t_s));
             
         end
 
