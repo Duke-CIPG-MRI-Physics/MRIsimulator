@@ -226,8 +226,20 @@ classdef BreastPhantom < MultipleMaterialPhantom
             validateattributes(params.lesionRadius_mm, {'numeric'}, ...
                 {'real', 'finite', 'scalar', 'positive'}, mfilename, 'lesionRadius_mm');
 
+            if ~isfield(params, 'lesionWashinType') || isempty(params.lesionWashinType)
+                params.lesionWashinType = "medium";
+            end
+            if ~isfield(params, 'lesionWashoutType') || isempty(params.lesionWashoutType)
+                params.lesionWashoutType = "plateau";
+            end
+            if ~isfield(params, 'lesionKineticOverrides') || isempty(params.lesionKineticOverrides)
+                params.lesionKineticOverrides = struct();
+            end
+
             if ~isfield(params, 'lesionIntensityFunction') || isempty(params.lesionIntensityFunction)
-                params.lesionIntensityFunction = @(t_s) min(2, max(0, 2 .* t_s ./ 100));
+                params.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
+                    t_s, params, params.lesionWashinType, params.lesionWashoutType, ...
+                    params.lesionKineticOverrides);
             end
             if ~isa(params.lesionIntensityFunction, 'function_handle')
                 error('BreastPhantom:InvalidLesionIntensityFunction', ...
