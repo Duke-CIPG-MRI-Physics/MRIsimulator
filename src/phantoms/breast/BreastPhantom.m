@@ -82,7 +82,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.setBreastGeometryFromParams(params);
             obj.setShapes([obj.thorax obj.leftAndRightBreastTissue obj.lesionRight]);
 
-            obj.updateShapesForTime(0);
+            % obj.updateShapesForTime(0);
         end
 
         function updateShapesForTime(obj, t_s)
@@ -149,7 +149,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
             %% Breasts
             lesionIntensity = params.lesionIntensityFunction(t_s);
-            BreastPhantom.validateLesionIntensity(lesionIntensity, t_s);
+           
             obj.lesionRight.setIntensity(lesionIntensity);
             
         end
