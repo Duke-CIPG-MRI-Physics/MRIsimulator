@@ -6,7 +6,8 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
 %   Inputs:
 %       t_s   - time [s], strictly increasing (length N)
 %       opts  - struct with required fields HR_bpm, EDV_ml, ESV_ml. Each can be
-%               a scalar, vector (length N), or matrix with N columns. For
+%               a scalar, vector (length N or N-1 for per-interval HR), or
+%               matrix with N columns (or N-1 columns for per-interval HR). For
 %               matrices, rows correspond to independent cardiac waveforms. The
 %               following optional fields set model parameters:
 %                   .systFrac  - systolic fraction of R-R interval (0<beta<1),
@@ -17,12 +18,19 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
 %                   .GCS_peak  - peak global circumferential strain (negative),
 %                                default -0.25
 %
+%
+%   Phase convention:
+%       - Phase is accumulated from t=0.
+%       - The start-phase over [0, t_s(1)] uses the first available HR
+%         sample (scalar HR, HR(:,1) for length N, or interval HR(:,1) for
+%         length N-1).
 %   Outputs (matching the number of waveform rows in opts inputs):
 %       ellipsoidParams - struct with fields a_mm (long-axis radius),
 %                         b_mm (short-axis radius), c_mm (equal to b_mm) [mm]
 %
 %   Model:
-%       1) Build cumulative phase from instantaneous HR(t).
+%       1) Build cumulative phase from instantaneous HR(t), integrated from
+%          absolute time t=0.
 %       2) Build LV volume V(t) with a piecewise half-cosine EDV->ESV->EDV.
 %       3) Determine ED ellipsoid geometry (a0,b0,c0) from EDV and q_ED.
 %       4) Build strain-driven template axes (ahat,bhat,chat) using GLS/GCS.
@@ -105,7 +113,8 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
     f_interval = buildIntervalFrequencies(f_Hz, numel(dt), numSamples, numChannels);
 
     phaseIncrement = 2*pi .* f_interval .* dt;
-    phase = mod([zeros(numChannels, 1), cumsum(phaseIncrement, 2)], 2*pi) / (2*pi);
+    startPhase_rad = 2 * pi * f_interval(:, 1) * t_s(1);
+    phase = mod(startPhase_rad + [zeros(numChannels, 1), cumsum(phaseIncrement, 2)], 2*pi) / (2*pi);
     clear dt f_interval phaseIncrement;
     
     % ---------------------------------------------------------------------
