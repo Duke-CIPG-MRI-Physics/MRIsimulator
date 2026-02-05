@@ -60,18 +60,25 @@ t_s = t_PE+dt_s:dt_s:TR;
 TR_counts = 1:height(Sampling_Table)/matrix_size_acquired(1);
 matrix_result = t_s(:) + (TR_counts * TR);
 Sampling_Table.Timing = matrix_result(:);
-clear TR_counts t_s matrix_result
+clear TR_counts
 
 % Update startInjectionTime_s to be relative to first frame ending
 endOfSecondFrame = max(Sampling_Table(Sampling_Table.Bj == 0,:).Timing);
 
 % Injected contrast parameters
 breastPhantomParams.startEnhancement_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
-breastPhantomParams.enhancementDuration_s = 100;
-% breastPhantomParams.lesionIntensityFunction = @(t_s) min(2, max(0, 2 .* ...
-%     (t_s-breastPhantomParams.startEnhancement_s) ./ ...
-%     breastPhantomParams.enhancementDuration_s));
-breastPhantomParams.lesionIntensityFunction = @(t_s) 4;
+breastPhantomParams.enhancementDuration_s = 10;
+breastPhantomParams.unenhancedIntensity = 0.4;
+breastPhantomParams.enhancedIntensity = 0.4;
+breastPhantomParams.lesionIntensityFunction = @(t_s) min(2, max(0, 2 .* ...
+    (t_s-breastPhantomParams.startEnhancement_s) ./ ...
+    breastPhantomParams.enhancementDuration_s)) - ...
+    breastPhantomParams.breastIntensity; % subtracting intensity allows us to avoid needing to subtract shapes
+
+figure();
+plot(Sampling_Table.Timing(:),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(:)) ...
+    + breastPhantomParams.breastIntensity);
+
 
 %% Contrast timing visualization
 
