@@ -51,11 +51,12 @@ t_s = (1:length(ordKsx_kx))*0.0001;
 mat_t = max(t_s(:))
 t_s = reshape(t_s,size(ordKsx_kx)); % force time and k-space to be the same size;
 breastPhantomParams = createBreastPhantomParams();
+breastPhantomParams.lesionIntensityFunction = @(time_s) min(2, max(0, 2 .* time_s ./ 100));
 phantom = BreastPhantom(breastPhantomParams);
 
 %% 6) Compute analytic k-space for the phantom in ordered acquisition space
 fprintf('Evaluating analytic k-space...\n');
-K_ordered = phantom.kspace(ordKsx_kx, ordKsx_ky, ordKsx_kz);
+K_ordered = phantom.kspaceAtTime(ordKsx_kx, ordKsx_ky, ordKsx_kz, t_s, inf);
 
 % Reassemble onto the kx/ky/kz grid for reconstruction
 K = zeros(N);
