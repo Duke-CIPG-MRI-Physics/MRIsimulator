@@ -129,7 +129,7 @@ nTimes = max(Sampling_Table.Bj)+1;
 twistImage = zeros([matrix_size_complete(fps_to_xyz) nTimes]);
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
 twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
-        permute(currentKspace, [fps_to_xyz]), 0.5*padsize, 0)))); 
+        permute(currentKspace, fps_to_xyz), 0.5*padsize, 0)))); 
 previousKspace = currentKspace;
 
 for iTime = 2:nTimes
@@ -153,7 +153,7 @@ for iTime = 2:nTimes
     % Permute to XYZ from FPS, zeropad, then ifftshift k-space, then take
     % IFFT and fftshift to get image
     twistImage(:,:,:,iTime) = fftshift(ifftn(ifftshift(padarray(...
-        permute(currentKspace, [fps_to_xyz]), 0.5*padsize, 0))));     
+        permute(currentKspace, fps_to_xyz), 0.5*padsize, 0))));     
 
     % prepare for next TWIST frame
     previousKspace = currentKspace;
