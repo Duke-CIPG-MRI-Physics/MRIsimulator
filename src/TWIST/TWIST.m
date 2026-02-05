@@ -1,4 +1,4 @@
-function [TWIST_sampling_order] = TWIST(pA,N,kspaceSize)
+function [TWIST_sampling_order] = TWIST(pA,N,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor)
 %Roberto Carrascosa, Duke University, June 2025
 % This function implements the TWIST sampling scheme for MRI
 % according to:
@@ -39,20 +39,29 @@ arguments
         N (1,1) {mustBeNumeric, mustBePositive, mustBeInteger}
 
         % kspaceSize must be a 1x3 vector of positive, integer values.
-        kspaceSize (1,3) {mustBeNumeric, mustBePositive, mustBeInteger}
+        Matrix_Size_Acquired (1,3) {mustBeNumeric, mustBePositive, mustBeInteger}
+
+        FOV_acquired (1,3) {mustBeNumeric, mustBePositive}
+
+        %GRAPPA acceleration factors: [phase (rows), slice (columns)]
+        R (1,2) {mustBeNumeric,mustBeInteger,mustBePositive} 
+    
+        %Partial Fourier acceleration factors: [phase (rows), slice (columns)]
+        %Defaults to [1,1]
+        PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor,1), mustBeGreaterThan(PF_Factor,.5)}
 end
 
 
-if N > ((kspaceSize(2)*kspaceSize(3)))/2
+if N > ((Matrix_Size_Acquired(2)*Matrix_Size_Acquired(3)))/2
     error('N too large, must be smaller than (#phase*#slice)/2')
 end
 
 
 %% --- Coordinate Grid Setup (Phase/Slice) ---
-kyi = 1:kspaceSize(3);  % slice (columns)
-kzi = 1:kspaceSize(2);  % phase (rows)
+kyi = 1:Matrix_Size_Acquired(3);  % slice (columns)
+kzi = 1:Matrix_Size_Acquired(2);  % phase (rows)
 
-centerPixel = ceil(0.5 * (kspaceSize + 1));  % Use full kspaceSize as per your request
+centerPixel = ceil(0.5 * (Matrix_Size_Acquired + 1));  % Use full kspaceSize as per your request
 ky = kyi - centerPixel(3);  % col offset (slice)
 kz = kzi - centerPixel(2);  % row offset (phase)
 [kyM, kzM] = meshgrid(ky, kz);  % rows, cols
@@ -64,11 +73,10 @@ theta = abs(theta);
 
 kr = round(kr/1)*1;  % Integer bins for radius
 
-%% --- Define A and B Sampling Regions ---
-max_kz_ky = max(kr(centerPixel(2), end), kr(end, centerPixel(3)));
-kc = pA * max_kz_ky;
+%% --- Get Region A---
+regionA = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R);
 
-regionA = (kr < kc);
+%% --- Define Region B
 regionB = ~regionA;
 
 %% --- Radial and Angular Sorting ---
@@ -159,7 +167,7 @@ kspaceSamplingOrder_full = [kspaceSamplingOrder_initial;kspaceSamplingOrder_fram
 TWIST_sampling_order = kspaceSamplingOrder_full(:,{'Index','Bj'});
 TWIST_sampling_order.Properties.VariableNames(1) = {'Linear Index'};
 
-[row,col] = ind2sub(kspaceSize(2:3),TWIST_sampling_order.("Linear Index"));
+[row,col] = ind2sub(Matrix_Size_Acquired(2:3),TWIST_sampling_order.("Linear Index"));
 TWIST_sampling_order.("Row (phase)") = row;
 TWIST_sampling_order.("Column (slice)") = col;
 
