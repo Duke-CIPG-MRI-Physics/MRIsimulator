@@ -9,8 +9,8 @@ disp(encodingFullStr)
 
 breastPhantomParams = createBreastPhantomParams();
 
-load('fast_scan_parameters.mat') 
-% load('Breast_Ultrafast_scan_parameters.mat')
+%load('fast_scan_parameters.mat') 
+load('Breast_Ultrafast_scan_parameters.mat')
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] = convert_Siemens_parameters(scan_parameters);
 
 % Contrast parameters
@@ -26,11 +26,10 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = 0.05;
 Nb = 10;
-Time_Measured = 300; %sec
+Time_Measured = 30; %sec
 R = 1; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
-Sampling_Table = Ultrafast_Sampling(matrix_size_acquired,pA,Nb,Time_Measured,TR,R,PF_Factor);
 Sampling_Table = Ultrafast_Sampling(matrix_size_acquired,FOV_acquired,pA,Nb,Time_Measured,TR,R,PF_Factor);
 k_idx_fps = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
 
@@ -110,7 +109,7 @@ grid on
 phantom = BreastPhantom(breastPhantomParams);
 
 %% Perform TWIST, calculating two time frames at a time to minimize memory overhead
-maxChumkSize = 500000;
+maxChumkSize = 5000000;
 previousMask = (Sampling_Table.Bj == 0);
 
 currentKspace = nan(matrix_size_acquired);
