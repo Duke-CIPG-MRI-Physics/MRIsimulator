@@ -175,6 +175,19 @@ end
 %% display
 imslice(abs(twistImage))
 
+
+save_ask = input('Save output?: (y/n)','s');
+
+if strcmpi(save_ask, 'y')
+    fprintf('Input desired filename, file will be saved as <filename>.mat\n')
+    filename = input(':','s');
+    fprintf('Saving...\n')
+    save(filename,'twistImage')
+    fprintf('File saved as %s.mat\n', filename);
+else 
+    fprintf('Output not saved')
+end
+
 % figure()
 % subplot(1,3,1)
 % h1 = imagesc(rot90(squeeze(abs(img_viaKspace(:,:,round(0.5*size(img_viaKspace,3)))))));
