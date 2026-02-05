@@ -50,5 +50,5 @@ function params = createBreastPhantomParams()
 
     %% Lesion
     params.lesionRadius_mm = 10;
-    params.lesionIntensityFunction = @(t_s) min(2, max(0, 2 .* t_s ./ 100));
+    params.startInjectionTime_s = 0;
 end

@@ -29,6 +29,8 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
             if nargin < 2 || isempty(shapeParameters)
                 shapeParameters = AnalyticalShape3D.ensurePoseFields(struct());
+            else
+                shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
             end
 
             obj.shapeIntensity = intensity;

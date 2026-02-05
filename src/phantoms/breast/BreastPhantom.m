@@ -62,17 +62,22 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.thorax = MultipleMaterialPhantom([obj.beatingHeart, obj.leftLung, obj.rightLung, obj.fatComposite, obj.tissueComposite], ...
                 thoraxPose);
 
-            lesionParams = BreastPhantom.addPoseToParameters( ...
+            breastParams = BreastPhantom.addPoseToParameters( ...
                 struct('radius_mm', 1, 'length_mm', 1), ...
                 centered(1),centered(2),centered(3), ...
                 notRotated(1),notRotated(2),notRotated(3));
-            obj.breastRight = AnalyticalCylinder3D([], lesionParams);
-            obj.breastLeft = AnalyticalCylinder3D([], lesionParams);
+            obj.breastRight = AnalyticalCylinder3D([], breastParams);
+            obj.breastLeft = AnalyticalCylinder3D([], breastParams);
 
             obj.leftAndRightBreastTissue = CompositeAnalyticalShape3D([obj.breastRight, obj.breastLeft], ...
-                AnalyticalShape3D.empty(1,0), params.breastIntensity, lesionParams);
+                AnalyticalShape3D.empty(1,0), params.breastIntensity, breastParams);
+            
+            lesionParams = BreastPhantom.addPoseToParameters( ...
+                struct('a_mm', 1, 'b_mm', 1, 'c_mm', 1), ...
+                centered(1),centered(2),centered(3), ...
+                notRotated(1),notRotated(2),notRotated(3));
             obj.lesionRight = AnalyticalEllipsoid3D(params.lesionIntensityFunction(0), ...
-                struct('a_mm', 1, 'b_mm', 1, 'c_mm', 1));
+                lesionParams);
 
             obj.setBreastGeometryFromParams(params);
             obj.setShapes([obj.thorax obj.leftAndRightBreastTissue obj.lesionRight]);
@@ -143,9 +148,10 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.thorax.setShapeParameters(thoraxPose);
 
             %% Breasts
-            lesionIntensity = params.lesionIntensityFunction(t_s);
-            BreastPhantom.validateLesionIntensity(lesionIntensity, t_s);
-            obj.lesionRight.setIntensity(lesionIntensity);
+            % lesionIntensity = params.lesionIntensityFunction(t_s);
+            % BreastPhantom.validateLesionIntensity(lesionIntensity, t_s);
+            % obj.lesionRight.setIntensity(lesionIntensity);
+            
         end
 
         function S = kspaceAtTime(obj, kx, ky, kz, t_s, maxChunkSize)

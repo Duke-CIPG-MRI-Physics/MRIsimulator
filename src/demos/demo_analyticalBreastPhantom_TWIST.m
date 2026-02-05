@@ -65,46 +65,15 @@ clear TR_counts t_s matrix_result
 % Update startInjectionTime_s to be relative to first frame ending
 endOfSecondFrame = max(Sampling_Table(Sampling_Table.Bj == 0,:).Timing);
 
-breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
-
-
-% % Force Timing to be increasing
-% [sortedT,sortIdx] = sort(Sampling_Table.Timing);
-% phantom = BreastPhantom(sortedT);
-
+% Injected contrast parameters
+breastPhantomParams.startEnhancement_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
+breastPhantomParams.enhancementDuration_s = 100;
+% breastPhantomParams.lesionIntensityFunction = @(t_s) min(2, max(0, 2 .* ...
+%     (t_s-breastPhantomParams.startEnhancement_s) ./ ...
+%     breastPhantomParams.enhancementDuration_s));
+breastPhantomParams.lesionIntensityFunction = @(t_s) 4;
 
 %% Contrast timing visualization
-timing_s = Sampling_Table.Timing;
-contrastLength_mm = calculatePlugFlowInVessels(timing_s, breastPhantomParams);
-
-figure('Name', 'TWIST Contrast Plug Flow and Frame Timing');
-yyaxis left
-frameNumbers = unique(Sampling_Table.Bj);
-for frameIdx = 1:numel(frameNumbers)
-    frameNumber = frameNumbers(frameIdx);
-    frameTimes_s = timing_s(Sampling_Table.Bj == frameNumber);
-    if isempty(frameTimes_s)
-        continue;
-    end
-    frameDataStart_s = min(frameTimes_s);
-    frameEnd_s = max(frameTimes_s);
-    reconStart_s = frameEnd_s-timePerRecon;
-    rectTime_s = [ reconStart_s frameDataStart_s ];
-    rectAmp = [frameNumber frameNumber];
-    plot(rectTime_s, rectAmp, '-', 'LineWidth', 1.0);
-    hold on
-    rectTime_s = [frameDataStart_s frameDataStart_s frameEnd_s frameEnd_s];
-    rectAmp = [0 frameNumber+1 frameNumber+1 0];
-    plot(rectTime_s, rectAmp, '-', 'LineWidth', 2.0);
-end
-ylabel('TWIST frame index')
-ylim([0 max(frameNumbers) + 1])
-
-yyaxis right
-plot(timing_s, contrastLength_mm, 'LineWidth', 3);
-ylabel('Contrast length [mm]')
-xlabel('Time [s]')
-grid on
 
 phantom = BreastPhantom(breastPhantomParams);
 
