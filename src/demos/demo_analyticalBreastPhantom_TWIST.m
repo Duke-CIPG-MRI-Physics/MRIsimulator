@@ -25,8 +25,8 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 %% 2) Configure acquisition ordering and timing
 
 pA = 0.05;
-Nb = 10;
-Time_Measured = 30; %sec
+Nb = 5;
+Time_Measured = 1000; %sec
 R = 1; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
@@ -177,17 +177,36 @@ final_IMspace = twistImage(...
 imslice(abs(twistImage))
 
 
-save_ask = input('Save output?: (y/n)','s');
+%% Contrast dynamics calculation
+pixels_to_watch = [68,71,161;...
+    68,201,161];
 
-if strcmpi(save_ask, 'y')
-    fprintf('Input desired filename, file will be saved as <filename>.mat\n')
-    filename = input(':','s');
-    fprintf('Saving...\n')
-    save(filename,'twistImage')
-    fprintf('File saved as %s.mat\n', filename);
-else 
-    fprintf('Output not saved')
-end
+contrast_values_AP = squeeze(twistImage(pixels_to_watch(1,1),pixels_to_watch(1,2),pixels_to_watch(1,3),:));
+contrast_values_LAT = squeeze(twistImage(pixels_to_watch(2,1),pixels_to_watch(2,2),pixels_to_watch(2,3),:));
+
+figure
+hold on
+plot(abs(contrast_values_AP))
+plot(abs(contrast_values_LAT))
+legend("AP","Lat")
+hold off
+
+title("Contrast Wash-in")
+xlabel("Pixel Value")
+ylabel("Frame")
+
+%% Ask to save?
+% save_ask = input('Save output?: (y/n)','s');
+% 
+% if strcmpi(save_ask, 'y')
+%     fprintf('Input desired filename, file will be saved as <filename>.mat\n')
+%     filename = input(':','s');
+%     fprintf('Saving...\n')
+%     save(filename,'twistImage')
+%     fprintf('File saved as %s.mat\n', filename);
+% else 
+%     fprintf('Output not saved')
+% end
 
 % figure()
 % subplot(1,3,1)
