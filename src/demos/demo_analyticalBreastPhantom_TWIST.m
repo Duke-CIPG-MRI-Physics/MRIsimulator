@@ -60,51 +60,28 @@ t_s = t_PE+dt_s:dt_s:TR;
 TR_counts = 1:height(Sampling_Table)/matrix_size_acquired(1);
 matrix_result = t_s(:) + (TR_counts * TR);
 Sampling_Table.Timing = matrix_result(:);
-clear TR_counts t_s matrix_result
+clear TR_counts
 
 % Update startInjectionTime_s to be relative to first frame ending
 endOfSecondFrame = max(Sampling_Table(Sampling_Table.Bj == 0,:).Timing);
 
+% Injected contrast parameters
 breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
+breastPhantomParams.lesionArrivalDelay_s = 6;
+breastPhantomParams.lesionWashinType = "fast";
+breastPhantomParams.lesionWashoutType = "washout";
+breastPhantomParams.lesionPeakEnhancement = 1.6;
+breastPhantomParams.lesionBaselineDeltaIntensity = 0;
+breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
+    t_s, breastPhantomParams, breastPhantomParams.lesionWashinType, ...
+    breastPhantomParams.lesionWashoutType, breastPhantomParams.lesionKineticOverrides);
 
-
-% % Force Timing to be increasing
-% [sortedT,sortIdx] = sort(Sampling_Table.Timing);
-% phantom = BreastPhantom(sortedT);
+figure();
+plot(Sampling_Table.Timing(:),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(:)) ...
+    + breastPhantomParams.breastIntensity);
 
 
 %% Contrast timing visualization
-timing_s = Sampling_Table.Timing;
-contrastLength_mm = calculatePlugFlowInVessels(timing_s, breastPhantomParams);
-
-figure('Name', 'TWIST Contrast Plug Flow and Frame Timing');
-yyaxis left
-frameNumbers = unique(Sampling_Table.Bj);
-for frameIdx = 1:numel(frameNumbers)
-    frameNumber = frameNumbers(frameIdx);
-    frameTimes_s = timing_s(Sampling_Table.Bj == frameNumber);
-    if isempty(frameTimes_s)
-        continue;
-    end
-    frameDataStart_s = min(frameTimes_s);
-    frameEnd_s = max(frameTimes_s);
-    reconStart_s = frameEnd_s-timePerRecon;
-    rectTime_s = [ reconStart_s frameDataStart_s ];
-    rectAmp = [frameNumber frameNumber];
-    plot(rectTime_s, rectAmp, '-', 'LineWidth', 1.0);
-    hold on
-    rectTime_s = [frameDataStart_s frameDataStart_s frameEnd_s frameEnd_s];
-    rectAmp = [0 frameNumber+1 frameNumber+1 0];
-    plot(rectTime_s, rectAmp, '-', 'LineWidth', 2.0);
-end
-ylabel('TWIST frame index')
-ylim([0 max(frameNumbers) + 1])
-
-yyaxis right
-plot(timing_s, contrastLength_mm, 'LineWidth', 3);
-ylabel('Contrast length [mm]')
-xlabel('Time [s]')
-grid on
 
 phantom = BreastPhantom(breastPhantomParams);
 
@@ -112,6 +89,10 @@ phantom = BreastPhantom(breastPhantomParams);
 maxChumkSize = 5000000;
 previousMask = (Sampling_Table.Bj == 0);
 
+
+nTimes = max(Sampling_Table.Bj)+1;
+fprintf(['Reconstructing TWIST time %d of %d (%.1f%% complete).\n'], ...
+        1, nTimes, 0/nTimes*100);
 currentKspace = nan(matrix_size_acquired);
 currentIdx = sub2ind(matrix_size_acquired, ...
     Sampling_Table.Frequency(previousMask), ...          
@@ -125,7 +106,6 @@ currentKspace(currentIdx) = phantom.kspaceAtTime(k_spatFreq_xyz(1, previousMask)
 
 % initialize TWIST image with first frame by permuting to XYZ from FPS, 
 % zeropading, ifftshifting k-space, taking IFFT, and fftshifting to get image
-nTimes = max(Sampling_Table.Bj)+1;
 twistImage = zeros([matrix_size_complete(fps_to_xyz) nTimes]);
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
 twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
@@ -133,6 +113,9 @@ twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
 previousKspace = currentKspace;
 
 for iTime = 2:nTimes
+    fprintf(['Reconstructing TWIST time %d of %d (%.1f%% complete).\n'], ...
+        iTime, nTimes, (iTime-1)/nTimes*100);
+
     % Calculate current Kspace Samples, putting k-space points in correct locations
     currentMask = (Sampling_Table.Bj == (iTime - 1));
     currentKspace = nan(matrix_size_acquired);

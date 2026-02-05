@@ -22,7 +22,10 @@ function [R_mm, H_mm] = lung_ellipsoid_waveform(t_s, lungParameters)
 %         values (.R_mm, .H_mm, .lungPosition_mm).
 %
 %   Model details:
-%       - Breathing phase is built from instantaneous f_bpm(t).
+%       - Breathing phase is built from instantaneous f_bpm(t), integrated
+%         from absolute time t=0.
+%       - If t_s(1) > 0, the first waveform sample includes the starting
+%         phase accumulated over [0, t_s(1)] using f_bpm(1).
 %       - Within-cycle phase φ in [0,1) is mapped to a half-cosine insp/exp
 %         waveform using local inspFrac(k).
 %       - Volume: V_L(t) = Vbase_L(t) + VT_L(t) * g(φ, inspFrac).
@@ -127,7 +130,8 @@ function [R_mm, H_mm] = lung_ellipsoid_waveform(t_s, lungParameters)
     f_Hz = f_bpm / 60;          % [Hz]
     dt = diff(t_s(:));
     f_Hz_vec = f_Hz(:);
-    B_phase_vec = [0; cumsum(2*pi*f_Hz_vec(1:end-1) .* dt)];
+    startPhase_rad = 2 * pi * f_Hz_vec(1) * t_s(1);
+    B_phase_vec = startPhase_rad + [0; cumsum(2*pi*f_Hz_vec(1:end-1) .* dt)];
     B_phase = reshape(B_phase_vec, waveformSize);      % [rad]
 
     % Within-cycle phase φ in [0,1)

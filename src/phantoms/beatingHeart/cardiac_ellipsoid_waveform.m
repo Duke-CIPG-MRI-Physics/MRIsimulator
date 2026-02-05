@@ -6,7 +6,8 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
 %   Inputs:
 %       t_s   - time [s], strictly increasing (length N)
 %       opts  - struct with required fields HR_bpm, EDV_ml, ESV_ml. Each can be
-%               a scalar, vector (length N), or matrix with N columns. For
+%               a scalar, vector (length N or N-1 for per-interval HR), or
+%               matrix with N columns (or N-1 columns for per-interval HR). For
 %               matrices, rows correspond to independent cardiac waveforms. The
 %               following optional fields set model parameters:
 %                   .systFrac  - systolic fraction of R-R interval (0<beta<1),
@@ -16,13 +17,29 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
 %                                default -0.20
 %                   .GCS_peak  - peak global circumferential strain (negative),
 %                                default -0.25
+%                   .timeReference_s - absolute time reference [s] for
+%                                phase anchoring, default 0
+%                   .phaseAtReference_cycles - phase at timeReference_s
+%                                [cycles], default 0
+%                   .startPhase_cycles - optional phase at t_s(1) [cycles].
+%                                When provided, this overrides
+%                                timeReference_s/phaseAtReference_cycles and
+%                                is useful for chunk-to-chunk phase carryover.
 %
+%
+%   Phase convention:
+%       - By default, phase is accumulated from t=0 using
+%         timeReference_s=0 and phaseAtReference_cycles=0.
+%       - startPhase_cycles can be provided to initialize phase directly at
+%         t_s(1), enabling exact chunk stitching when carrying state between
+%         calls.
 %   Outputs (matching the number of waveform rows in opts inputs):
 %       ellipsoidParams - struct with fields a_mm (long-axis radius),
 %                         b_mm (short-axis radius), c_mm (equal to b_mm) [mm]
 %
 %   Model:
-%       1) Build cumulative phase from instantaneous HR(t).
+%       1) Build cumulative phase from instantaneous HR(t), integrated from
+%          absolute time t=0.
 %       2) Build LV volume V(t) with a piecewise half-cosine EDV->ESV->EDV.
 %       3) Determine ED ellipsoid geometry (a0,b0,c0) from EDV and q_ED.
 %       4) Build strain-driven template axes (ahat,bhat,chat) using GLS/GCS.
@@ -64,6 +81,12 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
     if ~isfield(opts, 'GCS_peak') || isempty(opts.GCS_peak)
         opts.GCS_peak = -0.25;
     end
+    if ~isfield(opts, 'timeReference_s') || isempty(opts.timeReference_s)
+        opts.timeReference_s = 0;
+    end
+    if ~isfield(opts, 'phaseAtReference_cycles') || isempty(opts.phaseAtReference_cycles)
+        opts.phaseAtReference_cycles = 0;
+    end
 
     beta     = opts.systFrac;
     q        = opts.q_ED;
@@ -73,6 +96,8 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
     HR_bpm = opts.HR_bpm;
     EDV_ml = opts.EDV_ml;
     ESV_ml = opts.ESV_ml;
+    timeReference_s = opts.timeReference_s;
+    phaseAtReference_cycles = opts.phaseAtReference_cycles;
 
     if beta <= 0 || beta >= 1
         error('opts.systFrac must be in (0,1).');
@@ -97,16 +122,40 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
     ensureChannelCompatibility(EDV_rows, numChannels, 'opts.EDV_ml');
     ensureChannelCompatibility(ESV_rows, numChannels, 'opts.ESV_ml');
 
+    if ~isscalar(timeReference_s) || ~isfinite(timeReference_s)
+        error('opts.timeReference_s must be a finite scalar time in seconds.');
+    end
+    [phaseAtReference_cycles, phaseRows] = validateLengthOrScalar( ...
+        phaseAtReference_cycles, numSamples, 'opts.phaseAtReference_cycles');
+    ensureChannelCompatibility(phaseRows, numChannels, 'opts.phaseAtReference_cycles');
+
+    if isfield(opts, 'startPhase_cycles') && ~isempty(opts.startPhase_cycles)
+        [startPhase_cycles, startRows] = validateLengthOrScalar( ...
+            opts.startPhase_cycles, numSamples, 'opts.startPhase_cycles');
+        ensureChannelCompatibility(startRows, numChannels, 'opts.startPhase_cycles');
+        hasStartPhase = true;
+    else
+        startPhase_cycles = [];
+        hasStartPhase = false;
+    end
+
     % ---------------------------------------------------------------------
     % 1) Build cumulative phase from HR(t)
     % ---------------------------------------------------------------------
     f_Hz = HR_bpm / 60;     % [Hz]
 
     f_interval = buildIntervalFrequencies(f_Hz, numel(dt), numSamples, numChannels);
+    if hasStartPhase
+        phaseStartForChannels_cycles = expandToChannels(startPhase_cycles, numChannels, 1);
+    else
+        phaseRefForChannels_cycles = expandToChannels(phaseAtReference_cycles, numChannels, 1);
+        startFrequency_Hz = buildStartFrequencies(f_Hz, numSamples, numChannels);
+        phaseStartForChannels_cycles = phaseRefForChannels_cycles + ...
+            startFrequency_Hz .* (t_s(1) - timeReference_s);
+    end
 
-    phaseIncrement = 2*pi .* f_interval .* dt;
-    phase = mod([zeros(numChannels, 1), cumsum(phaseIncrement, 2)], 2*pi) / (2*pi);
-    clear dt f_interval phaseIncrement;
+    phase = computePhaseCycles(dt, f_interval, phaseStartForChannels_cycles);
+    clear dt f_interval;
     
     % ---------------------------------------------------------------------
     % 2) Volume waveform via piecewise half-cosines
@@ -174,12 +223,37 @@ function ellipsoidParams = cardiac_ellipsoid_waveform(t_s, opts)
 
         lambda_chunk = (V_chunk ./ V_hat_chunk).^(1/3);
 
-        a_mm(idx) = 1000 .* lambda_chunk .* a_hat_chunk;
-        b_mm(idx) = 1000 .* lambda_chunk .* b_hat_chunk;
+        a_mm(:, idx) = 1000 .* lambda_chunk .* a_hat_chunk;
+        b_mm(:, idx) = 1000 .* lambda_chunk .* b_hat_chunk;
     end
 
     c_mm = b_mm;
+    % NOTE: By convention in this phantom, the heart major axis is along z.
+    % a_mm therefore maps to the z-directed semi-axis in downstream shape use.
     ellipsoidParams = struct('a_mm', c_mm, 'b_mm', b_mm, 'c_mm', a_mm);
+end
+
+% -------------------------------------------------------------------------
+function phase = computePhaseCycles(dt_s, f_interval_Hz, phaseStart_cycles)
+%COMPUTEPHASECYCLES  Compute phase [cycles] for each sample.
+
+    numChannels = size(f_interval_Hz, 1);
+    numIntervals = size(f_interval_Hz, 2);
+    numSamples = numIntervals + 1;
+
+    if numIntervals == 0
+        phase = mod(phaseStart_cycles, 1);
+        return;
+    end
+
+    phaseIncrement_cycles = f_interval_Hz .* dt_s;
+    cumulative_cycles = [zeros(numChannels, 1), cumsum(phaseIncrement_cycles, 2)];
+    phase = mod(phaseStart_cycles + cumulative_cycles, 1);
+
+    if size(phase, 2) ~= numSamples
+        error('Phase assembly failed: expected %d samples, got %d.', ...
+            numSamples, size(phase, 2));
+    end
 end
 
 % -------------------------------------------------------------------------
@@ -261,6 +335,52 @@ function f_interval = buildIntervalFrequencies(f_Hz, numIntervals, numSamples, n
         f_interval = repmat(f_interval, numChannels, 1);
     elseif hrRows > 1 && hrRows ~= numChannels
         error('opts.HR_bpm must have %d rows (channels) or be scalar/1-row for broadcasting.', ...
+            numChannels);
+    end
+end
+
+% -------------------------------------------------------------------------
+function startFrequency_Hz = buildStartFrequencies(f_Hz, numSamples, numChannels)
+%BUILDSTARTFREQUENCIES  Select per-channel frequency used at t_s(1).
+
+    if isscalar(f_Hz)
+        startFrequency_Hz = repmat(f_Hz, numChannels, 1);
+        return;
+    end
+
+    numRows = size(f_Hz, 1);
+    numSamplesProvided = size(f_Hz, 2);
+    if numSamplesProvided == numSamples || numSamplesProvided == numSamples - 1
+        startFrequency_Hz = f_Hz(:, 1);
+    else
+        error(['HR_bpm must be scalar or have the same length as t_s or diff(t_s). ', ...
+            'Received %d samples.'], numSamplesProvided);
+    end
+
+    if numRows == 1 && numChannels > 1
+        startFrequency_Hz = repmat(startFrequency_Hz, numChannels, 1);
+    elseif numRows > 1 && numRows ~= numChannels
+        error('opts.HR_bpm must have %d rows (channels) or be scalar/1-row for broadcasting.', ...
+            numChannels);
+    end
+end
+
+% -------------------------------------------------------------------------
+function expanded = expandToChannels(value, numChannels, numSamples)
+%EXPANDTOCHANNELS  Broadcast scalar/row values to channel count.
+
+    if isscalar(value)
+        expanded = repmat(value, numChannels, numSamples);
+        return;
+    end
+
+    valueRows = size(value, 1);
+    if valueRows == 1 && numChannels > 1
+        expanded = repmat(value, numChannels, 1);
+    elseif valueRows == numChannels
+        expanded = value;
+    else
+        error('Value must have %d rows (channels) or be scalar/1-row for broadcasting.', ...
             numChannels);
     end
 end

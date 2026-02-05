@@ -18,7 +18,7 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     %     pose.yaw_deg      - Yaw about BODY z-axis.
 
     properties (Access = protected)
-        shapeIntensity (1,1) double = 1;
+        shapeIntensity = 1;
         shapeParameters = struct();
     end
 
@@ -29,9 +29,11 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
             if nargin < 2 || isempty(shapeParameters)
                 shapeParameters = AnalyticalShape3D.ensurePoseFields(struct());
+            else
+                shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
             end
 
-            obj.shapeIntensity = intensity;
+            obj.setIntensity(intensity);
             obj.setShapeParameters(shapeParameters);
         end
 
@@ -61,6 +63,12 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
         end
 
         function setIntensity(obj, newIntensity)
+            % setIntensity  Set scalar, sample-matched, or function-handle intensity.
+            %   setIntensity(obj, newIntensity) accepts:
+            %       - numeric scalar
+            %       - numeric array (must match evaluation reference size)
+            %       - function handle returning numeric scalar/array.
+            obj.validateIntensitySource(newIntensity);
             obj.shapeIntensity = newIntensity;
         end
 
@@ -73,7 +81,8 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
 
             percent = obj.percentInsideShape(xMesh, yMesh, zMesh);
-            vol = percent .* obj.shapeIntensity;
+            intensity = obj.getIntensity(percent);
+            vol = percent .* intensity;
         end
 
         function S = kspace(obj, kx, ky, kz)
@@ -89,7 +98,8 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
             end
 
             S_shape = obj.kspaceWorldPlacedShape(kx, ky, kz);
-            S = S_shape .* obj.shapeIntensity;
+            intensity = obj.getIntensity(S_shape);
+            S = S_shape .* intensity;
         end
 
         function S = kspaceWorldPlacedShape(obj, kx, ky, kz)
@@ -167,6 +177,10 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
     end
 
     methods (Access = protected)
+        function intensity = getIntensity(obj, referenceArray)
+            intensity = obj.evaluateShapeIntensity(obj.shapeIntensity, referenceArray);
+        end
+
         function params = evaluateShapeParameters(~, parameterSource, args)
             if isa(parameterSource, 'function_handle')
                 params = parameterSource(args{:});
@@ -205,6 +219,40 @@ classdef (Abstract) AnalyticalShape3D < handle & matlab.mixin.Heterogeneous
                 error(sprintf('AnalyticalShape3D:%s:SizeMismatch', id), ...
                     'Values must be scalar or match the reference array size.');
             end
+        end
+
+        function intensity = evaluateShapeIntensity(obj, intensitySource, referenceArray)
+            if isa(intensitySource, 'function_handle')
+                intensity = intensitySource();
+            else
+                intensity = intensitySource;
+            end
+
+            if ~isnumeric(intensity)
+                error('AnalyticalShape3D:Intensity:InvalidType', ...
+                    ['Shape intensity must be numeric or a function handle ' ...
+                    'that returns a numeric value.']);
+            end
+
+            validateattributes(intensity, {'numeric'}, {'real', 'finite', 'nonempty'}, ...
+                mfilename, 'shapeIntensity');
+            intensity = obj.requireScalarOrSize(intensity, referenceArray, 'shapeIntensity');
+        end
+
+        function validateIntensitySource(~, intensitySource)
+            if isnumeric(intensitySource)
+                validateattributes(intensitySource, {'numeric'}, {'real', 'finite', 'nonempty'}, ...
+                    mfilename, 'shapeIntensity');
+                return;
+            end
+
+            if isa(intensitySource, 'function_handle')
+                return;
+            end
+
+            error('AnalyticalShape3D:Intensity:InvalidSource', ...
+                ['shapeIntensity must be a numeric scalar/array, or a function ' ...
+                'handle of the form @(t_s) ... that returns numeric output.']);
         end
 
         function validateParameterFields(obj, params)
