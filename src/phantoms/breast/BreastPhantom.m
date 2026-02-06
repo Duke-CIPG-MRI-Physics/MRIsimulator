@@ -2,8 +2,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
     % BreastPhantom
     %   Preconfigured collection of AnalyticalShape3D objects approximating
     %   a thoracic slice with lungs, heart, peripheral fat, breasts, and a
-    %   simple vessel. Geometry and intensities follow the original
-    %   demo_analyticalBreastPhantom.m setup. Heart geometry leverages
+    %   single lesion in the right breast. Geometry and intensities follow
+    %   the original demo_analyticalBreastPhantom.m setup. Heart geometry leverages
     %   cardiac_ellipsoid_waveform, which evaluates long time vectors in
     %   ~0.001 Gb, 15,625-sample chunks to keep memory usage minimal.
 
@@ -20,12 +20,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
         breastRight
         breastLeft
         leftAndRightBreastTissue
-        enhancedCylindersRight
-        unenhancedCylindersRight
-        enhancedCylindersLeft
-        unenhancedCylindersLeft
-        enhancingVesselsRight
-        enhancingVesselsLeft
+        lesionRight
     end
 
     methods
@@ -35,7 +30,7 @@ classdef BreastPhantom < MultipleMaterialPhantom
             end
 
             obj@MultipleMaterialPhantom();
-            params = BreastPhantom.normalizeVesselParams(params);
+            params = BreastPhantom.normalizeLesionParams(params);
             obj.phantomParams = params;
 
             % Convenience arrays
@@ -67,51 +62,27 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.thorax = MultipleMaterialPhantom([obj.beatingHeart, obj.leftLung, obj.rightLung, obj.fatComposite, obj.tissueComposite], ...
                 thoraxPose);
 
-            individualVesselParams = BreastPhantom.addPoseToParameters( ...
+            breastParams = BreastPhantom.addPoseToParameters( ...
                 struct('radius_mm', 1, 'length_mm', 1), ...
                 centered(1),centered(2),centered(3), ...
                 notRotated(1),notRotated(2),notRotated(3));
-            obj.breastRight = AnalyticalCylinder3D([], individualVesselParams);
-            obj.breastLeft = AnalyticalCylinder3D([], individualVesselParams);
-
-            % Use vessel intensity deltas so we can avoid subtracting and re-adding
-            % identical cylinder k-space when combining with breast tissue.
-            enhancedDelta = params.enhancedIntensity - params.breastIntensity;
-            unenhancedDelta = params.unenhancedIntensity - params.breastIntensity;
-            numSegmentsRight = numel(params.vesselSegmentsRight);
-            numSegmentsLeft = numel(params.vesselSegmentsLeft);
-            obj.enhancedCylindersRight = AnalyticalCylinder3D.empty(1, 0);
-            obj.unenhancedCylindersRight = AnalyticalCylinder3D.empty(1, 0);
-            obj.enhancedCylindersLeft = AnalyticalCylinder3D.empty(1, 0);
-            obj.unenhancedCylindersLeft = AnalyticalCylinder3D.empty(1, 0);
-            for idx = 1:numSegmentsRight
-                obj.enhancedCylindersRight(idx) = AnalyticalCylinder3D(enhancedDelta, individualVesselParams);
-                obj.unenhancedCylindersRight(idx) = AnalyticalCylinder3D(unenhancedDelta, individualVesselParams);
-            end
-            for idx = 1:numSegmentsLeft
-                obj.enhancedCylindersLeft(idx) = AnalyticalCylinder3D(enhancedDelta, individualVesselParams);
-                obj.unenhancedCylindersLeft(idx) = AnalyticalCylinder3D(unenhancedDelta, individualVesselParams);
-            end
+            obj.breastRight = AnalyticalCylinder3D([], breastParams);
+            obj.breastLeft = AnalyticalCylinder3D([], breastParams);
 
             obj.leftAndRightBreastTissue = CompositeAnalyticalShape3D([obj.breastRight, obj.breastLeft], ...
-                AnalyticalShape3D.empty(1,0), params.breastIntensity, individualVesselParams);
-
-            vesselsParams = BreastPhantom.addPoseToParameters( ...
-                struct(), ...
+                AnalyticalShape3D.empty(1,0), params.breastIntensity, breastParams);
+            
+            lesionParams = BreastPhantom.addPoseToParameters( ...
+                struct('a_mm', 1, 'b_mm', 1, 'c_mm', 1), ...
                 centered(1),centered(2),centered(3), ...
                 notRotated(1),notRotated(2),notRotated(3));
-            obj.enhancingVesselsRight = MultipleMaterialPhantom( ...
-                [obj.enhancedCylindersRight, obj.unenhancedCylindersRight], vesselsParams);
-            obj.enhancingVesselsLeft = MultipleMaterialPhantom( ...
-                [obj.enhancedCylindersLeft, obj.unenhancedCylindersLeft], vesselsParams);
-
-            % enhancingVessels  = CompositeAnalyticalShape3D([unenhancedCylinder, enhancedCylinder], [], ...
-            %     breastIntensity , breastParamsBoth);
+            obj.lesionRight = AnalyticalEllipsoid3D(params.lesionIntensityFunction(0), ...
+                lesionParams);
 
             obj.setBreastGeometryFromParams(params);
-            obj.setShapes([obj.thorax obj.leftAndRightBreastTissue obj.enhancingVesselsRight obj.enhancingVesselsLeft]);
+            obj.setShapes([obj.thorax obj.leftAndRightBreastTissue obj.lesionRight]);
 
-            obj.updateShapesForTime(0);
+            % obj.updateShapesForTime(0);
         end
 
         function updateShapesForTime(obj, t_s)
@@ -177,12 +148,10 @@ classdef BreastPhantom < MultipleMaterialPhantom
             obj.thorax.setShapeParameters(thoraxPose);
 
             %% Breasts
-            %% Vessel enhancement
-            flowLength_mm = calculatePlugFlowInVessels(t_s, params);
-            obj.updateVesselSegments(params.vesselSegmentsRight, ...
-                obj.enhancedCylindersRight, obj.unenhancedCylindersRight, flowLength_mm);
-            obj.updateVesselSegments(params.vesselSegmentsLeft, ...
-                obj.enhancedCylindersLeft, obj.unenhancedCylindersLeft, flowLength_mm);
+            lesionIntensity = params.lesionIntensityFunction(t_s);
+            BreastPhantom.validateLesionIntensity(lesionIntensity, t_s);
+            obj.lesionRight.setIntensity(@() params.lesionIntensityFunction(t_s));
+            
         end
 
         function S = kspaceAtTime(obj, kx, ky, kz, t_s, maxChunkSize)
@@ -199,8 +168,10 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 idxEnd = min(idxStart + maxChunkSize - 1, numSamples);
                 idx = idxStart:idxEnd;
                 percentComplete = 100 * chunkIndex / numChunks;
-                fprintf(['kspaceAtTime: chunk %d of %d, %.1f%% complete.\n'], ...
-                    chunkIndex, numChunks, percentComplete);
+                if(numChunks>1)
+                    fprintf(['kspaceAtTime: chunk %d of %d, %.1f%% complete.\n'], ...
+                        chunkIndex, numChunks, percentComplete);
+                end
                 obj.updateShapesForTime(t_s(idx));
                 S(idx) = obj.kspace(kx(idx), ky(idx), kz(idx));
             end
@@ -224,46 +195,13 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 0, 0.5 * params.breast_depth_mm, 0, ...
                 0, 0, 0);
             obj.leftAndRightBreastTissue.setShapeParameters(breastParamsBoth);
-            rightVesselRotation = params.vesselPhantomRollPitchYawRight_deg;
-            leftVesselRotation = params.vesselPhantomRollPitchYawLeft_deg;
-            obj.enhancingVesselsRight.setShapeParameters(BreastPhantom.addPoseToParameters( ...
-                struct(), xRightBreast, 0.5 * params.breast_depth_mm, 0, ...
-                rightVesselRotation(1), rightVesselRotation(2), rightVesselRotation(3)));
-            obj.enhancingVesselsLeft.setShapeParameters(BreastPhantom.addPoseToParameters( ...
-                struct(), -xRightBreast, 0.5 * params.breast_depth_mm, 0, ...
-                leftVesselRotation(1), leftVesselRotation(2), leftVesselRotation(3)));
-        end
-
-        function updateVesselSegments(obj, segments, enhancedCylinders, unenhancedCylinders, flowLength_mm)
-            cumulativeLength_mm = 0;
-
-            for idx = 1:numel(segments)
-                segment = segments(idx);
-                segmentLength_mm = segment.length_mm;
-                enhancedLength_mm = min(max(flowLength_mm - cumulativeLength_mm, 0), segmentLength_mm);
-                unenhancedLength_mm = segmentLength_mm - enhancedLength_mm;
-                cumulativeLength_mm = cumulativeLength_mm + segmentLength_mm;
-
-                [segmentCenter_mm, axisUnit] = BreastPhantom.segmentCenterAndAxis(segment.pose);
-                segmentStart_mm = segmentCenter_mm - axisUnit .* (0.5 * segmentLength_mm);
-                enhancedCenter_mm = segmentStart_mm + axisUnit .* (0.5 * enhancedLength_mm);
-                unenhancedCenter_mm = segmentStart_mm + axisUnit .* (enhancedLength_mm + 0.5 * unenhancedLength_mm);
-
-                enhancedVesselParams = struct('radius_mm', segment.radius_mm, ...
-                    'length_mm', enhancedLength_mm);
-                enhancedVesselParams.pose = BreastPhantom.createPoseStruct(...
-                    enhancedCenter_mm(1, :), enhancedCenter_mm(2, :), enhancedCenter_mm(3, :), ...
-                    segment.pose.roll_deg, segment.pose.pitch_deg, segment.pose.yaw_deg);
-
-                unenhancedVesselParams = struct('radius_mm', segment.radius_mm, ...
-                    'length_mm', unenhancedLength_mm);
-                unenhancedVesselParams.pose = BreastPhantom.createPoseStruct(...
-                    unenhancedCenter_mm(1, :), unenhancedCenter_mm(2, :), unenhancedCenter_mm(3, :), ...
-                    segment.pose.roll_deg, segment.pose.pitch_deg, segment.pose.yaw_deg);
-
-                enhancedCylinders(idx).setShapeParameters(enhancedVesselParams);
-                unenhancedCylinders(idx).setShapeParameters(unenhancedVesselParams);
-            end
+            lesionParams = struct('a_mm', params.lesionRadius_mm, ...
+                'b_mm', params.lesionRadius_mm, ...
+                'c_mm', params.lesionRadius_mm);
+            lesionParams = BreastPhantom.addPoseToParameters(lesionParams, ...
+                xRightBreast, 0.5 * params.breast_depth_mm, 0, ...
+                0, 0, 0);
+            obj.lesionRight.setShapeParameters(lesionParams);
         end
     end
 
@@ -281,138 +219,45 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 'yaw_deg', yaw);
         end
 
-        function params = normalizeVesselParams(params)
-            if ~isfield(params, 'vessel_offset_rl_mm') || isempty(params.vessel_offset_rl_mm)
-                params.vessel_offset_rl_mm = 0;
+        function params = normalizeLesionParams(params)
+            if ~isfield(params, 'lesionRadius_mm') || isempty(params.lesionRadius_mm)
+                params.lesionRadius_mm = 10;
             end
-            if ~isfield(params, 'vesselRollPitchYawRight_deg') || isempty(params.vesselRollPitchYawRight_deg)
-                params.vesselRollPitchYawRight_deg = params.breastRollPitchYaw;
-            end
-            if ~isfield(params, 'vesselRollPitchYawLeft_deg') || isempty(params.vesselRollPitchYawLeft_deg)
-                params.vesselRollPitchYawLeft_deg = params.breastRollPitchYaw;
-            end
-            if ~isfield(params, 'vesselChainCenterRight_mm') || isempty(params.vesselChainCenterRight_mm)
-                params.vesselChainCenterRight_mm = [0 0 0];
-            end
-            if ~isfield(params, 'vesselChainCenterLeft_mm') || isempty(params.vesselChainCenterLeft_mm)
-                params.vesselChainCenterLeft_mm = [0 0 0];
-            end
-            if ~isfield(params, 'vesselPhantomRollPitchYawRight_deg') || isempty(params.vesselPhantomRollPitchYawRight_deg)
-                params.vesselPhantomRollPitchYawRight_deg = [0 0 0];
-            end
-            if ~isfield(params, 'vesselPhantomRollPitchYawLeft_deg') || isempty(params.vesselPhantomRollPitchYawLeft_deg)
-                params.vesselPhantomRollPitchYawLeft_deg = [0 0 90];
-            end
-            if ~isfield(params, 'vesselSegmentsRight') || isempty(params.vesselSegmentsRight)
-                if isfield(params, 'vesselSegments') && ~isempty(params.vesselSegments)
-                    params.vesselSegmentsRight = params.vesselSegments;
-                else
-                    params.vesselSegmentsRight = BreastPhantom.buildDefaultVesselSegments( ...
-                        params, params.vesselChainCenterRight_mm, params.vesselRollPitchYawRight_deg);
-                end
-            end
-            if ~isfield(params, 'vesselSegmentsLeft') || isempty(params.vesselSegmentsLeft)
-                if isfield(params, 'vesselSegments') && ~isempty(params.vesselSegments)
-                    params.vesselSegmentsLeft = params.vesselSegments;
-                else
-                    params.vesselSegmentsLeft = BreastPhantom.buildDefaultVesselSegments( ...
-                        params, params.vesselChainCenterLeft_mm, params.vesselRollPitchYawLeft_deg);
-                end
-            end
-            params.vesselSegmentsRight = BreastPhantom.ensureVesselSegmentDefaults( ...
-                params.vesselSegmentsRight, params, params.vesselRollPitchYawRight_deg);
-            params.vesselSegmentsLeft = BreastPhantom.ensureVesselSegmentDefaults( ...
-                params.vesselSegmentsLeft, params, params.vesselRollPitchYawLeft_deg);
-        end
+            validateattributes(params.lesionRadius_mm, {'numeric'}, ...
+                {'real', 'finite', 'scalar', 'positive'}, mfilename, 'lesionRadius_mm');
 
-        function segments = buildDefaultVesselSegments(params, chainCenter_mm, chainRollPitchYaw_deg)
-            segmentCount = params.vesselSegmentCount;
-            if isfield(params, 'individualVesselLength_mm') && ~isempty(params.individualVesselLength_mm)
-                segmentLength_mm = params.individualVesselLength_mm;
-                params.totalVesselLength_mm = segmentLength_mm * segmentCount;
-            else
-                segmentLength_mm = params.totalVesselLength_mm / segmentCount;
+            if ~isfield(params, 'lesionWashinType') || isempty(params.lesionWashinType)
+                params.lesionWashinType = "medium";
             end
-            segmentLengths_mm = repmat(segmentLength_mm, 1, segmentCount);
-            segments = createBreastVesselSegments(segmentLengths_mm, params.vesselRadius_mm, ...
-                params.vessel_offset_rl_mm, chainCenter_mm, chainRollPitchYaw_deg);
-        end
+            if ~isfield(params, 'lesionWashoutType') || isempty(params.lesionWashoutType)
+                params.lesionWashoutType = "plateau";
+            end
+            if ~isfield(params, 'lesionKineticOverrides') || isempty(params.lesionKineticOverrides)
+                params.lesionKineticOverrides = struct();
+            end
 
-        function segments = ensureVesselSegmentDefaults(segments, params, defaultRollPitchYaw)
-            defaultPose = BreastPhantom.createPoseStruct(0, 0, 0, ...
-                defaultRollPitchYaw(1), defaultRollPitchYaw(2), defaultRollPitchYaw(3));
-
-            for idx = 1:numel(segments)
-                if ~isfield(segments(idx), 'length_mm') || isempty(segments(idx).length_mm)
-                    error('BreastPhantom:MissingVesselSegmentLength', ...
-                        'Each vessel segment must define length_mm in mm.');
-                end
-                validateattributes(segments(idx).length_mm, {'numeric'}, ...
-                    {'real', 'finite', 'scalar', 'positive'}, mfilename, ...
-                    sprintf('vesselSegments(%d).length_mm', idx));
-
-                if ~isfield(segments(idx), 'radius_mm') || isempty(segments(idx).radius_mm)
-                    segments(idx).radius_mm = params.vesselRadius_mm;
-                end
-                validateattributes(segments(idx).radius_mm, {'numeric'}, ...
-                    {'real', 'finite', 'scalar', 'positive'}, mfilename, ...
-                    sprintf('vesselSegments(%d).radius_mm', idx));
-
-                if ~isfield(segments(idx), 'pose') || isempty(segments(idx).pose)
-                    segments(idx).pose = defaultPose;
-                else
-                    segments(idx).pose = BreastPhantom.mergePoseDefaults( ...
-                        segments(idx).pose, defaultPose);
-                end
+            if ~isfield(params, 'lesionIntensityFunction') || isempty(params.lesionIntensityFunction)
+                params.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
+                    t_s, params, params.lesionWashinType, params.lesionWashoutType, ...
+                    params.lesionKineticOverrides);
+            end
+            if ~isa(params.lesionIntensityFunction, 'function_handle')
+                error('BreastPhantom:InvalidLesionIntensityFunction', ...
+                    'lesionIntensityFunction must be a function handle.');
             end
         end
 
-        function pose = mergePoseDefaults(pose, defaultPose)
-            if ~isfield(pose, 'center') || ~isstruct(pose.center)
-                pose.center = defaultPose.center;
-            else
-                if ~isfield(pose.center, 'x_mm')
-                    pose.center.x_mm = defaultPose.center.x_mm;
-                end
-                if ~isfield(pose.center, 'y_mm')
-                    pose.center.y_mm = defaultPose.center.y_mm;
-                end
-                if ~isfield(pose.center, 'z_mm')
-                    pose.center.z_mm = defaultPose.center.z_mm;
-                end
+        function validateLesionIntensity(intensity, t_s)
+            if ~isnumeric(intensity)
+                error('BreastPhantom:InvalidLesionIntensity', ...
+                    'Lesion intensity must be numeric.');
             end
-
-            if ~isfield(pose, 'roll_deg')
-                pose.roll_deg = defaultPose.roll_deg;
+            if ~(isscalar(intensity) || isequal(size(intensity), size(t_s)))
+                error('BreastPhantom:InvalidLesionIntensitySize', ...
+                    'Lesion intensity must be scalar or the same size as t_s.');
             end
-            if ~isfield(pose, 'pitch_deg')
-                pose.pitch_deg = defaultPose.pitch_deg;
-            end
-            if ~isfield(pose, 'yaw_deg')
-                pose.yaw_deg = defaultPose.yaw_deg;
-            end
-        end
-
-        function [center_mm, axisUnit] = segmentCenterAndAxis(pose)
-            center_mm = [pose.center.x_mm; pose.center.y_mm; pose.center.z_mm];
-            axisUnit = BreastPhantom.axisUnitFromPose(pose);
-        end
-
-        function axisUnit = axisUnitFromPose(pose)
-            roll_rad = deg2rad(pose.roll_deg);
-            pitch_rad = deg2rad(pose.pitch_deg);
-            yaw_rad = deg2rad(pose.yaw_deg);
-
-            cr = cos(roll_rad);
-            sr = sin(roll_rad);
-            cp = cos(pitch_rad);
-            sp = sin(pitch_rad);
-            cy = cos(yaw_rad);
-            sy = sin(yaw_rad);
-
-            axisUnit = [cy .* sp .* cr + sy .* sr; ...
-                sy .* sp .* cr - cy .* sr; ...
-                cp .* cr];
+            validateattributes(intensity, {'numeric'}, {'real', 'finite'}, ...
+                mfilename, 'lesionIntensity');
         end
     end
 end
