@@ -4,11 +4,6 @@ function [FOV_acquired,kmatrix_size_complete,kmatrix_size_acquired,voxel_size_mm
 %to output what the true dimensions and FOV of k-space are.
 
 
-% arguments (Input)
-%     inputArg1
-%     inputArg2
-% end
-
 FOV_read_mm = Scan_Parameters("FOV read (mm)");
 FOV_phase_pct = Scan_Parameters("FOV phase (%)");
 oversampling_phase_pct = Scan_Parameters("Phase Oversampling (%)");

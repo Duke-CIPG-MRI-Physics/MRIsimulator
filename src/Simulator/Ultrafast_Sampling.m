@@ -234,7 +234,7 @@ Sampling_Table = Sampling_Table(expandedIdx, :);
 Sampling_Table.Frequency = repmat((1:N_freqs)', original_height, 1);
 
 %Correct linear index column for addded dimension
-% Order: [Frequency, Phase, Slice, Time]
+% Order: [Frequency, Phase, Slice, Frame]
 sz_4D = [Matrix_Size_Acquired(1), Matrix_Size_Acquired(2), Matrix_Size_Acquired(3), max(Sampling_Table.Bj)+1];
 
 Sampling_Table.("Linear Index") = sub2ind(sz_4D, ...
