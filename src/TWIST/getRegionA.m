@@ -49,9 +49,10 @@ regionA_table = frequency_table{1:n_pixels_in_A,:};
 %Those points now define region A
 regionA = zeros(size(frequency_grid));
 regionA(regionA_table(:,1)) = 1;
-regionA = boolean(regionA);
+regionA = logical(regionA);
 
+figure
 imshow(regionA)
-title('Region A in acquired matrix')
+title('Region A within Acquired Matrix')
 
 end
