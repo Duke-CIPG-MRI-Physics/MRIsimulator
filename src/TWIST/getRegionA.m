@@ -42,6 +42,7 @@ regionA = zeros(size(frequency_grid));
 regionA(regionA_table(:,1)) = 1;
 regionA = logical(regionA);
 
+figure
 imshow(regionA)
 title('Region A within Acquired Matrix')
 
