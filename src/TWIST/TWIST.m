@@ -61,7 +61,7 @@ end
 kyi = 1:Matrix_Size_Acquired(3);  % slice (columns)
 kzi = 1:Matrix_Size_Acquired(2);  % phase (rows)
 
-centerPixel = ceil(0.5 * (Matrix_Size_Acquired + 1));  % Use full kspaceSize as per your request
+centerPixel = floor(Matrix_Size_Acquired/2)+1;  % Use full kspaceSize as per your request
 ky = kyi - centerPixel(3);  % col offset (slice)
 kz = kzi - centerPixel(2);  % row offset (phase)
 [kyM, kzM] = meshgrid(ky, kz);  % rows, cols
