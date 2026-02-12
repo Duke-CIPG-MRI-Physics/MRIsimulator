@@ -1,4 +1,4 @@
-function [TWIST_sampling_order] = TWIST(pA,N,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor)
+function [TWIST_sampling_order] = TWIST(pA,pB,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor)
 %Roberto Carrascosa, Duke University, June 2025
 % This function implements the TWIST sampling scheme for MRI
 % according to:
@@ -35,8 +35,8 @@ arguments
         % pA must be a single numeric value between 0.04 and 1, inclusive.
         pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0), mustBeLessThanOrEqual(pA, 1)}
 
-        % N must be a single, positive, integer value.
-        N (1,1) {mustBeNumeric, mustBePositive, mustBeInteger}
+        % pB must be one of the allowed values (0,.1,.25,.33,.5)
+        pB {mustBeMember(pB,[0,.1,.25,.33,.5])}
 
         % kspaceSize must be a 1x3 vector of positive, integer values.
         Matrix_Size_Acquired (1,3) {mustBeNumeric, mustBePositive, mustBeInteger}
@@ -51,13 +51,10 @@ arguments
         PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor,1), mustBeGreaterThan(PF_Factor,.5)}
 end
 
+N = round(1/pB);
 
-if N > ((Matrix_Size_Acquired(2)*Matrix_Size_Acquired(3)))/2
-    error('N too large, must be smaller than (#phase*#slice)/2')
-end
+%% --- Coordinate Grid Setup (Phase/Slice) --
 
-
-%% --- Coordinate Grid Setup (Phase/Slice) ---
 kyi = 1:Matrix_Size_Acquired(3);  % slice (columns)
 kzi = 1:Matrix_Size_Acquired(2);  % phase (rows)
 
