@@ -1,8 +1,11 @@
-function [Sampling_Table,PF_ask,GRAPPA_ask] = Ultrafast_Sampling(Matrix_Size_Acquired,FOV_acquired,pA,N,Time_Measured,TR,R,PF_Factor)
+function [Sampling_Table,TWIST_Stats] = Ultrafast_Sampling(Matrix_Size_Acquired,FOV_acquired,pA,pB,N_Measurements,TR,R,PF_Factor)
 %This function implements full sampling trajectory for Ultrafast MRI
 %Imaging using TWIST,GRAPPA, and Partial Fourier
 %   GRAPPA and PF are optional input. Due to MATLAB limitations, the way to
 %   skip one or both inputs is to use a value of [1,1]
+
+%Compared to Timing Demo, this function does not output to command line,
+%passes as output
 
 %% --- Checking for validity of inputs
 arguments (Input)
@@ -15,11 +18,11 @@ arguments (Input)
     % pA defines size of TWIST 'A' region
     pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0), mustBeLessThanOrEqual(pA, 1)}
 
-    % N defines how many subregions, 'Bj', that 'B' region is divided into
-    N (1,1) {mustBeNumeric, mustBePositive, mustBeInteger}
+    % pB must be one of the allowed values (0,.1,.25,.33,.5)
+    pB {mustBeMember(pB,[0,.1,.25,.33,.5])}
     
-    %Time_measured must be a single, positive value in seconds
-    Time_Measured (1,1) {mustBeNumeric, mustBePositive}
+    % N_Measurements is number of TWIST frames to acquire
+    N_Measurements (1,1) {mustBePositive, mustBeInteger}
 
     %Desired TR for Sequence
     TR (1,1) {mustBeNumeric, mustBePositive}
@@ -33,174 +36,73 @@ arguments (Input)
 
 end
 
-if N > ((Matrix_Size_Acquired(2)*Matrix_Size_Acquired(3)))/2
-    error('N too large, must be smaller than (#phase*#slice)/2')
-end
+N = round(1/pB);
+
+
 
 %% --- TWIST
 
-Sampling_Table = TWIST(pA,N,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor);
+Sampling_Table = TWIST(pA,pB,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor);
 
-%% --- Timing Setup and Estimate
-
-%TWIST
-Preparation_Scan_Time = TR*Matrix_Size_Acquired(2)*Matrix_Size_Acquired(3);
-TWIST_Temporal_Resolution =  TR*(sum(Sampling_Table.Bj ~= 0))/N;
-Num_Measurements_TWIST = ceil(Time_Measured/TWIST_Temporal_Resolution);
-Measurement_Time = TWIST_Temporal_Resolution*Num_Measurements_TWIST;
-
-Timing = table(TWIST_Temporal_Resolution,Num_Measurements_TWIST,Preparation_Scan_Time,Measurement_Time);
-Timing.Properties.VariableNames = {'Average Temporal Resolution (s)','# of Measurements','Preparation Scan Time (s)','Measurement Time (s)'};
-Timing.Properties.RowNames = {'TWIST Only'};
+%% --- Undersampling
 
 if all(R ~= 1)
-%TWIST + GRAPPA
-GRAPPA_acceleration_factor = 1/(R(1)*R(2));
-
-Preparation_Scan_Time_GRAPPA = Preparation_Scan_Time*GRAPPA_acceleration_factor;
-GRAPPA_Temporal_Resolution =  TWIST_Temporal_Resolution*GRAPPA_acceleration_factor;
-Num_Measurements_GRAPPA = ceil(Time_Measured/GRAPPA_Temporal_Resolution);
-Measurement_Time_GRAPPA = GRAPPA_Temporal_Resolution*Num_Measurements_GRAPPA;
-
-Timing = [Timing ; {GRAPPA_Temporal_Resolution,Num_Measurements_GRAPPA,Preparation_Scan_Time_GRAPPA,Measurement_Time_GRAPPA}];
-Timing.Properties.RowNames{end} = 'TWIST+GRAPPA';
+    %GRAPPA
+    Sampling_Table = GRAPPA_Undersample(Matrix_Size_Acquired,Sampling_Table,R);
 end
 
 if all(PF_Factor ~= 1)
-%TWIST + Partial Fourier
-PF_acceleration_factor = PF_Factor(1)*PF_Factor(2);
-
-Preparation_Scan_Time_PF = Preparation_Scan_Time*PF_acceleration_factor;
-PF_Temporal_Resolution =  TWIST_Temporal_Resolution*PF_acceleration_factor;
-Num_Measurements_PF = ceil(Time_Measured/PF_Temporal_Resolution);
-Measurement_Time_PF = PF_Temporal_Resolution*Num_Measurements_PF;
-
-Timing = [Timing ; {PF_Temporal_Resolution,Num_Measurements_PF,Preparation_Scan_Time_PF,Measurement_Time_PF}];
-Timing.Properties.RowNames{end} = 'TWIST+Partial Fourier';
+    %Partial Fourier
+    Sampling_Table = PF_Undersample(Matrix_Size_Acquired,Sampling_Table,PF_Factor);
 end
 
-if all(R ~= 1) && all(PF_Factor ~= 1)
-%TWIST + GRAPPA + Partial Fourier
-Preparation_Scan_Time_GRAPPA_PF = Preparation_Scan_Time_GRAPPA*PF_acceleration_factor;
-GRAPPA_PF_Temporal_Resolution =  GRAPPA_Temporal_Resolution*PF_acceleration_factor;
-Num_Measurements_GRAPPA_PF = ceil(Time_Measured/GRAPPA_PF_Temporal_Resolution);
-Measurement_Time_GRAPPA_PF = GRAPPA_PF_Temporal_Resolution*Num_Measurements_GRAPPA_PF;
-
-Timing = [Timing ; {GRAPPA_PF_Temporal_Resolution,Num_Measurements_GRAPPA_PF,Preparation_Scan_Time_GRAPPA_PF,Measurement_Time_GRAPPA_PF}];
-Timing.Properties.RowNames{end} = 'TWIST+GRAPPA+Partial Fourier';
-end
-fprintf('TIMING ESTIMATES:\n')
-disp(Timing)
-fprintf('\n')
-
-
-%% --- Asking what to use
-if any(R ~= 1) && all(PF_Factor == 1)
-PF_ask = 'n';
-
-GRAPPA_ask = input('\n\nUse GRAPPA? (y or n)\n','s');
-
-    if GRAPPA_ask == 'n' 
-        Num_Measurements = Num_Measurements_TWIST;
-    elseif GRAPPA_ask =='y'
-        Num_Measurements = Num_Measurements_GRAPPA;
-
-    else
-        error('At least one input not supported, please respond y or n')
-    end
-
-
-
-elseif any(PF_Factor ~= 1) && all(R == 1)
-GRAPPA_ask = 'n';
-
-PF_ask = input('Use Partial Fourier? (y or n)\n','s');
-
-    if PF_ask =='n'
-        Num_Measurements = Num_Measurements_TWIST;
-    elseif PF_ask =='y'
-        Num_Measurements = Num_Measurements_PF;
-    else
-    error('At least one input not supported, please respond y or n')
-    end
-
-elseif any(R ~= 1) && any(PF_Factor ~= 1)
-    
-GRAPPA_ask = input('\n\nUse GRAPPA? (y or n)\n','s');
-PF_ask = input('Use Partial Fourier? (y or n)\n','s');
-
-    if GRAPPA_ask == 'n' && PF_ask =='n'
-        Num_Measurements = Num_Measurements_TWIST;
-    elseif GRAPPA_ask =='y' && PF_ask == 'n'
-        Num_Measurements = Num_Measurements_GRAPPA;
-    elseif GRAPPA_ask == 'n' && PF_ask == 'y'
-        Num_Measurements = Num_Measurements_PF;
-    elseif GRAPPA_ask == 'y' && PF_ask =='y'
-        Num_Measurements = Num_Measurements_GRAPPA_PF;
-    else
-    error('At least one input not supported, please respond y or n')
-    end
-else
-    GRAPPA_ask = 'n';
-    PF_ask = 'n';
-    Num_Measurements = Num_Measurements_TWIST;
-end
-%% --- Integrating GRAPPA
-if GRAPPA_ask == 'y'
-
-fprintf('Removing GRAPPA Lines...\n')
-Sampling_Table = GRAPPA_Undersample(Matrix_Size_Acquired,Sampling_Table,R);
-
-elseif PF_ask == 'n'
-    fprintf('Skipping GRAPPA...\n')
-    pause(.2)
-end
-
-%% --- Integrating Partial Fourier
-if PF_ask == 'y'
-   
-fprintf('Removing PF Areas...\n')
-Sampling_Table = PF_Undersample(Matrix_Size_Acquired,Sampling_Table,PF_Factor);
-
-elseif PF_ask == 'n'
-    fprintf('Skipping Partial Fourier...\n')
-    pause(.2)
-end
 
 %% --- Correcting Number of Measurements 
 
 % 1. Split the table into a static part (A) and a part to be repeated (B)
-Region_A_rows = (Sampling_Table.Bj == 0);
-Sampling_Table_A = Sampling_Table(Region_A_rows, :);
-Sampling_Table_B = Sampling_Table(~Region_A_rows, :);
+Sampling_Table_A = Sampling_Table(Sampling_Table.Bj == 0, :);
+Sampling_Table_B = Sampling_Table(Sampling_Table.Bj ~= 0, :);
 
-% 2. Calculate the total number of repetitions needed
-num_reps = ceil(Num_Measurements / N);
+Complete_Sampling_Table = Sampling_Table;
 
-% 3. Build the full periodic table in a single, vectorized operation
-if num_reps > 0 && ~isempty(Sampling_Table_B)
-    % Replicate the base table 'num_reps' times using repmat
-    Sampling_Table_B_Corrected = repmat(Sampling_Table_B, num_reps, 1);
+frame_number = 1;
+i_Bj = 1;
+while frame_number <= N_Measurements 
+    Frame_Sampling_Table = [Sampling_Table_A;Sampling_Table_B(Sampling_Table_B.Bj==i_Bj,:)];
+    Complete_Sampling_Table = [Sampling_Table;Frame_Sampling_Table];
     
-    % Create a column vector of offsets to add (e.g., [0; N; 2*N; ...])
-    offsets = (0:num_reps-1)' * N;
-    
-    % Use repelem to expand the offsets to match the replicated table's size
-    bj_offsets = repelem(offsets, height(Sampling_Table_B), 1);
-    
-    % Add the offsets to the Bj column all at once
-    Sampling_Table_B_Corrected.Bj = Sampling_Table_B_Corrected.Bj + bj_offsets;
-    
-    % Remove rows that exceed the total number of measurements
-    Sampling_Table_B_Corrected(Sampling_Table_B_Corrected.Bj > Num_Measurements, :) = [];
-else
-    % Handle case where no repetitions are needed or Table B is empty
-    Sampling_Table_B_Corrected = Sampling_Table_B;
-    Sampling_Table_B_Corrected(Sampling_Table_B_Corrected.Bj > Num_Measurements, :) = [];
+    frame_number = frame_number + 1;
+    i_Bj = i_Bj + 1;
+
+    if i_Bj > N
+        i_Bj = 1;
+    end
 end
 
-% 4. Combine the static part with the new periodic part
-Sampling_Table = [Sampling_Table_A; Sampling_Table_B_Corrected];
+% % 2. Build the full periodic table in a single, vectorized operation
+% if N_Measurements > 0 && ~isempty(Sampling_Table_B)
+%     % Replicate the base table 'N_Measurements' times using repmat
+%     Sampling_Table_B_Replicated = repmat(Sampling_Table_B, N_Measurements, 1);
+% 
+%     % Create a column vector of offsets to add (e.g., [0; N; 2*N; ...])
+%     offsets = (0:N_Measurements-1)' * N;
+% 
+%     % Use repelem to expand the offsets to match the replicated table's size
+%     bj_offsets = repelem(offsets, height(Sampling_Table_B), 1);
+% 
+%     % Add the offsets to the Bj column all at once
+%     Sampling_Table_B_Replicated.Bj = Sampling_Table_B_Replicated.Bj + bj_offsets;
+% 
+%     % Remove rows that exceed the total number of measurements
+%     Sampling_Table_B_Replicated(Sampling_Table_B_Replicated.Bj > Num_Measurements, :) = [];
+% else
+%     % Handle case where no repetitions are needed or Table B is empty
+%     Sampling_Table_B_Replicated = Sampling_Table_B;
+%     Sampling_Table_B_Replicated(Sampling_Table_B_Replicated.Bj > Num_Measurements, :) = [];
+% end
+% 
+% % 3. Combine the static part with the new periodic part
+% Sampling_Table = [Sampling_Table_A; Sampling_Table_B_Replicated];
 
 %% --- Calculating Actual Time
 Num_Measurements_Actual = Num_Measurements;
