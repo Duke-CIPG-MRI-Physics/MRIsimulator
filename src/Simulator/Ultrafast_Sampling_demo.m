@@ -1,4 +1,8 @@
 clear;clc; close all;
+
+% CURRENTLY BROKEN
+
+
 %this demo illustrates that areas being sampled for Ultrafast MRI
 %it incorporates most of the same logic as Ultrafast_Sampling.m
 
