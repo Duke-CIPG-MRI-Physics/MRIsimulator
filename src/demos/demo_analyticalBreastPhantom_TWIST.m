@@ -1,4 +1,4 @@
-clear all; 
+clear; 
 close all; 
 clc; 
 
@@ -30,7 +30,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 pA = 0.05;
 Nb = 10;
 Time_Measured = 500; %sec
-R = 1; %[2 3]
+R = [2 3]; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
 Sampling_Table = Ultrafast_Sampling(matrix_size_acquired,FOV_acquired,pA,Nb,Time_Measured,TR,R,PF_Factor);
@@ -81,7 +81,7 @@ endOfSecondFrame = max(Sampling_Table(Sampling_Table.Bj == 0,:).Timing);
 
 % Injected contrast parameters
 breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
-breastPhantomParams.lesionArrivalDelay_s = 60;
+breastPhantomParams.lesionArrivalDelay_s = 85;
 breastPhantomParams.lesionWashinType = "instant";
 breastPhantomParams.lesionWashoutType = "washout";
 breastPhantomParams.lesionPeakEnhancement = 1.6;
@@ -169,8 +169,11 @@ final_IMspace = twistImage(...
 
 
 %% display phantom
+
+phantom_magnitude = abs(twistImage);
+
 figure
-sliceViewer(abs(squeeze(twistImage(:,:,160,:))));
+sliceViewer(squeeze(phantom_magnitude(:,:,160,:)));
 
 
 %% Contrast dynamics calculation
@@ -180,8 +183,10 @@ figure;
 plot(Sampling_Table.Timing(1:1000:end),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(1:1000:end)) ...
     + breastPhantomParams.breastIntensity);
 
-%convert TWIST frames to actual time
-kspace_center = round(matrix_size_acquired./2+1);
+%convert TWIST frames to actual time, time for a whole frame is defined as
+%   moment when center of k-space is sampled.
+
+kspace_center = floor(matrix_size_acquired/2)+1;
 kspace_center_idx = sub2ind(matrix_size_acquired,kspace_center(1),kspace_center(2),kspace_center(3));
 for i_frames = 2:size(twistImage,4)
     kspace_center_idx(i_frames) = kspace_center_idx(i_frames-1)+prod(matrix_size_acquired);
@@ -205,19 +210,58 @@ legend("Ground Truth","TWIST Measured")
 hold off
 
 title("Contrast Wash-in")
-xlabel("Frame")
+xlabel("Time (s)")
 ylabel("Pixel Value")
 
-%% Ask to save?
-% save_ask = input('Save output?: (y/n)','s');
-% 
-% if strcmpi(save_ask, 'y')
-%     fprintf('Input desired filename, file will be saved as <filename>.mat\n')
-%     filename = input(':','s');
-%     fprintf('Saving...\n')
-%     save(filename,'twistImage')
-%     fprintf('File saved as %s.mat\n', filename);
-% else 
-%     fprintf('Output not saved')
-% end
+%% Saving output
+save_ask = input('Save output?: (y/n)','s');
+
+if strcmpi(save_ask, 'y')
+
+    %measuring phantom size 
+    output_bytes = whos("phantom_magnitude");
+    output_bytes = output_bytes.bytes;
+
+    %creating structure with all phantom information
+
+    % Outputs
+    phantom_simulated.outputs.phantom_magnitude = phantom_magnitude;
+    phantom_simulated.outputs.timing            = TWIST_frame_times;
+
+    % Inputs (Consolidating everything under .inputs)   
+    phantom_simulated.inputs.breastPhantomParams = breastPhantomParams;
+    phantom_simulated.inputs.scan_parameters     = scan_parameters;
+    phantom_simulated.inputs.TR                  = TR;
+    phantom_simulated.inputs.TE                  = TE;
+    phantom_simulated.inputs.rBW_HzPerPix        = rBW_HzPerPix;
+
+    % Nested TWIST parameters
+    phantom_simulated.inputs.TWIST.pA            = pA;
+    phantom_simulated.inputs.TWIST.pB            = 1/Nb;
+    phantom_simulated.inputs.TWIST.Time_Measured = Time_Measured;
+
+    % Nested Undersampling parameters
+    phantom_simulated.inputs.Undersampling.GRAPPA_R  = R;
+    phantom_simulated.inputs.Undersampling.PF_Factor = PF_Factor;
+
+
+    fprintf('Input desired filename, file will be saved as <filename>.mat\n')
+    filename = input(':','s');
+
+    if output_bytes >= 1.99e9
+        fprintf('Saving using v7.3...\n')
+        save(filename,'phantom_simulated','-v7.3')
+        fprintf('File saved as %s.mat\n, ', filename);
+
+    else
+        fprintf('Saving using v7...\n')
+        save(filename,'phantom_simulated','-v7')
+        fprintf('File saved as %s.mat\n', filename);
+
+    end
+
+else 
+    fprintf('Output not saved')
+
+end
 
