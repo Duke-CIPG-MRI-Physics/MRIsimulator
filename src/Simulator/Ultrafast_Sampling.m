@@ -106,6 +106,11 @@ end
 
 %% --- Calculating Actual Time
 Num_Measurements_Actual = Num_Measurements;
+Complete_Sampling_Table = renamevars(Complete_Sampling_Table,"Bj","Frame");
+
+
+
+%% --- Calculating Time
 Temporal_Resolution_Actual = TR*sum(Sampling_Table.Bj ~= 0)/Num_Measurements_Actual;
 Preparation_Scan_Time_Actual = TR*sum(Sampling_Table.Bj == 0);
 Measurement_Time_Actual = Num_Measurements_Actual*Temporal_Resolution_Actual;
