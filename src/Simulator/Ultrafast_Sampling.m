@@ -57,19 +57,19 @@ if all(PF_Factor ~= 1)
 end
 
 
-%% --- Correcting Number of Measurements 
+%% --- Correcting for number of measurements 
 
-% 1. Split the table into a static part (A) and a part to be repeated (B)
 Sampling_Table_A = Sampling_Table(Sampling_Table.Bj == 0, :);
 Sampling_Table_B = Sampling_Table(Sampling_Table.Bj ~= 0, :);
 
 Complete_Sampling_Table = Sampling_Table;
+Complete_Sampling_Table.Bj(:) = 0;
 
 frame_number = 1;
 i_Bj = 1;
 while frame_number <= N_Measurements 
     Frame_Sampling_Table = [Sampling_Table_A;Sampling_Table_B(Sampling_Table_B.Bj==i_Bj,:)];
-    Complete_Sampling_Table = [Sampling_Table;Frame_Sampling_Table];
+    Complete_Sampling_Table = [Complete_Sampling_Table;Frame_Sampling_Table];
     
     frame_number = frame_number + 1;
     i_Bj = i_Bj + 1;
