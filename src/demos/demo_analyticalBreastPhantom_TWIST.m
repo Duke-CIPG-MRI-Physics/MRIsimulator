@@ -28,12 +28,12 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 %% Configure acquisition ordering and timing
 
 pA = 0.05;
-Nb = 10;
-Time_Measured = 500; %sec
-R = [2 3]; %[2 3]
+pB = .1;
+Num_Measurements = 20;
+R = 1; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
-Sampling_Table = Ultrafast_Sampling(matrix_size_acquired,FOV_acquired,pA,Nb,Time_Measured,TR,R,PF_Factor);
+[Sampling_Table,TWIST_Timing] = Ultrafast_Sampling(matrix_size_acquired,FOV_acquired,pA,pB,Num_Measurements,TR,R,PF_Factor);
 
 %displaying region A
 figure
