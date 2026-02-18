@@ -121,32 +121,32 @@ TWIST_Stats = table(Preparation_Scan_Time,Temporal_Resolution,Measurement_Time);
 TWIST_Stats.Properties.VariableNames = {'Preparation Scan Time (s)','Average Temporal Resolution (s)','Measurement Time (s)'};
 
 %% --- Incorporate Frequency Encoding
-%This can take place at the very end as all we are doing is duplicating
-%each entry by the number of Frequency encodes, this does not impact the
-%calculation of scan time
-% 
-% N_freqs = Matrix_Size_Acquired(1); 
-% 
-% % Step 1: Expand the table
-% % We generate a list of indices where each index is repeated N times
-% expandedIdx = repelem(1:height(Complete_Sampling_Table), N_freqs);
-% 
-% original_height = height(Complete_Sampling_Table);
-% 
-% Complete_Sampling_Table = Complete_Sampling_Table(expandedIdx, :);
-% 
-% % Step 2: Add the repetition counter
-% % We generate a vector [1; 2; 3] and stack it for every original row
-% Complete_Sampling_Table.Frequency = repmat((1:N_freqs)', original_height, 1);
-% 
-% %Correct linear index column for addded dimension
-% % Order: [Frequency, Phase, Slice, Frame]
-% sz_4D = [Matrix_Size_Acquired(1), Matrix_Size_Acquired(2), Matrix_Size_Acquired(3), max(Complete_Sampling_Table.Bj)+1];
-% 
-% Complete_Sampling_Table.("Linear Index") = sub2ind(sz_4D, ...
-%     Complete_Sampling_Table.Frequency, ...          % Dim 1
-%     Complete_Sampling_Table.("Row (phase)"), ...    % Dim 2
-%     Complete_Sampling_Table.("Column (slice)"), ... % Dim 3
-%     Complete_Sampling_Table.Bj + 1);                % Dim 4
+% This can take place at the very end as all we are doing is duplicating
+% each entry by the number of Frequency encodes, this does not impact the
+% calculation of scan time
+
+N_freqs = Matrix_Size_Acquired(1); 
+
+% Step 1: Expand the table
+% We generate a list of indices where each index is repeated N times
+expandedIdx = repelem(1:height(Complete_Sampling_Table), N_freqs);
+
+original_height = height(Complete_Sampling_Table);
+
+Complete_Sampling_Table = Complete_Sampling_Table(expandedIdx, :);
+
+% Step 2: Add the repetition counter
+% We generate a vector [1; 2; 3] and stack it for every original row
+Complete_Sampling_Table.Frequency = repmat((1:N_freqs)', original_height, 1);
+
+%Correct linear index column for addded dimension
+% Order: [Frequency, Phase, Slice, Frame]
+sz_4D = [Matrix_Size_Acquired(1), Matrix_Size_Acquired(2), Matrix_Size_Acquired(3), max(Complete_Sampling_Table.Bj)+1];
+
+Complete_Sampling_Table.("Linear Index") = sub2ind(sz_4D, ...
+    Complete_Sampling_Table.Frequency, ...          % Dim 1
+    Complete_Sampling_Table.("Row (phase)"), ...    % Dim 2
+    Complete_Sampling_Table.("Column (slice)"), ... % Dim 3
+    Complete_Sampling_Table.Bj + 1);                % Dim 4
 
 end
