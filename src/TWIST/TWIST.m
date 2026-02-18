@@ -1,12 +1,6 @@
 function [TWIST_sampling_order] = TWIST(pA,pB,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor)
 %Roberto Carrascosa, Duke University, June 2025
 % This function implements the TWIST sampling scheme for MRI
-% according to:
-%Song T, Laine AF, Chen Q, Rusinek H, Bokacheva L, Lim RP, Laub G,
-%  Kroeker R, Lee VS. Optimal k-space sampling for dynamic
-%  contrast-enhanced MRI with an application to MR renography. 
-% Magn Reson Med. 2009 May;61(5):1242-8. doi: 10.1002/mrm.21901.
-%  PMID: 19230014; PMCID: PMC2773550.
 
 %This function outputs a table of points, in the order they should be
 %sampled for TWIST. Note that TWIST operates only on 3D acquisitions.
@@ -17,17 +11,27 @@ function [TWIST_sampling_order] = TWIST(pA,pB,Matrix_Size_Acquired,FOV_acquired,
 % pA --- defines the size of the central region that is sampled for
 %   every measurement
 
-% N --- the reciporal of pB, whre pB defines the fraction of the exterior
-%  of k-space which is sampled every measurement. N must be an integer
+% pB --- where pB defines the fraction of the exteriorvof k-space which is 
+%   sampled every measurement. There is a limited set of allowed inputs
 
-% kspace_size --- vector of form: [#frequency,#phase (rows),#slice (columns)]
+% Matrix_Size_Acquired --- vector of form: [#frequency, #phase (rows), #slice (columns)]
 
+% FOV_acquired --- vector of form: [freq FOV, phase FOV, slice FOV] 
+%   units do not matter
 
+% R --- GRAPPA acceleration factor of form [phase, slice]
+%   can be skipped with value of 1
+
+% PF_Factor --- Partial Fourier acceleration factor of form [phase fraction, slice fraction]
+%   can be skipped with value of 1
+
+%---------------------------------------
 
 %The output of this function is a table of form:
-% Linear Index, Bj, Row(phase), Column(slice)
+% Linear Index, Bj, Frame, Row(phase), Column(slice)
 %
-% It is in the correct sampling order to achieve TWIST
+% It is one complete TWIST sequence: full k-space, followed by interleaved
+% A and B region in correct order.
 
 
 %% --- Checking for validity of inputs
@@ -51,7 +55,8 @@ arguments
         PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor,1), mustBeGreaterThan(PF_Factor,.5)}
 end
 
-Nb = round(1/pB);
+Nb = round(1/pB); %TODO: fix this and subsequent code to allow for pB = 0
+
 
 %% --- Coordinate Grid Setup (Phase/Slice) --
 
@@ -77,6 +82,7 @@ theta_matrix = abs(theta_matrix);
 regionB = ~regionA;
 
 %% --- Radial and Angular Sorting ---
+% sort by increasing frequency 1st, angle 2nd
 columnNames = ["Linear Index","Frequency","Theta","Region A?"];
 unsortedData = table(frequency_table{:,1}, frequency_table{:,2}, theta_matrix(frequency_table{:,1}), regionA(frequency_table{:,1}),'VariableNames', columnNames);
 sortedData = sortrows(unsortedData, [2 3], 'ascend');
@@ -95,7 +101,6 @@ numRegionB_points = length(regionB_rows);
 % Create a repeating sequence from 1 to N for Region B points.
 % The 'mod' function, combined with adding 1, creates a sequence that
 % cycles from 1 to N.
-
 bj_sequence = mod(0:(numRegionB_points - 1), Nb) + 1;
 
 % Assign the generated 'bj_sequence' to the 'Bj' column for the
@@ -106,17 +111,16 @@ sortedData_regionA = sortedData(sortedData.("Region A?"),:);
 sortedData_regionB = sortedData(~sortedData.("Region A?"),:);
 
 
-
 %% --- Creating Sampling Order
 
-%Sampling of k-space starts at the outer edge of A (kr≈Kc) and proceeds 
+%Sampling of k-space starts at the outer edge of A and proceeds 
 % toward the origin...
 sortedData_regionA_descend = flipud(sortedData_regionA);
 
-%...via all the odd (kr,Θ) points from the sorted list.
+%...via all the odd points from the sorted list.
 A_to_origin = sortedData_regionA_descend(1:2:end,:);
 
-%Upon reaching the minimum kr, the sampling direction is reversed 
+%Upon reaching the center, the sampling direction is reversed 
 % and every even point is acquired until the edge of A is reached.
 A_outward = flipud(sortedData_regionA_descend(2:2:end,:));
 
@@ -138,12 +142,12 @@ for ii = 1:Nb
 
     kspaceSamplingOrder_B_current_Bj = [B_outward_current_Bj ; B_inward_current_Bj];
     
-    %This defines sampling order for only B region, as is used only in full
-    %acquisition
+    %Define sampling order for only B region, as is used only in initial
+    %acqusition
     kspaceSamplingOrder_B = [kspaceSamplingOrder_B;kspaceSamplingOrder_B_current_Bj];
 
 
-    %This creates the sampling order for the frames
+    %Create the sampling order for the frames
     kspaceSamplingOrder_current_frame = [kspaceSamplingOrder_A;kspaceSamplingOrder_B_current_Bj];
     kspaceSamplingOrder_current_frame.("Frame") = ii * ones(height(kspaceSamplingOrder_current_frame),1);
     kspaceSamplingOrder_all_frames = [kspaceSamplingOrder_all_frames;kspaceSamplingOrder_current_frame];
@@ -154,12 +158,9 @@ end
 
 %% --- Appending the initial full k-space acquisition
 
-%assuming the overall trajectory is the same, but we only collect A at the
-% very end
 
 kspaceSamplingOrder_initial = [kspaceSamplingOrder_B;kspaceSamplingOrder_A];
 kspaceSamplingOrder_initial.("Frame") = zeros(height(kspaceSamplingOrder_initial),1);
-
 
 kspaceSamplingOrder_full = [kspaceSamplingOrder_initial;kspaceSamplingOrder_all_frames];
 
