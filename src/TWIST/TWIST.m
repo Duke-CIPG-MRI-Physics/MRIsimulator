@@ -51,7 +51,7 @@ arguments
         PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor,1), mustBeGreaterThan(PF_Factor,.5)}
 end
 
-N = round(1/pB);
+Nb = round(1/pB);
 
 %% --- Coordinate Grid Setup (Phase/Slice) --
 
@@ -63,22 +63,22 @@ ky = kyi - centerPixel(3);  % col offset (slice)
 kz = kzi - centerPixel(2);  % row offset (phase)
 [kyM, kzM] = meshgrid(ky, kz);  % rows, cols
 
-[theta, kr] = cart2pol(kyM, kzM);
-%Fix theta range, direction, and 0
-theta(theta>0) = 2*pi-(theta(theta>0)); 
-theta = abs(theta);
+theta_matrix = cart2pol(kyM, kzM);
 
-kr = round(kr/1)*1;  % Integer bins for radius
+%Fix theta range, direction, and 0
+theta_matrix(theta_matrix>0) = 2*pi-(theta_matrix(theta_matrix>0)); 
+theta_matrix = abs(theta_matrix);
+
 
 %% --- Get Region A---
-regionA = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R);
+[regionA,frequency_table] = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R);
 
 %% --- Define Region B
 regionB = ~regionA;
 
 %% --- Radial and Angular Sorting ---
-columnNames = {'Index','Kr','Theta','Region A?'};
-unsortedData = table((1:numel(kr))', kr(:), theta(:), regionA(:),'VariableNames',columnNames);
+columnNames = ["Linear Index","Frequency","Theta","Region A?"];
+unsortedData = table(frequency_table{:,1}, frequency_table{:,2}, theta_matrix(frequency_table{:,1}), regionA(frequency_table{:,1}),'VariableNames', columnNames);
 sortedData = sortrows(unsortedData, [2 3], 'ascend');
 
 %% --- Add Bj Column to Sorted Data ---
@@ -96,7 +96,7 @@ numRegionB_points = length(regionB_rows);
 % The 'mod' function, combined with adding 1, creates a sequence that
 % cycles from 1 to N.
 
-bj_sequence = mod(0:(numRegionB_points - 1), N) + 1;
+bj_sequence = mod(0:(numRegionB_points - 1), Nb) + 1;
 
 % Assign the generated 'bj_sequence' to the 'Bj' column for the
 % identified Region B rows.
@@ -122,47 +122,51 @@ A_outward = flipud(sortedData_regionA_descend(2:2:end,:));
 
 %Start building a new table which is sorted by sampling order
 kspaceSamplingOrder_A = [A_to_origin;A_outward];
-kspaceSamplingOrder_frames = [];
+
+kspaceSamplingOrder_all_frames = [];
 kspaceSamplingOrder_B = [];
 
-for ii = 1:N
+for ii = 1:Nb
     B_current_Bj = sortedData_regionB(sortedData_regionB.Bj == ii,:);
 
     %Then in region B the trajectory Bj is sampled by first acquiring 
-% every odd point on the way toward larger kr...
+    % every odd point on the way outwards
     B_outward_current_Bj = B_current_Bj(1:2:end,:);
    
-    %and then every even point on the way back toward Kc 
+    %and then every even point on the way back in 
     B_inward_current_Bj = flipud(B_current_Bj(2:2:end,:));
 
     kspaceSamplingOrder_B_current_Bj = [B_outward_current_Bj ; B_inward_current_Bj];
-
-    kspaceSamplingOrder_A.Bj = kspaceSamplingOrder_A.Bj + 1;
-
-    kspaceSamplingOrder_B_current_Bj.Bj = ones(height(kspaceSamplingOrder_B_current_Bj),1)*kspaceSamplingOrder_A.Bj(1);
-
+    
+    %This defines sampling order for only B region, as is used only in full
+    %acquisition
     kspaceSamplingOrder_B = [kspaceSamplingOrder_B;kspaceSamplingOrder_B_current_Bj];
 
-    kspaceSamplingOrder_frames = [kspaceSamplingOrder_frames;kspaceSamplingOrder_A;kspaceSamplingOrder_B_current_Bj];
+
+    %This creates the sampling order for the frames
+    kspaceSamplingOrder_current_frame = [kspaceSamplingOrder_A;kspaceSamplingOrder_B_current_Bj];
+    kspaceSamplingOrder_current_frame.("Frame") = ii * ones(height(kspaceSamplingOrder_current_frame),1);
+    kspaceSamplingOrder_all_frames = [kspaceSamplingOrder_all_frames;kspaceSamplingOrder_current_frame];
     
 end
+
 
 
 %% --- Appending the initial full k-space acquisition
 
 %assuming the overall trajectory is the same, but we only collect A at the
-%very end
+% very end
 
 kspaceSamplingOrder_initial = [kspaceSamplingOrder_B;kspaceSamplingOrder_A];
-kspaceSamplingOrder_initial.Bj = zeros(height(kspaceSamplingOrder_initial),1);
+kspaceSamplingOrder_initial.("Frame") = zeros(height(kspaceSamplingOrder_initial),1);
 
-kspaceSamplingOrder_full = [kspaceSamplingOrder_initial;kspaceSamplingOrder_frames];
+
+kspaceSamplingOrder_full = [kspaceSamplingOrder_initial;kspaceSamplingOrder_all_frames];
 
 
 %% --- Cleaning up the output table
 
-TWIST_sampling_order = kspaceSamplingOrder_full(:,{'Index','Bj'});
-TWIST_sampling_order.Properties.VariableNames(1) = {'Linear Index'};
+TWIST_sampling_order = kspaceSamplingOrder_full(:,{'Linear Index','Bj','Frame'});
 
 [row,col] = ind2sub(Matrix_Size_Acquired(2:3),TWIST_sampling_order.("Linear Index"));
 TWIST_sampling_order.("Row (phase)") = row;
