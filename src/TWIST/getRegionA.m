@@ -1,4 +1,4 @@
-function [regionA] = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R)
+function [regionA,frequency_table] = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R)
 %Calculates region A for TWIST
 %If pA = .05, n_pixels_in_A / n_pixels_acquired = .05
 
@@ -6,8 +6,8 @@ function [regionA] = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R
 %Please remove this section once GRAPPA and PF have been properly
 %implemented
 
-PF_Factor = [6/8 6/8];
-R = [2 3];
+% PF_Factor = [6/8 6/8];
+% R = [2 3];
 
 
 %%
