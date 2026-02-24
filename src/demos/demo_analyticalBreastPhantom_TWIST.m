@@ -47,19 +47,12 @@ k_idx_freq_pha_sli = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), 
 TR_before_readout = TR-(matrix_size_acquired(1)*dt_s); 
 dwell_time_timepoints_within_TR = TR_before_readout+dt_s:dt_s:TR;
 
-n_TRs_total = 1:height(Sampling_Table)/matrix_size_acquired(1);
+n_TRs_total = 1:(height(Sampling_Table)/matrix_size_acquired(1));
+
 dwell_time_timepoints_absolute = dwell_time_timepoints_within_TR(:) + (n_TRs_total * TR);
 
 Sampling_Table.Timing = dwell_time_timepoints_absolute(:);
-clear n_TRs_total clear dwell_time_timepoints_absolute dwell_time_timepoints_within_TR
-
-% Calculate the time for a single twist frame
-samplesInFrame = histcounts(Sampling_Table.Bj,-0.5:1:(max(Sampling_Table.Bj(:))+0.5));
-samplesPerFrame = max(samplesInFrame(2:end)); % ignore first frame which measures all data
-framesPerRecon = ceil(samplesInFrame(1)/samplesPerFrame);
-trsPerFrame = samplesPerFrame/scan_parameters("Base Resolution");
-timePerFrame = trsPerFrame*TR;
-timePerRecon = framesPerRecon*timePerFrame;
+clear n_TRs_total dwell_time_timepoints_absolute dwell_time_timepoints_within_TR
 
 
 %% Build WORLD k-space grid and map to the TWIST ordering
@@ -77,10 +70,10 @@ clear k_spatFreq_freq_pha_sli k_spatFreq_freq k_spatFreq_phase k_spatFreq_slice 
 %% Construct Breast Phantom
 
 % Update startInjectionTime_s to be relative to first frame ending
-endOfSecondFrame = max(Sampling_Table(Sampling_Table.Bj == 0,:).Timing);
+endOfFirstFrame = max(Sampling_Table.Timing(Sampling_Table.Frame == 0));
 
 % Injected contrast parameters
-breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfSecondFrame;
+breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfFirstFrame;
 breastPhantomParams.lesionArrivalDelay_s = 85;
 breastPhantomParams.lesionWashinType = "instant";
 breastPhantomParams.lesionWashoutType = "washout";
@@ -94,11 +87,11 @@ breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement(
 phantom = BreastPhantom(breastPhantomParams);
 
 %% Perform TWIST, calculating two time frames at a time to minimize memory overhead
-maxChumkSize = 5000000;
-previousMask = (Sampling_Table.Bj == 0);
+maxChunkSize = 5000000;
+previousMask = (Sampling_Table.Frame == 0);
 
 
-nTimes = max(Sampling_Table.Bj)+1;
+nTimes = max(Sampling_Table.Frame)+1;
 fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
         1, nTimes, 0/nTimes*100);
 currentKspace = nan(matrix_size_acquired);
@@ -110,7 +103,7 @@ currentKspace(currentIdx) = phantom.kspaceAtTime(k_spatFreq_xyz(1, previousMask)
     k_spatFreq_xyz(2, previousMask), ...
     k_spatFreq_xyz(3, previousMask), ...
     Sampling_Table.Timing(previousMask)', ...
-    maxChumkSize)';
+    maxChunkSize)';
 
 % initialize TWIST image with first frame by permuting to XYZ from FPS, 
 % zeropading, ifftshifting k-space, taking IFFT, and fftshifting to get image
@@ -125,7 +118,7 @@ for iTime = 2:nTimes
         iTime, nTimes, (iTime-1)/nTimes*100);
 
     % Calculate current Kspace Samples, putting k-space points in correct locations
-    currentMask = (Sampling_Table.Bj == (iTime - 1));
+    currentMask = (Sampling_Table.Frame == (iTime - 1));
     currentKspace = nan(matrix_size_acquired);
 
     currentIdx = sub2ind(matrix_size_acquired, ...
@@ -136,7 +129,7 @@ for iTime = 2:nTimes
         k_spatFreq_xyz(2, currentMask), ...
         k_spatFreq_xyz(3, currentMask), ...
         Sampling_Table.Timing(currentMask)', ...
-        maxChumkSize)';
+        maxChunkSize)';
     
     % Fill in missing k-space points. 
     currentKspace(isnan(currentKspace)) = previousKspace(isnan(currentKspace));
@@ -173,7 +166,7 @@ final_IMspace = twistImage(...
 phantom_magnitude = abs(twistImage);
 
 figure
-sliceViewer(squeeze(phantom_magnitude(:,:,160,:)));
+imslice(squeeze(phantom_magnitude(:,:,160,:)));
 
 
 %% Contrast dynamics calculation
