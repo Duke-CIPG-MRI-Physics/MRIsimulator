@@ -141,12 +141,13 @@ Complete_Sampling_Table.Frequency = repmat((1:N_freqs)', original_height, 1);
 
 %Correct linear index column for addded dimension
 % Order: [Frequency, Phase, Slice, Frame]
-sz_4D = [Matrix_Size_Acquired(1), Matrix_Size_Acquired(2), Matrix_Size_Acquired(3), max(Complete_Sampling_Table.Bj)+1];
+sz_4D = [Matrix_Size_Acquired(1), Matrix_Size_Acquired(2), Matrix_Size_Acquired(3), N_Measurements+1];
 
 Complete_Sampling_Table.("Linear Index") = sub2ind(sz_4D, ...
     Complete_Sampling_Table.Frequency, ...          % Dim 1
     Complete_Sampling_Table.("Row (phase)"), ...    % Dim 2
     Complete_Sampling_Table.("Column (slice)"), ... % Dim 3
-    Complete_Sampling_Table.Bj + 1);                % Dim 4
+    Complete_Sampling_Table.Frame+1);                % Dim 4
+
 
 end
