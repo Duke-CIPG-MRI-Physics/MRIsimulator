@@ -22,7 +22,7 @@ sampled_mask(Complete_Sampling_Table.("Linear Index")) = true;
 
 visualization_matrix = squeeze(sampled_mask(1, :, :, :));
 
-%sliceViewer(visualization_matrix);
+imshow3D(visualization_matrix);
 
 %% --- Multi-Color Trajectory Animation (Fixed Speed)
 % 1. Filter: Use only unique Phase-Slice events
