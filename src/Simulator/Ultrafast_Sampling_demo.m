@@ -1,8 +1,8 @@
 clear;clc;close all;
 
 % Inputs
-Matrix_Size_Acquired = [5, 100, 100]; % [Freq, Phase, Slice]
-FOV_acquired = [5, 100, 100];
+Matrix_Size_Acquired = [1, 100, 100]; % [Freq, Phase, Slice] %frequency doesn't matter for this demo
+FOV_acquired = [1, 100, 300];
 pA = 0.05;
 pB = .1; 
 N_Measurements = 10; 
@@ -69,7 +69,7 @@ for f_idx = 1:num_frames
         stride = 10;   % Plot 50 points at a time for the big prep scan
         pause_time = 5e-3;
     else
-        stride = 10;    % Plot 1 point at a time for the TWIST frames
+        stride = 1;    % Plot 1 point at a time for the TWIST frames
         pause_time = 5e-3;  % Slow down to see the spiral pattern
     end
 
