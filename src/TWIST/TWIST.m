@@ -72,11 +72,13 @@ theta_matrix = cart2pol(kyM, kzM);
 
 %Fix theta range, direction, and 0
 theta_matrix(theta_matrix>0) = 2*pi-(theta_matrix(theta_matrix>0)); 
-theta_matrix = abs(theta_matrix);
+theta_matrix = round(abs(theta_matrix),2);
 
 
 %% --- Get Region A---
 [regionA,frequency_table] = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R);
+frequency_table.Frequency = round(frequency_table.Frequency,3);
+
 
 %% --- Define Region B
 regionB = ~regionA;
@@ -86,6 +88,10 @@ regionB = ~regionA;
 columnNames = ["Linear Index","Frequency","Theta","Region A?"];
 unsortedData = table(frequency_table{:,1}, frequency_table{:,2}, theta_matrix(frequency_table{:,1}), regionA(frequency_table{:,1}),'VariableNames', columnNames);
 sortedData = sortrows(unsortedData, [2 3], 'ascend');
+
+%% --- Ensure that center point is always in region A
+min_freq = min(sortedData.Frequency);
+sortedData.("Region A?")(sortedData.Frequency == min_freq) = true;
 
 %% --- Add Bj Column to Sorted Data ---
 % Initialize the 'Bj' column with zeros for all rows.
@@ -169,7 +175,8 @@ kspaceSamplingOrder_full = [kspaceSamplingOrder_initial;kspaceSamplingOrder_all_
 
 TWIST_sampling_order = kspaceSamplingOrder_full(:,{'Linear Index','Bj','Frame'});
 
-[row,col] = ind2sub(Matrix_Size_Acquired(2:3),TWIST_sampling_order.("Linear Index"));
-TWIST_sampling_order.("Row (phase)") = row;
-TWIST_sampling_order.("Column (slice)") = col;
+[slice_idx, phase_idx] = ind2sub(Matrix_Size_Acquired([3,2]), TWIST_sampling_order.("Linear Index"));
 
+TWIST_sampling_order.("Row (phase)") = phase_idx;
+TWIST_sampling_order.("Column (slice)") = slice_idx;
+end
