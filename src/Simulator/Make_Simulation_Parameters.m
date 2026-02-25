@@ -12,21 +12,33 @@ TE = 2.63E-3;
 
 pA = 0.05;
 Nb = 10;
-Time_Measured = 500; %sec
+N_measurements = 20; %sec
 
 R = 1; %[2 3]
 PF_Factor = 1; %[6/8 6/8]
 
+
+
 %creating structure file
 SimulationParameters.ScanParameters = scan_parameters;
 
-SimulationParameters.ContrastParameters.rBW_HzPerPix = rBW_HzPerPix;
-SimulationParameters.ContrastParameters.TR = TR;
-SimulationParameters.ContrastParameters.TE = TE;
+% Lesion parameters
+SimulationParameters.LesionParameters.lesionArrivalDelay_s = 85;
+SimulationParameters.LesionParameters.lesionWashinType = "instant";
+SimulationParameters.LesionParameters.lesionWashoutType = "washout";
+SimulationParameters.LesionParameters.lesionPeakEnhancement = 1.6;
+SimulationParameters.LesionParameters.lesionBaselineDeltaIntensity = 0;
 
+
+% MRI contrast parameters
+SimulationParameters.MRIContrastParameters.rBW_HzPerPix = rBW_HzPerPix;
+SimulationParameters.MRIContrastParameters.TR = TR;
+SimulationParameters.MRIContrastParameters.TE = TE;
+
+% Ultrafast parameters
 SimulationParameters.TWIST.pA = pA;
 SimulationParameters.TWIST.pB = 1/Nb;
-SimulationParameters.TWIST.Time_Measured = Time_Measured;
+SimulationParameters.TWIST.N_measurements = N_measurements;
 
 SimulationParameters.ParallelImaging.GRAPPA_R = R;
 SimulationParameters.ParallelImaging.PF_Factor = PF_Factor;
