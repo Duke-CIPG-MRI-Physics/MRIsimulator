@@ -36,7 +36,7 @@ kspace_extent = kspace_pixel_size .* (Matrix_Size_Acquired-1)/2;
 phase_frequencies = -kspace_extent(2):kspace_pixel_size(2):kspace_extent(2);
 slice_frequencies = (-kspace_extent(3):kspace_pixel_size(3):kspace_extent(3))';
 
-[phase_mesh,slice_mesh] = meshgrid(phase_frequencies,slice_frequencies);
+[phase_mesh,slice_mesh] = ndgrid(phase_frequencies,slice_frequencies);
 frequency_grid = sqrt(phase_mesh.^2+slice_mesh.^2);
 frequency_grid_idx = reshape(1:numel(frequency_grid), size(frequency_grid));
 
