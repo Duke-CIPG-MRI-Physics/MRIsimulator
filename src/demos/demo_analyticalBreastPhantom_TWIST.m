@@ -30,7 +30,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 pA = 0.05;
 pB = .1;
 Num_Measurements = 20;
-R = 1; %[2 3]
+R = 1; %[2 3] %check if motion in breat sim is slowed down
 PF_Factor = 1; %[6/8 6/8]
 
 [Sampling_Table,TWIST_Timing] = Ultrafast_Sampling(matrix_size_acquired,FOV_acquired,pA,pB,Num_Measurements,TR,R,PF_Factor);
@@ -162,9 +162,8 @@ final_IMspace = twistImage(...
 
 
 %% display phantom
-
-phantom_magnitude = abs(twistImage);
-imslice(squeeze(phantom_magnitude(:,:,160,:)));
+phantom_magnitude = abs(final_IMspace);
+imslice(squeeze(phantom_magnitude(:,:,120,:)));
 
 
 %% Contrast dynamics calculation
