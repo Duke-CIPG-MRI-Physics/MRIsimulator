@@ -175,8 +175,7 @@ kspaceSamplingOrder_full = [kspaceSamplingOrder_initial;kspaceSamplingOrder_all_
 
 TWIST_sampling_order = kspaceSamplingOrder_full(:,{'Linear Index','Bj','Frame'});
 
-[slice_idx, phase_idx] = ind2sub(Matrix_Size_Acquired([3,2]), TWIST_sampling_order.("Linear Index"));
-
-TWIST_sampling_order.("Row (phase)") = phase_idx;
-TWIST_sampling_order.("Column (slice)") = slice_idx;
+[row,col] = ind2sub(Matrix_Size_Acquired(2:3),TWIST_sampling_order.("Linear Index"));
+TWIST_sampling_order.("Row (phase)") = row;
+TWIST_sampling_order.("Column (slice)") = col;
 end
