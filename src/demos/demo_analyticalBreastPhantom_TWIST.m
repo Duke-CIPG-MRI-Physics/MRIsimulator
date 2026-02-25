@@ -164,8 +164,6 @@ final_IMspace = twistImage(...
 %% display phantom
 
 phantom_magnitude = abs(twistImage);
-
-figure
 imslice(squeeze(phantom_magnitude(:,:,160,:)));
 
 
@@ -180,12 +178,11 @@ plot(Sampling_Table.Timing(1:1000:end),breastPhantomParams.lesionIntensityFuncti
 %   moment when center of k-space is sampled.
 
 kspace_center = floor(matrix_size_acquired/2)+1;
-kspace_center_idx = sub2ind(matrix_size_acquired,kspace_center(1),kspace_center(2),kspace_center(3));
-for i_frames = 2:size(twistImage,4)
-    kspace_center_idx(i_frames) = kspace_center_idx(i_frames-1)+prod(matrix_size_acquired);
-end
 
-TWIST_frame_times = Sampling_Table.Timing(ismember(Sampling_Table.("Linear Index"), kspace_center_idx));
+TWIST_frame_times = Sampling_Table.Timing((Sampling_Table.Frequency == kspace_center(1)) & ...
+       (Sampling_Table.("Row (phase)") == kspace_center(2)) & ...
+       (Sampling_Table.("Column (slice)") == kspace_center(3)));
+
 
 %TODO: build function to output lesion ROI
 x_range = 65:71;
