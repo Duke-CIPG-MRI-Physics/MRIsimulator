@@ -1,41 +1,36 @@
 %This script is designed for performance testing on simulated
 %Ultrafast breast MRI
 
-clear;clc;close all;
-load('Phantom_Output.mat')
+clear; clc; close all;
+load("SimulationParameters.mat")
 
-%% Plotting 
+pBs = [.1, .25, .33, .5];
+pAs = .04:.2:1;
 
-%Ground truth
-gt_timing = .01:.01:max(phantom_simulated.outputs.timing); %ground truth timing
-gt_at_TWIST_pts = phantom_simulated.inputs.breastPhantomParams.lesionIntensityFunction(phantom_simulated.outputs.timing)...
-    +phantom_simulated.inputs.breastPhantomParams.breastIntensity;
+% Pre-allocate a 2D cell array (rows = pBs, cols = pAs)
+resultsCell = cell(length(pBs), length(pAs));
 
+% Loop using indices instead of values
+for idx_B = 1:length(pBs)
+    for idx_A = 1:length(pAs)
+        
+        % Extract the actual values for the simulation
+        current_pB = pBs(idx_B);
+        current_pA = pAs(idx_A);
+        
+        SimulationParameters.TWIST.pB = current_pB;
+        SimulationParameters.TWIST.pA = current_pA;
+        Output = Analytical_TWIST_Simulator(SimulationParameters);
+        
+        % Store the resulting vector in the corresponding grid cell
+        resultsCell{idx_B, idx_A} = Output.measured_contrast;
+    end
+end
 
-figure;
-plot(gt_timing,phantom_simulated.inputs.breastPhantomParams.lesionIntensityFunction(gt_timing) ...
-    +phantom_simulated.inputs.breastPhantomParams.breastIntensity);
+% Example to retrieve data later:
+% To get the contrast vector where pB is .25 (index 2) and pA is .44 (index 3):
+% myVector = resultsCell{2, 3};
 
-%TODO: build function to output lesion ROI
-x_range = 65:71;
-y_range = 68:74;
-z_range = 157:164;
-
-
-roi_volume = phantom_simulated.outputs.phantom_magnitude(x_range,y_range,z_range,:);
-roi_mean = mean(roi_volume, [1 2 3]);
-contrast_values_measured = squeeze(roi_mean);
-
-hold on
-plot(phantom_simulated.outputs.timing,abs(contrast_values_measured),'.-','MarkerSize',15)
-scatter(phantom_simulated.outputs.timing,gt_at_TWIST_pts,...
-    15,'MarkerFaceColor',[1, 0.5, 0],'MarkerEdgeColor',[1, 0.5, 0])
-legend("Ground Truth","TWIST Measured")
-hold off
-
-title("Contrast Wash-in")
-xlabel("Time (s)")
-ylabel("Pixel Value")
 
 %% - Deviation
 
