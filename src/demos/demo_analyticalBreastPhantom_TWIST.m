@@ -162,6 +162,7 @@ final_IMspace = twistImage(...
 
 
 %% display phantom
+
 phantom_magnitude = abs(final_IMspace);
 imslice(squeeze(phantom_magnitude(:,:,120,:)));
 
@@ -184,14 +185,16 @@ TWIST_frame_times = Sampling_Table.Timing((Sampling_Table.Frequency == kspace_ce
 
 
 %TODO: build function to output lesion ROI
-x_range = 65:71;
-y_range = 68:74;
-z_range = 157:164;
+lesion_center = [68,49,120]; %[freq,phase,slice] in final image
+lesion_radius = 6;
+[X, Y, Z] = ndgrid(1:IMmatrix_crop_size(1), 1:IMmatrix_crop_size(2), 1:IMmatrix_crop_size(3));
+squared_dist = (X - lesion_center(1)).^2 + (Y - lesion_center(2)).^2 + (Z - lesion_center(3)).^2;
+sphere_roi = squared_dist <= lesion_radius^2;
 
-
-roi_volume = twistImage(x_range, y_range, z_range, :);
-roi_mean = mean(roi_volume, [1 2 3]);
-contrast_values_measured = squeeze(roi_mean);
+data_reshaped = reshape(phantom_magnitude, [], size(phantom_magnitude,4));
+roi_flattened = sphere_roi(:);
+roi_data = data_reshaped(roi_flattened, :);
+contrast_values_measured = mean(roi_data, 1);
 
 hold on
 plot(TWIST_frame_times,abs(contrast_values_measured),'.-','MarkerSize',15)
@@ -201,6 +204,33 @@ hold off
 title("Contrast Wash-in")
 xlabel("Time (s)")
 ylabel("Pixel Value")
+
+%%  Visualize ROI Overlay
+% 1. Select the slice to view (makes sense to use the lesion's Z-center)
+slice_to_view = lesion_center(3);
+
+% 2. Extract the final time frame for the background image
+final_time_idx = size(phantom_magnitude, 4);
+% Note: phantom_magnitude is 4D (freq, phase, slice, time)
+background_slice = phantom_magnitude(:, :, slice_to_view, final_time_idx);
+
+% 3. Extract the exact same slice from your 3D logical ROI mask
+roi_slice = sphere_roi(:, :, slice_to_view);
+
+% 4. Plotting
+figure;
+% Use imagesc for raw MRI data to automatically scale the display contrast
+imagesc(background_slice);
+colormap(gray);
+axis image; % Fixes the aspect ratio so the image isn't stretched
+axis off;   % Hides the axis ticks for a cleaner look
+title(sprintf('ROI Overlay on Slice %d (Final Time Frame)', slice_to_view));
+
+hold on;
+% Overlay the ROI as a red outline
+% The [0.5 0.5] tells contour to draw the line exactly at the logical boundary
+contour(roi_slice, [0.5 0.5], 'r', 'LineWidth', 2);
+hold off;
 
 %% Saving output
 save_ask = input('Save output?: (y/n)','s');
