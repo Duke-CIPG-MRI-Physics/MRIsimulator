@@ -1,4 +1,4 @@
-function [contrast_values_measured] = Analytical_TWIST_Simulator(SimulationParameters)
+function [output] = Analytical_TWIST_Simulator(SimulationParameters)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 % arguments (Input)
@@ -167,30 +167,30 @@ final_IMspace = twistImage(...
 
 %% Contrast dynamics calculation
 
-%Ground truth
-figure;
-plot(Sampling_Table.Timing(1:1000:end),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(1:1000:end)) ...
-    + breastPhantomParams.breastIntensity);
 
 %convert TWIST frames to actual time, time for a whole frame is defined as
 %   moment when center of k-space is sampled.
 
 kspace_center = floor(matrix_size_acquired/2)+1;
 
-TWIST_frame_times = Sampling_Table.Timing((Sampling_Table.Frequency == kspace_center(1)) & ...
+TWIST_frame_times = (Sampling_Table.Timing((Sampling_Table.Frequency == kspace_center(1)) & ...
        (Sampling_Table.("Row (phase)") == kspace_center(2)) & ...
-       (Sampling_Table.("Column (slice)") == kspace_center(3)));
+       (Sampling_Table.("Column (slice)") == kspace_center(3))))';
 
 
 %TODO: build function to output lesion ROI
-x_range = 65:71;
-y_range = 68:74;
-z_range = 157:164;
+lesion_center = [68,49,120]; %[freq,phase,slice] in final image
+lesion_radius = 6;
+[X, Y, Z] = ndgrid(1:IMmatrix_crop_size(1), 1:IMmatrix_crop_size(2), 1:IMmatrix_crop_size(3));
+squared_dist = (X - lesion_center(1)).^2 + (Y - lesion_center(2)).^2 + (Z - lesion_center(3)).^2;
+sphere_roi = squared_dist <= lesion_radius^2;
+
+data_reshaped = reshape(abs(final_IMspace), [], size(final_IMspace,4));
+roi_flattened = sphere_roi(:);
+roi_data = data_reshaped(roi_flattened, :);
+contrast_values_measured = mean(roi_data, 1);
 
 
-roi_volume = twistImage(x_range, y_range, z_range, :);
-roi_mean = mean(roi_volume, [1 2 3]);
-contrast_values_measured = squeeze(roi_mean);
-
-
+output.measured_contrast = contrast_values_measured;
+output.timepoints = TWIST_frame_times;
 end
