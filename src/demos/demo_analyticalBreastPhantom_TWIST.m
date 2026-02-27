@@ -135,6 +135,7 @@ for iTime = 1:nTimes
         previousKspace = currentKspace;
     end
 end
+clear k_spatFreq_xyz 
 
 % Post-processing dimensions and intensity
 twistImage = permute(twistImage, [2, 1, 3, 4]);
