@@ -1,42 +1,63 @@
-%This script is designed for performance testing on simulated
-%Ultrafast breast MRI
-
+tic
 clear; clc; close all;
 load("SimulationParameters.mat")
 
 pBs = [.1, .25, .33, .5];
-pAs = .04:.2:1;
+pAs = .04:.1:1;
 
-% Pre-allocate a 2D cell array (rows = pBs, cols = pAs)
-resultsCell = cell(length(pBs), length(pAs));
+num_pBs = length(pBs);
+num_pAs = length(pAs);
 
-% Loop using indices instead of values
-for idx_B = 1:length(pBs)
-    for idx_A = 1:length(pAs)
+% 1. Pre-allocate a 2D structure array. 
+% parfor requires outputs to be correctly "sliced" based on the loop index.
+emptyStruct = struct('pB', [], 'pA', [], 'Measured_Contrast', [], 'Timepoints', []);
+resultsStruct = repmat(emptyStruct, num_pBs, num_pAs);
+
+% 2. Use integer indices for the parfor loop
+
+% parpool("Threads",2);
+for i = 1:num_pBs 
+    % Extract the current pB value
+    pB_val = pBs(i);
+    
+    % 3. Create a local copy of the broadcast variable (SimulationParameters)
+    % This prevents workers from attempting to modify a shared struct simultaneously
+    localSimParams = SimulationParameters; 
+    
+    for j = 1:num_pAs
+        pA_val = pAs(j);
         
-        % Extract the actual values for the simulation
-        current_pB = pBs(idx_B);
-        current_pA = pAs(idx_A);
+        localSimParams.TWIST.pB = pB_val;
+        localSimParams.TWIST.pA = pA_val;
         
-        SimulationParameters.TWIST.pB = current_pB;
-        SimulationParameters.TWIST.pA = current_pA;
-        Output = Analytical_TWIST_Simulator(SimulationParameters);
+        Output = Analytical_TWIST_Simulator(localSimParams);
         
-        % Store the resulting vector in the corresponding grid cell
-        resultsCell{idx_B, idx_A} = Output.measured_contrast;
+        % 4. Save results using the sliced indices (i, j) instead of a counter
+        resultsStruct(i, j).pB = pB_val;
+        resultsStruct(i, j).pA = pA_val;
+        resultsStruct(i, j).Measured_Contrast = Output.measured_contrast;
+        resultsStruct(i, j).Timepoints = Output.timepoints;
+
     end
 end
 
+% 5. Flatten the 2D struct array back into a 1D array 
+% This matches the structure format of your original code
+resultsStruct = resultsStruct(:);
+
+save("test_results","resultsStruct")
+
+toc
+
 % Example to retrieve data later:
-% To get the contrast vector where pB is .25 (index 2) and pA is .44 (index 3):
-% myVector = resultsCell{2, 3};
-
-
-%% - Deviation
-
-percent_deviation_from_GT = 100*abs((contrast_values_measured-gt_at_TWIST_pts)./gt_at_TWIST_pts);
-
-max_percent_deviation_from_GT = max(percent_deviation_from_GT);
-fprintf("Max deviation from ground-truth: %g%%\n",max_percent_deviation_from_GT)
-average_percent_deviation_from_GT = mean(percent_deviation_from_GT);
-fprintf("Avg. deviation from ground-truth: %g%%\n",average_percent_deviation_from_GT)
+% To get the contrast vector for the 3rd simulation run:
+% myVector = resultsStruct(3).Measured_Contrast;
+%%  --- Plotting
+figure
+for ii = 1:height(resultsStruct)
+    hold on
+    plot(resultsStruct(ii).Timepoints,resultsStruct(ii).Measured_Contrast)
+end
+plot(1:1:1000,breastPhantomParams.lesionIntensityFunction(1:1:1000) ...
+    + breastPhantomParams.breastIntensity)
+hold off
