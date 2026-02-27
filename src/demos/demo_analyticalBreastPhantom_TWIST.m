@@ -143,6 +143,7 @@ for iTime = 2:nTimes
     previousKspace = currentKspace;
 
 end
+clear k_spatFreq_xyz 
 
 twistImage = permute(twistImage,[2,1,3,4]);
 
