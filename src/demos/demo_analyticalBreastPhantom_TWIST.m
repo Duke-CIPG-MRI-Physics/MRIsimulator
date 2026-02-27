@@ -27,9 +27,9 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 %% Configure acquisition ordering and timing
 
-pA = 0.05;
-pB = .1;
-Num_Measurements = 20;
+pA = .5;
+pB = 0;
+Num_Measurements = 5;
 R = 1; %[2 3] %check if motion in breat sim is slowed down
 PF_Factor = 1; %[6/8 6/8]
 
@@ -88,68 +88,59 @@ phantom = BreastPhantom(breastPhantomParams);
 
 %% Perform TWIST, calculating two time frames at a time to minimize memory overhead
 maxChunkSize = 5000000;
-previousMask = (Sampling_Table.Frame == 0);
+nTimes = Num_Measurements + 1;
 
-
-nTimes = max(Sampling_Table.Frame)+1;
-fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
-        1, nTimes, 0/nTimes*100);
-currentKspace = nan(matrix_size_acquired);
-currentIdx = sub2ind(matrix_size_acquired, ...
-    Sampling_Table.Frequency(previousMask), ...          
-    Sampling_Table.("Row (phase)")(previousMask), ...    
-    Sampling_Table.("Column (slice)")(previousMask));
-currentKspace(currentIdx) = phantom.kspaceAtTime(k_spatFreq_xyz(1, previousMask), ...
-    k_spatFreq_xyz(2, previousMask), ...
-    k_spatFreq_xyz(3, previousMask), ...
-    Sampling_Table.Timing(previousMask)', ...
-    maxChunkSize)';
-
-% initialize TWIST image with first frame by permuting to XYZ from FPS, 
-% zeropading, ifftshifting k-space, taking IFFT, and fftshifting to get image
-twistImage = zeros([matrix_size_complete(fps_to_xyz) nTimes]);
+% Preallocate the final image array
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
-twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
-        permute(currentKspace, fps_to_xyz), 0.5*padsize, 0)))); 
-previousKspace = currentKspace;
+twistImage = zeros([matrix_size_complete(fps_to_xyz), nTimes]);
 
-for iTime = 2:nTimes
+% Initialize variable for view sharing 
+previousKspace = []; 
+
+for iTime = 1:nTimes
     fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
         iTime, nTimes, (iTime-1)/nTimes*100);
-
-    % Calculate current Kspace Samples, putting k-space points in correct locations
+    
+    % 1. Calculate current K-space Samples and put points in correct locations
     currentMask = (Sampling_Table.Frame == (iTime - 1));
     currentKspace = nan(matrix_size_acquired);
-
+    
     currentIdx = sub2ind(matrix_size_acquired, ...
         Sampling_Table.Frequency(currentMask), ...
         Sampling_Table.("Row (phase)")(currentMask), ...
         Sampling_Table.("Column (slice)")(currentMask));
-    currentKspace(currentIdx) = phantom.kspaceAtTime(k_spatFreq_xyz(1, currentMask), ...
+        
+    currentKspace(currentIdx) = phantom.kspaceAtTime(...
+        k_spatFreq_xyz(1, currentMask), ...
         k_spatFreq_xyz(2, currentMask), ...
         k_spatFreq_xyz(3, currentMask), ...
         Sampling_Table.Timing(currentMask)', ...
         maxChunkSize)';
     
-    % Fill in missing k-space points. 
-    currentKspace(isnan(currentKspace)) = previousKspace(isnan(currentKspace));
-
-    % Permute to XYZ from FPS, zeropad, then ifftshift k-space, then take
-    % IFFT and fftshift to get image
-    twistImage(:,:,:,iTime) = fftshift(ifftn(ifftshift(padarray(...
-        permute(currentKspace, fps_to_xyz), 0.5*padsize, 0))));     
-
-    % prepare for next TWIST frame
-    previousKspace = currentKspace;
-
+    % 2. Apply View Sharing (Fill in missing k-space points if pB is active)
+    if pB ~= 0 && iTime > 1
+        missingKspaceData = isnan(currentKspace);
+        currentKspace(missingKspaceData) = previousKspace(missingKspaceData);
+    end
+    
+    % 3. Zero-fill unsampled periphery (Crucial for pB == 0)
+    currentKspace(isnan(currentKspace)) = 0; 
+    
+    % 4. Reconstruct Image (Permute, zero-pad, shift, and IFFT)
+    paddedKspace = padarray(permute(currentKspace, fps_to_xyz), 0.5 * padsize, 0);
+    twistImage(:,:,:,iTime) = fftshift(ifftn(ifftshift(paddedKspace)));
+    
+    % 5. Prepare for the next TWIST frame
+    if pB ~= 0
+        previousKspace = currentKspace;
+    end
 end
 
-twistImage = permute(twistImage,[2,1,3,4]);
+% Post-processing dimensions and intensity
+twistImage = permute(twistImage, [2, 1, 3, 4]);
 
-%intensity correction
 voxel_volume = prod(voxel_size_mm);
 twistImage = twistImage ./ voxel_volume;
-
 %% --- 8. Resolving Oversampling
 crop_amount = matrix_size_complete-IMmatrix_crop_size;
 margin = floor(crop_amount ./ 2); 
