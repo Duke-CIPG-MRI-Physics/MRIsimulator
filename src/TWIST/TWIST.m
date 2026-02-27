@@ -55,7 +55,11 @@ arguments
         PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor,1), mustBeGreaterThan(PF_Factor,.5)}
 end
 
-Nb = round(1/pB); %TODO: fix this and subsequent code to allow for pB = 0
+if pB == 0
+    Nb = 0;
+else
+    Nb = round(1/pB);
+end
 
 
 %% --- Coordinate Grid Setup (Phase/Slice) --
