@@ -32,11 +32,11 @@ Num_Measurements = SimulationParameters.TWIST.N_measurements;
 R = SimulationParameters.ParallelImaging.GRAPPA_R;
 PF_Factor = SimulationParameters.ParallelImaging.PF_Factor;
 
+fprintf("Simulation started pA = %g pB = %g\n",pA,pB)
 
 %% FOV and matrix size (scanner-style inputs)
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I 
-encodingFullStr = formatEncodingString(freq_phase_slice);
-disp(encodingFullStr)
+
 
 breastPhantomParams = createBreastPhantomParams();
 
@@ -50,7 +50,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 %% Configure acquisition ordering and timing
 
 [Sampling_Table,TWIST_Timing] = Ultrafast_Sampling(matrix_size_acquired,FOV_acquired,pA,pB,Num_Measurements,TR,R,PF_Factor);
-
+Sampling_Table = Sampling_Table(:,3:6);
 k_idx_freq_pha_sli = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
 
 %Construct Timing Information
@@ -66,7 +66,7 @@ clear n_TRs_total dwell_time_timepoints_absolute dwell_time_timepoints_within_TR
 
 
 %% Build WORLD k-space grid and map to the TWIST ordering
-disp('Building WORLD k-space')
+%disp('Building WORLD k-space')
 k_spatFreq_freq = computeKspaceGrid1D(FOV_acquired(1), matrix_size_acquired(1));
 k_spatFreq_phase = computeKspaceGrid1D(FOV_acquired(2), matrix_size_acquired(2));
 k_spatFreq_slice = computeKspaceGrid1D(FOV_acquired(3), matrix_size_acquired(3));
@@ -97,8 +97,8 @@ previousMask = (Sampling_Table.Frame == 0);
 
 
 nTimes = max(Sampling_Table.Frame)+1;
-fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
-        1, nTimes, 0/nTimes*100);
+%fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
+        %1, nTimes, 0/nTimes*100);
 currentKspace = nan(matrix_size_acquired);
 currentIdx = sub2ind(matrix_size_acquired, ...
     Sampling_Table.Frequency(previousMask), ...          
@@ -119,8 +119,8 @@ twistImage(:,:,:,1) = fftshift(ifftn(ifftshift(padarray(...
 previousKspace = currentKspace;
 
 for iTime = 2:nTimes
-    fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
-        iTime, nTimes, (iTime-1)/nTimes*100);
+    %fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
+        %iTime, nTimes, (iTime-1)/nTimes*100);
 
     % Calculate current Kspace Samples, putting k-space points in correct locations
     currentMask = (Sampling_Table.Frame == (iTime - 1));
@@ -148,6 +148,7 @@ for iTime = 2:nTimes
     previousKspace = currentKspace;
 
 end
+clear k_spatFreq_xyz 
 
 twistImage = permute(twistImage,[2,1,3,4]);
 
@@ -159,7 +160,7 @@ twistImage = twistImage ./ voxel_volume;
 crop_amount = matrix_size_complete-IMmatrix_crop_size;
 margin = floor(crop_amount ./ 2); 
 
-final_IMspace = twistImage(...
+twistImage = twistImage(...
     margin(1)+1 : margin(1)+IMmatrix_crop_size(1), ...
     margin(2)+1 : margin(2)+IMmatrix_crop_size(2), ...
     margin(3)+1 : margin(3)+IMmatrix_crop_size(3),...
@@ -185,7 +186,7 @@ lesion_radius = 6;
 squared_dist = (X - lesion_center(1)).^2 + (Y - lesion_center(2)).^2 + (Z - lesion_center(3)).^2;
 sphere_roi = squared_dist <= lesion_radius^2;
 
-data_reshaped = reshape(abs(final_IMspace), [], size(final_IMspace,4));
+data_reshaped = reshape(abs(twistImage), [], size(twistImage,4));
 roi_flattened = sphere_roi(:);
 roi_data = data_reshaped(roi_flattened, :);
 contrast_values_measured = mean(roi_data, 1);
@@ -193,4 +194,7 @@ contrast_values_measured = mean(roi_data, 1);
 
 output.measured_contrast = contrast_values_measured;
 output.timepoints = TWIST_frame_times;
+
+fprintf("Simulation finished pA = %g pB = %g\n",pA,pB)
+
 end
