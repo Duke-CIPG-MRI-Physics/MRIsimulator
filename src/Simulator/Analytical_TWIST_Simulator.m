@@ -36,7 +36,6 @@ PF_Factor = SimulationParameters.ParallelImaging.PF_Factor;
 %% FOV and matrix size (scanner-style inputs)
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I 
 encodingFullStr = formatEncodingString(freq_phase_slice);
-disp(encodingFullStr)
 
 breastPhantomParams = createBreastPhantomParams();
 
@@ -66,7 +65,6 @@ clear n_TRs_total dwell_time_timepoints_absolute dwell_time_timepoints_within_TR
 
 
 %% Build WORLD k-space grid and map to the TWIST ordering
-disp('Building WORLD k-space')
 k_spatFreq_freq = computeKspaceGrid1D(FOV_acquired(1), matrix_size_acquired(1));
 k_spatFreq_phase = computeKspaceGrid1D(FOV_acquired(2), matrix_size_acquired(2));
 k_spatFreq_slice = computeKspaceGrid1D(FOV_acquired(3), matrix_size_acquired(3));
@@ -103,9 +101,7 @@ twistImage = zeros([matrix_size_complete(fps_to_xyz), nTimes]);
 previousKspace = []; 
 
 for iTime = 1:nTimes
-    fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
-        iTime, nTimes, (iTime-1)/nTimes*100);
-    
+        
     % 1. Calculate current K-space Samples and put points in correct locations
     currentMask = (Sampling_Table.Frame == (iTime - 1));
     currentKspace = nan(matrix_size_acquired);
@@ -183,6 +179,16 @@ roi_data = data_reshaped(roi_flattened, :);
 contrast_values_measured = mean(roi_data, 1);
 
 
-output.measured_contrast = contrast_values_measured;
-output.timepoints = TWIST_frame_times;
+output.measured.contrast = contrast_values_measured;
+
+% 1. Shift measured timepoints so t=0 is the injection start
+output.measured.timepoints = TWIST_frame_times - breastPhantomParams.startInjectionTime_s;
+
+% 2. Generate the simulated curve over a standardized relative time window
+rel_time_vector = -20:300; % Adjust this window as needed for your wash-in/wash-out
+abs_time_vector = rel_time_vector + breastPhantomParams.startInjectionTime_s;
+
+output.simulated.contrast = breastPhantomParams.lesionIntensityFunction(abs_time_vector) + breastPhantomParams.breastIntensity;
+output.simulated.timepoints = rel_time_vector;
+
 end
