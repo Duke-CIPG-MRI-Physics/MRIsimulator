@@ -23,8 +23,13 @@ for i = 1:num_pBs
         fprintf("Simulating pA = %g, pB = %g...\n",pA_val,pB_val)
         localSimParams.TWIST.pB = pB_val;
         localSimParams.TWIST.pA = pA_val;
-        
+
+        if pA < .6
+        Output = GPU_Analytical_TWIST_Simulator(localSimParams);
+        else
         Output = Analytical_TWIST_Simulator(localSimParams);
+        end
+
         
         resultsStruct(i, j).pB = pB_val;
         resultsStruct(i, j).pA = pA_val;
