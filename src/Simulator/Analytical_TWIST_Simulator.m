@@ -7,11 +7,12 @@ function [output] = Analytical_TWIST_Simulator(SimulationParameters)
 % end
 
 %% Unpacking inputs
-
+tic
 %Scan Parameters
 scan_parameters = SimulationParameters.ScanParameters;
 
 % Lesion parameters
+breastPhantomParams = createBreastPhantomParams();
 breastPhantomParams.lesionArrivalDelay_s = SimulationParameters.LesionParameters.lesionArrivalDelay_s;
 breastPhantomParams.lesionWashinType = SimulationParameters.LesionParameters.lesionWashinType;
 breastPhantomParams.lesionWashoutType = SimulationParameters.LesionParameters.lesionWashoutType;
@@ -37,7 +38,6 @@ PF_Factor = SimulationParameters.ParallelImaging.PF_Factor;
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2=A/P, 3 = S/I 
 encodingFullStr = formatEncodingString(freq_phase_slice);
 
-breastPhantomParams = createBreastPhantomParams();
 
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] =...
     convert_Siemens_parameters(scan_parameters);
@@ -190,5 +190,5 @@ abs_time_vector = rel_time_vector + breastPhantomParams.startInjectionTime_s;
 
 output.simulated.contrast = breastPhantomParams.lesionIntensityFunction(abs_time_vector) + breastPhantomParams.breastIntensity;
 output.simulated.timepoints = rel_time_vector;
-
+toc
 end
