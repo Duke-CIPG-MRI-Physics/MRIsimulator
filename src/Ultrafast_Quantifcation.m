@@ -2,62 +2,82 @@ tic
 clear; clc; close all;
 load("SimulationParameters.mat")
 
-pBs = [.1, .25, .33, .5];
-pAs = .04:.1:1;
+pBs = [0];
+pAs = .04:.01:1;
 
 num_pBs = length(pBs);
 num_pAs = length(pAs);
 
-% 1. Pre-allocate a 2D structure array. 
-% parfor requires outputs to be correctly "sliced" based on the loop index.
-emptyStruct = struct('pB', [], 'pA', [], 'Measured_Contrast', [], 'Timepoints', []);
+% Pre-allocate with the simulated fields
+emptyStruct = struct('pB', [], 'pA', [], ...
+    'Measured_Contrast', [], 'Timepoints', [], ...
+    'Sim_Contrast', [], 'Sim_Timepoints', []);
 resultsStruct = repmat(emptyStruct, num_pBs, num_pAs);
 
-% 2. Use integer indices for the parfor loop
-
-% parpool("Threads",2);
 for i = 1:num_pBs 
-    % Extract the current pB value
     pB_val = pBs(i);
-    
-    % 3. Create a local copy of the broadcast variable (SimulationParameters)
-    % This prevents workers from attempting to modify a shared struct simultaneously
     localSimParams = SimulationParameters; 
     
     for j = 1:num_pAs
         pA_val = pAs(j);
-        
+        fprintf("Simulating pA = %g, pB = %g...\n",pA_val,pB_val)
         localSimParams.TWIST.pB = pB_val;
         localSimParams.TWIST.pA = pA_val;
-        
+
+        if pA < .6
+        Output = GPU_Analytical_TWIST_Simulator(localSimParams);
+        else
         Output = Analytical_TWIST_Simulator(localSimParams);
+        end
+
         
-        % 4. Save results using the sliced indices (i, j) instead of a counter
         resultsStruct(i, j).pB = pB_val;
         resultsStruct(i, j).pA = pA_val;
-        resultsStruct(i, j).Measured_Contrast = Output.measured_contrast;
-        resultsStruct(i, j).Timepoints = Output.timepoints;
-
+        
+        % Corrected assignments
+        resultsStruct(i, j).Measured_Contrast = Output.measured.contrast;
+        resultsStruct(i, j).Timepoints = Output.measured.timepoints;
+        
+        % Capture the shifting simulated ground truth
+        resultsStruct(i, j).Sim_Contrast = Output.simulated.contrast;
+        resultsStruct(i, j).Sim_Timepoints = Output.simulated.timepoints;
+        fprintf("Done\n")
     end
 end
-
-% 5. Flatten the 2D struct array back into a 1D array 
-% This matches the structure format of your original code
 resultsStruct = resultsStruct(:);
 
-save("test_results","resultsStruct")
+save("Results_pB_0","resultsStruct")
 
 toc
 
 % Example to retrieve data later:
 % To get the contrast vector for the 3rd simulation run:
 % myVector = resultsStruct(3).Measured_Contrast;
+
 %%  --- Plotting
-figure
-for ii = 1:height(resultsStruct)
-    hold on
-    plot(resultsStruct(ii).Timepoints,resultsStruct(ii).Measured_Contrast)
+figure;
+t = tiledlayout(1, 1, 'TileSpacing', 'compact');
+ax = nexttile(t);
+hold(ax, 'on');
+
+% Plot the Single Simulated Ground Truth Curve FIRST
+plot(ax, resultsStruct(1).Sim_Timepoints, resultsStruct(1).Sim_Contrast, ...
+    'k--', 'LineWidth', 2, 'DisplayName', 'Analytical Ground Truth');
+
+% Define a color order for the measured curves
+colors = lines(length(resultsStruct));
+
+% Loop through and overlay the measured TWIST data
+for ii = 1:length(resultsStruct)
+    meas_name = sprintf('TWIST (pA=%.2f, pB=%.2f)', resultsStruct(ii).pA, resultsStruct(ii).pB);
+    
+    plot(ax, resultsStruct(ii).Timepoints, resultsStruct(ii).Measured_Contrast, ...
+        '-o', 'Color', colors(ii,:), 'LineWidth', 1.5, 'DisplayName', meas_name);
 end
-plot(1:1:1000,breastPhantomParams.lesionIntensityFunction(1:1:1000) ...
-    + breastPhantomParams.breastIntensity)
-hold off
+
+hold(ax, 'off');
+grid(ax, 'on');
+xlabel(ax, 'Time Since Injection (s)', 'FontWeight', 'bold');
+ylabel(ax, 'ROI Contrast Intensity', 'FontWeight', 'bold');
+title(ax, 'TWIST Kinetics: Reconstructed vs. True Enhancement');
+legend(ax, 'Location', 'bestoutside');
