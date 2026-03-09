@@ -1,5 +1,5 @@
 clear; 
-close all; 
+%close all; 
 clc; 
 
 %% FOV and matrix size (scanner-style inputs)
@@ -27,8 +27,9 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 %% Configure acquisition ordering and timing
 
-pA = .5;
+pA = .13;
 pB = 0;
+
 Num_Measurements = 5;
 R = 1; %[2 3] %check if motion in breat sim is slowed down
 PF_Factor = 1; %[6/8 6/8]
@@ -117,6 +118,16 @@ for iTime = 1:nTimes
         Sampling_Table.Timing(currentMask)', ...
         maxChunkSize)';
     
+    %Add noise
+    sigma = 5000;
+
+    % Generate complex Gaussian noise
+    % randn generates normal distribution N(0,1)
+    noise = (sigma / sqrt(2)) * (randn(size(currentKspace)) + 1i * randn(size(currentKspace)));
+
+    % Add to noiseless data
+    currentKspace = currentKspace + noise; 
+
     % 2. Apply View Sharing (Fill in missing k-space points if pB is active)
     if pB ~= 0 && iTime > 1
         missingKspaceData = isnan(currentKspace);
