@@ -183,11 +183,13 @@ contrast_values_measured = mean(roi_data, 1);
 output.measured.contrast = contrast_values_measured;
 
 % 1. Shift measured timepoints so t=0 is the injection start
-output.measured.timepoints = TWIST_frame_times - breastPhantomParams.startInjectionTime_s;
+output.measured.timepoints = TWIST_frame_times - ...
+    (breastPhantomParams.startInjectionTime_s+breastPhantomParams.lesionArrivalDelay_s);
 
 % 2. Generate the simulated curve over a standardized relative time window
 rel_time_vector = -20:300; % Adjust this window as needed for your wash-in/wash-out
-abs_time_vector = rel_time_vector + breastPhantomParams.startInjectionTime_s;
+abs_time_vector = rel_time_vector + ...
+    (breastPhantomParams.startInjectionTime_s+breastPhantomParams.lesionArrivalDelay_s);
 
 output.simulated.contrast = breastPhantomParams.lesionIntensityFunction(abs_time_vector) + breastPhantomParams.breastIntensity;
 output.simulated.timepoints = rel_time_vector;
