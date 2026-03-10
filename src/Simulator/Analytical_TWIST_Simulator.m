@@ -81,7 +81,7 @@ clear k_spatFreq_freq_pha_sli k_spatFreq_freq k_spatFreq_phase k_spatFreq_slice 
 endOfFirstFrame = max(Sampling_Table.Timing(Sampling_Table.Frame == 0));
 
 % Injected contrast parameters
-breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfFirstFrame;
+breastPhantomParams.startInjectionTime_s = endOfFirstFrame;
 breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
     t_s, breastPhantomParams, breastPhantomParams.lesionWashinType, ...
     breastPhantomParams.lesionWashoutType, breastPhantomParams.lesionKineticOverrides);
@@ -182,7 +182,7 @@ contrast_values_measured = mean(roi_data, 1);
 
 output.measured.contrast = contrast_values_measured;
 
-% 1. Shift measured timepoints so t=0 is the injection start
+% 1. Shift measured timepoints to be relative to lesion arrival
 output.measured.timepoints = TWIST_frame_times - ...
     (breastPhantomParams.startInjectionTime_s+breastPhantomParams.lesionArrivalDelay_s);
 
