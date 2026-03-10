@@ -25,7 +25,8 @@ plot(ax, results(1).Sim_Timepoints, results(1).Sim_Contrast,...
     'LineWidth', 3, 'DisplayName', 'Analytical Ground Truth');
 
 % Define a color order for the measured curves
-colors = lines(11);
+colors = lines(10);
+colors(11,:) = [1 0 0];
 
 % Loop through and overlay the measured TWIST data
 for ii = 1:11
