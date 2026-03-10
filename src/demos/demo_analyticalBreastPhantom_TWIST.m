@@ -1,5 +1,5 @@
 clear; 
-%close all; 
+close all; 
 clc; 
 
 %% FOV and matrix size (scanner-style inputs)
@@ -15,7 +15,6 @@ load('Breast_Ultrafast_scan_parameters.mat')
     convert_Siemens_parameters(scan_parameters);
 
 
-
 % Contrast parameters
 rBW_HzPerPix = 570;
 TR = (5.88E-3);  
@@ -27,8 +26,8 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 %% Configure acquisition ordering and timing
 
-pA = .13;
-pB = 0;
+pA = .04;
+pB = .1;
 
 Num_Measurements = 5;
 R = 1; %[2 3] %check if motion in breat sim is slowed down
@@ -111,7 +110,7 @@ for iTime = 1:nTimes
         Sampling_Table.("Row (phase)")(currentMask), ...
         Sampling_Table.("Column (slice)")(currentMask));
         
-    currentKspace(currentIdx) = phantom.kspaceAtTime(...
+    temp_kspace = phantom.kspaceAtTime(...
         k_spatFreq_xyz(1, currentMask), ...
         k_spatFreq_xyz(2, currentMask), ...
         k_spatFreq_xyz(3, currentMask), ...
@@ -119,17 +118,18 @@ for iTime = 1:nTimes
         maxChunkSize)';
     
     %Add noise
-    sigma = 5000;
+    sigma = 100;
 
     % Generate complex Gaussian noise
     % randn generates normal distribution N(0,1)
-    noise = (sigma / sqrt(2)) * (randn(size(currentKspace)) + 1i * randn(size(currentKspace)));
+    noise = sigma * (randn(size(temp_kspace)) + 1i * randn(size(temp_kspace)));
 
     % Add to noiseless data
-    currentKspace = currentKspace + noise; 
+    temp_kspace = temp_kspace + noise; 
+    currentKspace(currentIdx) = temp_kspace;
 
-    % 2. Apply View Sharing (Fill in missing k-space points if pB is active)
-    if pB ~= 0 && iTime > 1
+    % 2. Apply View Sharing (Fill in missing k-space points)
+    if  iTime > 1
         missingKspaceData = isnan(currentKspace);
         currentKspace(missingKspaceData) = previousKspace(missingKspaceData);
     end
@@ -142,11 +142,10 @@ for iTime = 1:nTimes
     twistImage(:,:,:,iTime) = fftshift(ifftn(ifftshift(paddedKspace)));
     
     % 5. Prepare for the next TWIST frame
-    if pB ~= 0
-        previousKspace = currentKspace;
-    end
+    previousKspace = currentKspace;
+    
 end
-clear k_spatFreq_xyz 
+clear k_spatFreq_xyz temp_kspace
 
 % Post-processing dimensions and intensity
 twistImage = permute(twistImage, [2, 1, 3, 4]);
