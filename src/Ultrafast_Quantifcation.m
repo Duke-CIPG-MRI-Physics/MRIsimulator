@@ -2,8 +2,8 @@ tic
 clear; clc; close all;
 load("SimulationParameters.mat")
 
-pBs = [0];
-pAs = .04:.01:1;
+pBs = [.1];
+pAs = [.04];
 
 num_pBs = length(pBs);
 num_pAs = length(pAs);
@@ -14,17 +14,21 @@ emptyStruct = struct('pB', [], 'pA', [], ...
     'Sim_Contrast', [], 'Sim_Timepoints', []);
 resultsStruct = repmat(emptyStruct, num_pBs, num_pAs);
 
+SimulationParameters.TWIST.N_measurements = 5;
 for i = 1:num_pBs 
     pB_val = pBs(i);
     localSimParams = SimulationParameters; 
     
     for j = 1:num_pAs
         pA_val = pAs(j);
-        fprintf("Simulating pA = %g, pB = %g...\n",pA_val,pB_val)
+
+        for k = 2:5:10
+        localSimParams.LesionParameters.lesionArrivalDelay_s = localSimParams.LesionParameters.lesionArrivalDelay_s + k;
+        fprintf("Simulating pA = %g, pB = %g, Delay = %g... \n",pA_val,pB_val,localSimParams.LesionParameters.lesionArrivalDelay_s)
         localSimParams.TWIST.pB = pB_val;
         localSimParams.TWIST.pA = pA_val;
 
-        if pA < .6
+        if pA_val < 0
         Output = GPU_Analytical_TWIST_Simulator(localSimParams);
         else
         Output = Analytical_TWIST_Simulator(localSimParams);
@@ -42,6 +46,7 @@ for i = 1:num_pBs
         resultsStruct(i, j).Sim_Contrast = Output.simulated.contrast;
         resultsStruct(i, j).Sim_Timepoints = Output.simulated.timepoints;
         fprintf("Done\n")
+        end
     end
 end
 resultsStruct = resultsStruct(:);
