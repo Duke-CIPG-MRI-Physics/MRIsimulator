@@ -57,7 +57,7 @@ end
 
 %% Extract Data Across K for a specific I and J ---
 % Specify the target combination you want to plot
-target_i = 1; 
+target_i = 1; %TODO: make this loop
 target_j = 1; 
 
 % 1. Extract and concatenate into 1D row vectors
