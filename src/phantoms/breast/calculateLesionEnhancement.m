@@ -52,12 +52,23 @@ function lesionIntensity = calculateLesionEnhancement(t_s, breastPhantomParams, 
     tau_s = max(t_s - tArrival_s, 0);
 
     peakDelta = max(lesionPeakEnhancement - lesionBaselineDeltaIntensity, 0);
-    washinFraction = 1 - exp(-modelParams.kWashin_per_s .* tau_s);
+
+    washinArg = modelParams.kWashin_per_s .* tau_s;
+    washinArg(isnan(washinArg)) = 0; 
+    washinFraction = 1 - exp(-washinArg);   
+
     candidateSignal = lesionBaselineDeltaIntensity + peakDelta .* washinFraction;
 
-    tauLate_s = max(tau_s - modelParams.timeToPeak_s, 0);
-    peakSignal = lesionBaselineDeltaIntensity + peakDelta .* ...
+    if isinf(modelParams.kWashin_per_s)
+        peakSignal = lesionBaselineDeltaIntensity + peakDelta;
+    else
+        peakSignal = lesionBaselineDeltaIntensity + peakDelta .* ...
         (1 - exp(-modelParams.kWashin_per_s .* modelParams.timeToPeak_s));
+    end
+    
+    tauLate_s = max(tau_s - modelParams.timeToPeak_s, 0);
+
+
     lateTargetSignal = lesionBaselineDeltaIntensity + modelParams.latePhaseFraction .* peakDelta;
 
     washoutWeight = 1 - exp(-modelParams.kWashout_per_s .* tauLate_s);
@@ -82,6 +93,9 @@ function modelParams = getDefaultKineticParams(washinType, washoutType)
         case "fast"
             kWashin_per_s = 0.070;
             timeToPeak_s = 55;
+        case "instant"
+            kWashin_per_s = Inf;
+            timeToPeak_s = 0;
         otherwise
             error('calculateLesionEnhancement:InvalidWashinType', ...
                 'Unknown washinType "%s". Use slow, medium, or fast.', washinType);
@@ -97,6 +111,9 @@ function modelParams = getDefaultKineticParams(washinType, washoutType)
         case "washout"
             latePhaseFraction = 0.60;
             kWashout_per_s = 0.018;
+        case "none"
+            latePhaseFraction = 1.0; 
+            kWashout_per_s = 0;     
         otherwise
             error('calculateLesionEnhancement:InvalidWashoutType', ...
                 'Unknown washoutType "%s". Use persistent, plateau, or washout.', washoutType);
