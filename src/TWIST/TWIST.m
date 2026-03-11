@@ -140,6 +140,13 @@ kspaceSamplingOrder_A = [A_to_origin;A_outward];
 kspaceSamplingOrder_all_frames = [];
 kspaceSamplingOrder_B = [];
 
+if Nb == 0
+
+    B_outward = sortedData_regionB(1:2:end,:);
+    B_inward = flipud(sortedData_regionB(2:2:end,:));
+    kspaceSamplingOrder_B =[B_outward ; B_inward];
+else
+
 for ii = 1:Nb
     B_current_Bj = sortedData_regionB(sortedData_regionB.Bj == ii,:);
 
@@ -163,6 +170,9 @@ for ii = 1:Nb
     kspaceSamplingOrder_all_frames = [kspaceSamplingOrder_all_frames;kspaceSamplingOrder_current_frame];
     
 end
+end
+
+
 
 
 

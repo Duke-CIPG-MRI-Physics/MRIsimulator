@@ -101,7 +101,9 @@ twistImage = zeros([matrix_size_complete(fps_to_xyz), nTimes]);
 previousKspace = []; 
 
 for iTime = 1:nTimes
-        
+    fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
+        iTime, nTimes, (iTime-1)/nTimes*100);
+    
     % 1. Calculate current K-space Samples and put points in correct locations
     currentMask = (Sampling_Table.Frame == (iTime - 1));
     currentKspace = nan(matrix_size_acquired);
@@ -111,15 +113,26 @@ for iTime = 1:nTimes
         Sampling_Table.("Row (phase)")(currentMask), ...
         Sampling_Table.("Column (slice)")(currentMask));
         
-    currentKspace(currentIdx) = phantom.kspaceAtTime(...
+    temp_kspace = phantom.kspaceAtTime(...
         k_spatFreq_xyz(1, currentMask), ...
         k_spatFreq_xyz(2, currentMask), ...
         k_spatFreq_xyz(3, currentMask), ...
         Sampling_Table.Timing(currentMask)', ...
         maxChunkSize)';
     
-    % 2. Apply View Sharing (Fill in missing k-space points if pB is active)
-    if pB ~= 0 && iTime > 1
+    %Add noise
+    sigma = 100;
+
+    % Generate complex Gaussian noise
+    % randn generates normal distribution N(0,1)
+    noise = sigma * (randn(size(temp_kspace)) + 1i * randn(size(temp_kspace)));
+
+    % Add to noiseless data
+    temp_kspace = temp_kspace + noise; 
+    currentKspace(currentIdx) = temp_kspace;
+
+    % 2. Apply View Sharing (Fill in missing k-space points)
+    if  iTime > 1
         missingKspaceData = isnan(currentKspace);
         currentKspace(missingKspaceData) = previousKspace(missingKspaceData);
     end
@@ -132,11 +145,10 @@ for iTime = 1:nTimes
     twistImage(:,:,:,iTime) = fftshift(ifftn(ifftshift(paddedKspace)));
     
     % 5. Prepare for the next TWIST frame
-    if pB ~= 0
-        previousKspace = currentKspace;
-    end
+    previousKspace = currentKspace;
+    
 end
-clear k_spatFreq_xyz 
+clear k_spatFreq_xyz temp_kspace
 
 % Post-processing dimensions and intensity
 twistImage = permute(twistImage, [2, 1, 3, 4]);

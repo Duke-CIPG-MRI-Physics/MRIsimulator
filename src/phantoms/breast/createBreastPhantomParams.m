@@ -6,19 +6,22 @@ function params = createBreastPhantomParams()
     %   the thoracic/breast analytic phantom.
     %
     %   Lesion parameters:
-    %       lesionRadius_mm sets the lesion radius [mm].
-    %       lesionIntensityFunction is a function handle that returns the
-    %       lesion intensity for time t_s [s].
+    %       lesionRadius_mm sets the legacy default lesion radius [mm].
+    %       lesions is a struct array with fields center_mm [x y z],
+    %       radius_mm [mm], and intensityFunction. center_mm is defined
+    %       relative to the center of the right breast in mm.
+    %       lesionIntensityFunction is the shared default lesion intensity
+    %       function for time t_s [s].
     %
     %   Example:
     %       params = createBreastPhantomParams();
-    %       params.lesionRadius_mm = 8;
-    %       params.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
-    %           t_s, params, "fast", "washout");
+    %       params.lesions = [ ...
+    %           struct('center_mm', [0, 0, 0], 'radius_mm', 10), ...
+    %           struct('center_mm', [18, 12, 16], 'radius_mm', 5)];
 
-   %% Faking speed 
+   %% Faking speed
    cheat_factor = 6*(8/6)*(8/6);
-    
+
     %% Create heart
     params.cardiacOpts = struct('HR_bpm', 70/cheat_factor, ...
         'EDV_ml', 150, ...
@@ -52,7 +55,7 @@ function params = createBreastPhantomParams()
     params.breast_depth_mm = 140;
     params.breastIntensity = 0.5;
 
-    %% Lesion
+    %% Lesions
     params.lesionRadius_mm = 10;
     params.startInjectionTime_s = 0;
     params.lesionArrivalDelay_s = 8*cheat_factor;
@@ -61,4 +64,12 @@ function params = createBreastPhantomParams()
     params.lesionWashinType = "medium";
     params.lesionWashoutType = "plateau";
     params.lesionKineticOverrides = struct();
+    params.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
+        t_s, params, params.lesionWashinType, params.lesionWashoutType, ...
+        params.lesionKineticOverrides);
+
+    params.lesions = struct( ...
+        'center_mm', [0, 0, 0], ...
+        'radius_mm', params.lesionRadius_mm, ...
+        'intensityFunction', params.lesionIntensityFunction);
 end
