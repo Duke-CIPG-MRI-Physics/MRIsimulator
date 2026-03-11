@@ -84,6 +84,12 @@ breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement(
     t_s, breastPhantomParams, breastPhantomParams.lesionWashinType, ...
     breastPhantomParams.lesionWashoutType, breastPhantomParams.lesionKineticOverrides);
 
+sharedLesionIntensityFunction = breastPhantomParams.lesionIntensityFunction;
+breastPhantomParams.lesions = [ ...
+    struct('center_mm', [0, 0, 0], 'radius_mm', 10, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [28, 12, 16], 'radius_mm', 5, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [-16, -8, -14], 'radius_mm', 2.5, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [10, -17, 22], 'radius_mm', 1.25, 'intensityFunction', sharedLesionIntensityFunction)];
 
 phantom = BreastPhantom(breastPhantomParams);
 
@@ -119,7 +125,7 @@ for iTime = 1:nTimes
         maxChunkSize)';
     
     %Add noise
-    sigma = 5000;
+    sigma = 0; %5000;
 
     % Generate complex Gaussian noise
     % randn generates normal distribution N(0,1)
@@ -167,123 +173,122 @@ final_IMspace = twistImage(...
 %% display phantom
 
 phantom_magnitude = abs(final_IMspace);
-imslice(squeeze(phantom_magnitude(:,:,120,:)));
+imslice(squeeze(phantom_magnitude(:,:,:,:)));
 
 
-%% Contrast dynamics calculation
-
-%Ground truth
-figure;
-plot(Sampling_Table.Timing(1:1000:end),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(1:1000:end)) ...
-    + breastPhantomParams.breastIntensity);
-
-%convert TWIST frames to actual time, time for a whole frame is defined as
-%   moment when center of k-space is sampled.
-
-kspace_center = floor(matrix_size_acquired/2)+1;
-
-TWIST_frame_times = Sampling_Table.Timing((Sampling_Table.Frequency == kspace_center(1)) & ...
-       (Sampling_Table.("Row (phase)") == kspace_center(2)) & ...
-       (Sampling_Table.("Column (slice)") == kspace_center(3)));
-
-
-%TODO: build function to output lesion ROI
-lesion_center = [68,49,120]; %[freq,phase,slice] in final image
-lesion_radius = 6;
-[X, Y, Z] = ndgrid(1:IMmatrix_crop_size(1), 1:IMmatrix_crop_size(2), 1:IMmatrix_crop_size(3));
-squared_dist = (X - lesion_center(1)).^2 + (Y - lesion_center(2)).^2 + (Z - lesion_center(3)).^2;
-sphere_roi = squared_dist <= lesion_radius^2;
-
-data_reshaped = reshape(phantom_magnitude, [], size(phantom_magnitude,4));
-roi_flattened = sphere_roi(:);
-roi_data = data_reshaped(roi_flattened, :);
-contrast_values_measured = mean(roi_data, 1);
-
-hold on
-plot(TWIST_frame_times,abs(contrast_values_measured),'.-','MarkerSize',15)
-legend("Ground Truth","TWIST Measured")
-hold off
-
-title("Contrast Wash-in")
-xlabel("Time (s)")
-ylabel("Pixel Value")
-
-%%  Visualize ROI Overlay
-% 1. Select the slice to view (makes sense to use the lesion's Z-center)
-slice_to_view = lesion_center(3);
-
-% 2. Extract the final time frame for the background image
-final_time_idx = size(phantom_magnitude, 4);
-% Note: phantom_magnitude is 4D (freq, phase, slice, time)
-background_slice = phantom_magnitude(:, :, slice_to_view, final_time_idx);
-
-% 3. Extract the exact same slice from your 3D logical ROI mask
-roi_slice = sphere_roi(:, :, slice_to_view);
-
-% 4. Plotting
-figure;
-% Use imagesc for raw MRI data to automatically scale the display contrast
-imagesc(background_slice);
-colormap(gray);
-axis image; % Fixes the aspect ratio so the image isn't stretched
-axis off;   % Hides the axis ticks for a cleaner look
-title(sprintf('ROI Overlay on Slice %d (Final Time Frame)', slice_to_view));
-
-hold on;
-% Overlay the ROI as a red outline
-% The [0.5 0.5] tells contour to draw the line exactly at the logical boundary
-contour(roi_slice, [0.5 0.5], 'r', 'LineWidth', 2);
-hold off;
-
-%% Saving output
-save_ask = input('Save output?: (y/n)','s');
-
-if strcmpi(save_ask, 'y')
-
-    %measuring phantom size 
-    output_bytes = whos("phantom_magnitude");
-    output_bytes = output_bytes.bytes;
-
-    %creating structure with all phantom information
-
-    % Outputs
-    phantom_simulated.outputs.phantom_magnitude = phantom_magnitude;
-    phantom_simulated.outputs.timing            = TWIST_frame_times;
-
-    % Inputs (Consolidating everything under .inputs)   
-    phantom_simulated.inputs.breastPhantomParams = breastPhantomParams;
-    phantom_simulated.inputs.scan_parameters     = scan_parameters;
-    phantom_simulated.inputs.TR                  = TR;
-    phantom_simulated.inputs.TE                  = TE;
-    phantom_simulated.inputs.rBW_HzPerPix        = rBW_HzPerPix;
-
-    % Nested TWIST parameters
-    phantom_simulated.inputs.TWIST.pA            = pA;
-    phantom_simulated.inputs.TWIST.pB            = 1/Nb;
-    phantom_simulated.inputs.TWIST.Time_Measured = Time_Measured;
-
-    % Nested Undersampling parameters
-    phantom_simulated.inputs.Undersampling.GRAPPA_R  = R;
-    phantom_simulated.inputs.Undersampling.PF_Factor = PF_Factor;
-
-
-    fprintf('Input desired filename, file will be saved as <filename>.mat\n')
-    filename = input(':','s');
-
-    if output_bytes >= 1.99e9
-        fprintf('Saving using v7.3...\n')
-        save(filename,'phantom_simulated','-v7.3')
-        fprintf('File saved as %s.mat\n, ', filename);
-
-    else
-        fprintf('Saving using v7...\n')
-        save(filename,'phantom_simulated','-v7')
-        fprintf('File saved as %s.mat\n', filename);
-
-    end
-
-else 
-    fprintf('Output not saved')
-
-end
-
+% %% Contrast dynamics calculation
+% 
+% %Ground truth
+% figure;
+% plot(Sampling_Table.Timing(1:1000:end),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(1:1000:end)) ...
+%     + breastPhantomParams.breastIntensity);
+% 
+% %convert TWIST frames to actual time, time for a whole frame is defined as
+% %   moment when center of k-space is sampled.
+% 
+% kspace_center = floor(matrix_size_acquired/2)+1;
+% 
+% TWIST_frame_times = Sampling_Table.Timing((Sampling_Table.Frequency == kspace_center(1)) & ...
+%        (Sampling_Table.("Row (phase)") == kspace_center(2)) & ...
+%        (Sampling_Table.("Column (slice)") == kspace_center(3)));
+% 
+% 
+% %TODO: build function to output lesion ROI
+% lesion_center = [68,49,120]; %[freq,phase,slice] in final image
+% lesion_radius = 6;
+% [X, Y, Z] = ndgrid(1:IMmatrix_crop_size(1), 1:IMmatrix_crop_size(2), 1:IMmatrix_crop_size(3));
+% squared_dist = (X - lesion_center(1)).^2 + (Y - lesion_center(2)).^2 + (Z - lesion_center(3)).^2;
+% sphere_roi = squared_dist <= lesion_radius^2;
+% 
+% data_reshaped = reshape(phantom_magnitude, [], size(phantom_magnitude,4));
+% roi_flattened = sphere_roi(:);
+% roi_data = data_reshaped(roi_flattened, :);
+% contrast_values_measured = mean(roi_data, 1);
+% 
+% hold on
+% plot(TWIST_frame_times,abs(contrast_values_measured),'.-','MarkerSize',15)
+% legend("Ground Truth","TWIST Measured")
+% hold off
+% 
+% title("Contrast Wash-in")
+% xlabel("Time (s)")
+% ylabel("Pixel Value")
+% 
+% %%  Visualize ROI Overlay
+% % 1. Select the slice to view (makes sense to use the lesion's Z-center)
+% slice_to_view = lesion_center(3);
+% 
+% % 2. Extract the final time frame for the background image
+% final_time_idx = size(phantom_magnitude, 4);
+% % Note: phantom_magnitude is 4D (freq, phase, slice, time)
+% background_slice = phantom_magnitude(:, :, slice_to_view, final_time_idx);
+% 
+% % 3. Extract the exact same slice from your 3D logical ROI mask
+% roi_slice = sphere_roi(:, :, slice_to_view);
+% 
+% % 4. Plotting
+% figure;
+% % Use imagesc for raw MRI data to automatically scale the display contrast
+% imagesc(background_slice);
+% colormap(gray);
+% axis image; % Fixes the aspect ratio so the image isn't stretched
+% axis off;   % Hides the axis ticks for a cleaner look
+% title(sprintf('ROI Overlay on Slice %d (Final Time Frame)', slice_to_view));
+% 
+% hold on;
+% % Overlay the ROI as a red outline
+% % The [0.5 0.5] tells contour to draw the line exactly at the logical boundary
+% contour(roi_slice, [0.5 0.5], 'r', 'LineWidth', 2);
+% hold off;
+% 
+% %% Saving output
+% save_ask = input('Save output?: (y/n)','s');
+% 
+% if strcmpi(save_ask, 'y')
+% 
+%     %measuring phantom size 
+%     output_bytes = whos("phantom_magnitude");
+%     output_bytes = output_bytes.bytes;
+% 
+%     %creating structure with all phantom information
+% 
+%     % Outputs
+%     phantom_simulated.outputs.phantom_magnitude = phantom_magnitude;
+%     phantom_simulated.outputs.timing            = TWIST_frame_times;
+% 
+%     % Inputs (Consolidating everything under .inputs)   
+%     phantom_simulated.inputs.breastPhantomParams = breastPhantomParams;
+%     phantom_simulated.inputs.scan_parameters     = scan_parameters;
+%     phantom_simulated.inputs.TR                  = TR;
+%     phantom_simulated.inputs.TE                  = TE;
+%     phantom_simulated.inputs.rBW_HzPerPix        = rBW_HzPerPix;
+% 
+%     % Nested TWIST parameters
+%     phantom_simulated.inputs.TWIST.pA            = pA;
+%     phantom_simulated.inputs.TWIST.pB            = 1/Nb;
+%     phantom_simulated.inputs.TWIST.Time_Measured = Time_Measured;
+% 
+%     % Nested Undersampling parameters
+%     phantom_simulated.inputs.Undersampling.GRAPPA_R  = R;
+%     phantom_simulated.inputs.Undersampling.PF_Factor = PF_Factor;
+% 
+% 
+%     fprintf('Input desired filename, file will be saved as <filename>.mat\n')
+%     filename = input(':','s');
+% 
+%     if output_bytes >= 1.99e9
+%         fprintf('Saving using v7.3...\n')
+%         save(filename,'phantom_simulated','-v7.3')
+%         fprintf('File saved as %s.mat\n, ', filename);
+% 
+%     else
+%         fprintf('Saving using v7...\n')
+%         save(filename,'phantom_simulated','-v7')
+%         fprintf('File saved as %s.mat\n', filename);
+% 
+%     end
+% 
+% else 
+%     fprintf('Output not saved')
+% 
+% end
