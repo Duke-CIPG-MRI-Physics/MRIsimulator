@@ -81,13 +81,20 @@ clear k_spatFreq_freq_pha_sli k_spatFreq_freq k_spatFreq_phase k_spatFreq_slice 
 endOfFirstFrame = max(Sampling_Table.Timing(Sampling_Table.Frame == 0));
 
 % Injected contrast parameters
-breastPhantomParams.startInjectionTime_s = endOfFirstFrame;
+breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfFirstFrame;
 breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement( ...
     t_s, breastPhantomParams, breastPhantomParams.lesionWashinType, ...
     breastPhantomParams.lesionWashoutType, breastPhantomParams.lesionKineticOverrides);
 
+sharedLesionIntensityFunction = breastPhantomParams.lesionIntensityFunction;
+breastPhantomParams.lesions = [ ...
+    struct('center_mm', [0, 0, 0], 'radius_mm', 10, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [28, 12, 16], 'radius_mm', 5, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [-16, -8, -14], 'radius_mm', 2.5, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [10, -17, 22], 'radius_mm', 1.25, 'intensityFunction', sharedLesionIntensityFunction)];
 
 phantom = BreastPhantom(breastPhantomParams);
+
 
 %% Perform TWIST, calculating two time frames at a time to minimize memory overhead
 maxChunkSize = 5000000;
