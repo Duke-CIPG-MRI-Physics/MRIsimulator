@@ -8,6 +8,9 @@ function [output] = Analytical_TWIST_Simulator(SimulationParameters)
 
 %% Unpacking inputs
 tic
+
+cheat_factor = 2*3*(8/6)*(8/6);
+
 %Scan Parameters
 scan_parameters = SimulationParameters.ScanParameters;
 
@@ -21,9 +24,9 @@ breastPhantomParams.lesionBaselineDeltaIntensity = SimulationParameters.LesionPa
 
 
 % MRI contrast parameters
-rBW_HzPerPix = SimulationParameters.MRIContrastParameters.rBW_HzPerPix;
-TR = SimulationParameters.MRIContrastParameters.TR;
-TE = SimulationParameters.MRIContrastParameters.TE;
+rBW_HzPerPix = SimulationParameters.MRIContrastParameters.rBW_HzPerPix*cheat_factor;
+TR = SimulationParameters.MRIContrastParameters.TR/cheat_factor;
+TE = SimulationParameters.MRIContrastParameters.TE/cheat_factor;
 
 % Ultrafast parameters
 pA = SimulationParameters.TWIST.pA;
@@ -206,7 +209,7 @@ output.measured.timepoints = TWIST_frame_times - ...
     (breastPhantomParams.startInjectionTime_s+breastPhantomParams.lesionArrivalDelay_s);
 
 % 2. Generate the simulated curve over a standardized relative time window
-rel_time_vector = -20:300; % Adjust this window as needed for your wash-in/wash-out
+rel_time_vector = -2:.1:60; % Adjust this window as needed for your wash-in/wash-out
 abs_time_vector = rel_time_vector + ...
     (breastPhantomParams.startInjectionTime_s+breastPhantomParams.lesionArrivalDelay_s);
 

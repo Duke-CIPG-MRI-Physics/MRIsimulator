@@ -1,5 +1,5 @@
 clear;
-%close all;
+close all;
 clc;
 
 %% FOV and matrix size (scanner-style inputs)
