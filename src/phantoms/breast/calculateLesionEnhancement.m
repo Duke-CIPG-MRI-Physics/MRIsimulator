@@ -104,13 +104,13 @@ function modelParams = getDefaultKineticParams(washinType, washoutType)
     switch washoutType
         case "persistent"
             latePhaseFraction = 1.10;
-            kWashout_per_s = 0.004;
+            kWashout_per_s = 0.04;
         case "plateau"
             latePhaseFraction = 0.95;
-            kWashout_per_s = 0.008;
+            kWashout_per_s = 0.08;
         case "washout"
             latePhaseFraction = 0.60;
-            kWashout_per_s = 0.018;
+            kWashout_per_s = 0.18;
         case "none"
             latePhaseFraction = 1.0; 
             kWashout_per_s = 0;     

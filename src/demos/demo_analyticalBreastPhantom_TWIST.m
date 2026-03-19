@@ -74,7 +74,7 @@ endOfFirstFrame = max(Sampling_Table.Timing(Sampling_Table.Frame == 0));
 
 % Injected contrast parameters
 breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfFirstFrame;
-breastPhantomParams.lesionArrivalDelay_s = 85;
+breastPhantomParams.lesionArrivalDelay_s = 1;
 breastPhantomParams.lesionWashinType = "instant";
 breastPhantomParams.lesionWashoutType = "washout";
 breastPhantomParams.lesionPeakEnhancement = 1.6;
