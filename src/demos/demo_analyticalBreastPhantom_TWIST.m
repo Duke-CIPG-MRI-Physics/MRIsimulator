@@ -14,11 +14,12 @@ load('Breast_Ultrafast_scan_parameters.mat')
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] =...
     convert_Siemens_parameters(scan_parameters);
 
+cheat_factor = 3*2*(8/6)*(8/6);
 
 % Contrast parameters
-rBW_HzPerPix = 570;
-TR = (5.88E-3);
-TE = 2.63E-3;
+rBW_HzPerPix = 570*cheat_factor;
+TR = (5.88E-3)/cheat_factor;
+TE = 2.63E-3/cheat_factor;
 
 % Derived contrast paramters
 rBW_Hz = rBW_HzPerPix*matrix_size_acquired(1);
@@ -30,7 +31,7 @@ pA = .04;
 pB = 0;
 
 Num_Measurements = 10;
-R = 1; %[2 3] %check if motion in breat sim is slowed down
+R = 1; %[2 3] 
 PF_Factor = 1; %[6/8 6/8]
 
 [Sampling_Table,TWIST_Timing] = Ultrafast_Sampling(matrix_size_acquired,FOV_acquired,pA,pB,Num_Measurements,TR,R,PF_Factor);
