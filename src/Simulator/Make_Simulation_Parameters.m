@@ -23,7 +23,7 @@ PF_Factor = 1; %[6/8 6/8]
 SimulationParameters.ScanParameters = scan_parameters;
 
 % Lesion parameters
-SimulationParameters.LesionParameters.lesionArrivalDelay_s = 85;
+SimulationParameters.LesionParameters.lesionArrivalDelay_s = 1;
 SimulationParameters.LesionParameters.lesionWashinType = "instant";
 SimulationParameters.LesionParameters.lesionWashoutType = "washout";
 SimulationParameters.LesionParameters.lesionPeakEnhancement = 1.6;

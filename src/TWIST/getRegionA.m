@@ -6,8 +6,8 @@ function [regionA,frequency_table] = getRegionA(Matrix_Size_Acquired,FOV_acquire
 %Please remove this section once GRAPPA and PF have been properly
 %implemented
 
-% PF_Factor = [6/8 6/8];
-% R = [2 3];
+PF_Factor = [6/8 6/8];
+R = [2 3];
 
 
 %%
