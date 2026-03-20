@@ -27,7 +27,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 %% Configure acquisition ordering and timing
 
-pA = .04;
+pA = .15;
 pB = .1;
 
 Num_Measurements = 20;
@@ -234,7 +234,7 @@ for ii = 1:num_lesions
     plot(TWIST_frame_times,abs(contrast_values_measured(ii,:)),'.-','MarkerSize',15)
 
 end
-legend("Ground Truth","TWIST Measured XL","L","M","S")
+legend("Ground Truth","TWIST Measured L","M","S","XS")
 hold off
 
 title("Contrast Wash-in")
