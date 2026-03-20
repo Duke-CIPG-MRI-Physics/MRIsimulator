@@ -28,9 +28,9 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 %% Configure acquisition ordering and timing
 
 pA = .04;
-pB = 0;
+pB = .1;
 
-Num_Measurements = 10;
+Num_Measurements = 20;
 R = 1; %[2 3] 
 PF_Factor = 1; %[6/8 6/8]
 
@@ -86,10 +86,10 @@ breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement(
 
 sharedLesionIntensityFunction = breastPhantomParams.lesionIntensityFunction;
 breastPhantomParams.lesions = [ ...
-    struct('center_mm', [0, 0, 0], 'radius_mm', 10, 'intensityFunction', sharedLesionIntensityFunction), ...
-    struct('center_mm', [28, 12, 16], 'radius_mm', 5, 'intensityFunction', sharedLesionIntensityFunction), ...
-    struct('center_mm', [-16, -8, -14], 'radius_mm', 2.5, 'intensityFunction', sharedLesionIntensityFunction), ...
-    struct('center_mm', [10, -17, 22], 'radius_mm', 1.25, 'intensityFunction', sharedLesionIntensityFunction)];
+    struct('center_mm', [-130*voxel_size_mm(1), 0, 0], 'radius_mm', 8, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [18*voxel_size_mm(1), 30*voxel_size_mm(2), 16*voxel_size_mm(3)], 'radius_mm', 4, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [-10*voxel_size_mm(1), -10*voxel_size_mm(2), -14*voxel_size_mm(3)], 'radius_mm', 2, 'intensityFunction', sharedLesionIntensityFunction), ...
+    struct('center_mm', [6*voxel_size_mm(1), -20*voxel_size_mm(2), 22]*voxel_size_mm(3), 'radius_mm', 1, 'intensityFunction', sharedLesionIntensityFunction)];
 
 phantom = BreastPhantom(breastPhantomParams);
 
@@ -194,20 +194,47 @@ TWIST_frame_times = Sampling_Table.Timing((Sampling_Table.Frequency == kspace_ce
 
 
 %TODO: build function to output lesion ROI
-lesion_center = [68,49,120]; %[freq,phase,slice] in final image
-lesion_radius = 6;
+lesion_centers = [68,179,121; 38,31,105; 78,59,135; 88,43,99]; %[freq,phase,slice] in final image
+lesion_radii = [5; 2.5; 1; 0];
+num_lesions = length(lesion_radii);
+num_volumes = size(phantom_magnitude, 4); % Assuming 4D data (e.g., multiple echoes/timepoints)
+
+% 2. Create coordinate grid
 [X, Y, Z] = ndgrid(1:IMmatrix_crop_size(1), 1:IMmatrix_crop_size(2), 1:IMmatrix_crop_size(3));
-squared_dist = (X - lesion_center(1)).^2 + (Y - lesion_center(2)).^2 + (Z - lesion_center(3)).^2;
-sphere_roi = squared_dist <= lesion_radius^2;
 
-data_reshaped = reshape(phantom_magnitude, [], size(phantom_magnitude,4));
-roi_flattened = sphere_roi(:);
-roi_data = data_reshaped(roi_flattened, :);
-contrast_values_measured = mean(roi_data, 1);
+% 3. Reshape the source data once: rows = voxels, columns = volumes
+data_reshaped = reshape(phantom_magnitude, [], num_volumes);
 
+% Pre-allocate outputs for speed and memory efficiency
+lesion_roi = false(IMmatrix_crop_size(1), IMmatrix_crop_size(2), IMmatrix_crop_size(3), num_lesions);
+contrast_values_measured = zeros(num_lesions, num_volumes);
+
+% 4. Loop through each lesion
 hold on
-plot(TWIST_frame_times,abs(contrast_values_measured),'.-','MarkerSize',15)
-legend("Ground Truth","TWIST Measured")
+for ii = 1:num_lesions
+    % Calculate distance from this specific center
+    squared_dists = (X - lesion_centers(ii,1)).^2 + ...
+                    (Y - lesion_centers(ii,2)).^2 + ...
+                    (Z - lesion_centers(ii,3)).^2;
+    
+    % Create the 3D mask for this specific lesion
+    current_mask = squared_dists <= lesion_radii(ii)^2;
+    
+    % Save it into your 4D stack in case you need to visualize it later
+    lesion_roi(:,:,:,ii) = current_mask;
+    
+    % Flatten the mask to 1D to match data_reshaped
+    roi_flattened = current_mask(:);
+    
+    % Extract the data just for this lesion mask
+    roi_data = data_reshaped(roi_flattened, :);
+    
+    % Calculate the mean across the ROI (dimension 1) and store it
+    contrast_values_measured(ii, :) = mean(roi_data, 1);
+    plot(TWIST_frame_times,abs(contrast_values_measured(ii,:)),'.-','MarkerSize',15)
+
+end
+legend("Ground Truth","TWIST Measured XL","L","M","S")
 hold off
 
 title("Contrast Wash-in")
@@ -215,8 +242,9 @@ xlabel("Time (s)")
 ylabel("Pixel Value")
 
 %%  Visualize ROI Overlay
+for ii = 1:num_lesions
 % 1. Select the slice to view (makes sense to use the lesion's Z-center)
-slice_to_view = lesion_center(3);
+slice_to_view = lesion_centers(ii,3);
 
 % 2. Extract the final time frame for the background image
 final_time_idx = size(phantom_magnitude, 4);
@@ -224,7 +252,7 @@ final_time_idx = size(phantom_magnitude, 4);
 background_slice = phantom_magnitude(:, :, slice_to_view, final_time_idx);
 
 % 3. Extract the exact same slice from your 3D logical ROI mask
-roi_slice = sphere_roi(:, :, slice_to_view);
+roi_slice = lesion_roi(:, :, slice_to_view,ii);
 
 % 4. Plotting
 figure;
@@ -240,6 +268,7 @@ hold on;
 % The [0.5 0.5] tells contour to draw the line exactly at the logical boundary
 contour(roi_slice, [0.5 0.5], 'r', 'LineWidth', 2);
 hold off;
+end
 %
 % %% Saving output
 % save_ask = input('Save output?: (y/n)','s');
