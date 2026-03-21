@@ -1,9 +1,9 @@
-clc;clear;close all
+clc;clear;%close all
 
 %% Input Data
 %theFileName = 'C:\Users\Roberto\My Drive\Grad School\Research\RobbieTWIST\No Partial Fourier, Minimized GRAPPA\meas_MID00988_FID84788_t1_twist_R3_R2_NOPF_A4_B10.dat';
 
-FileName = 'meas_MID00033_FID24847__UF_PF_A3_a30_b0.dat';
+FileName = 'meas_MID06574_FID41421_UF_GRAPPA_[2_1],_pA_04_pB_1_no_PF.dat';
 
 % Read the TWIX data
 twix_objs = mapVBVD(FileName);
@@ -11,20 +11,25 @@ if(~iscell(twix_objs))
     twix_objs = {twix_objs};
 end
 
-% Get the k-space data
-% 
-% A_percentage = 
+
 
 % {'Col'}  {'Cha'}    {'Lin'}    {'Par'}    {'Sli'}    {'Ave'}    {'Phs'}    {'Eco'}    {'Rep'}
 %     {'Set'}    {'Seg'}    {'Ida'}    {'Idb'}    {'Idc'}    {'Idd'}    {'Ide'}
 
 
-kspace_all = squeeze(twix_objs{2}.image(1,1,:,:,1,1,1,1,:,1,1,1,1,1,1,1));
+kspace_all = squeeze(twix_objs{1,1}.image(1,1,:,:,1,1,1,1,:,1,1,1,1,1,1,1));
 kspace_all_binary = (kspace_all~=0);
 
+regionA = sum(kspace_all_binary,3);
+regionA = (regionA == 10);
 
+regionApercentage = sum(regionA(:))/numel(regionA) * 100;
+fprintf("Region A is %g%% of matrix\n",regionApercentage)
 
+figure
+imshow(regionA,[])
 imslice(kspace_all_binary);
+
 %Code below is parameter specific
 
 
