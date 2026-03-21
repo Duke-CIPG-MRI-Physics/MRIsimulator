@@ -29,6 +29,7 @@ TE = SimulationParameters.MRIContrastParameters.TE;
 pA = SimulationParameters.TWIST.pA;
 pB = SimulationParameters.TWIST.pB;
 Num_Measurements = SimulationParameters.TWIST.N_measurements;
+shareOptions = getTWISTShareOptions(SimulationParameters.TWIST);
 
 R = SimulationParameters.ParallelImaging.GRAPPA_R;
 PF_Factor = SimulationParameters.ParallelImaging.PF_Factor;
@@ -48,9 +49,9 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 %% Configure acquisition ordering and timing
 
-[Sampling_Table,TWIST_Timing] = Ultrafast_Sampling(matrix_size_acquired,FOV_acquired,pA,pB,Num_Measurements,TR,R,PF_Factor);
-
-k_idx_freq_pha_sli = [Sampling_Table.Frequency, Sampling_Table.("Row (phase)"), Sampling_Table.("Column (slice)")];
+[Sampling_Table,TWIST_Timing] = Ultrafast_Sampling( ...
+    matrix_size_acquired, FOV_acquired, pA, pB, Num_Measurements, TR, R, PF_Factor, ...
+    shareOptions.mode, shareOptions.method);
 
 %Construct Timing Information
 TR_before_readout = TR-(matrix_size_acquired(1)*dt_s); 
@@ -63,22 +64,22 @@ dwell_time_timepoints_absolute = dwell_time_timepoints_within_TR(:) + (n_TRs_tot
 Sampling_Table.Timing = dwell_time_timepoints_absolute(:);
 clear n_TRs_total dwell_time_timepoints_absolute dwell_time_timepoints_within_TR
 
+twistPlan = prepareTWISTViewSharingPlan( ...
+    Sampling_Table, matrix_size_acquired, shareOptions.mode, shareOptions.tieBreaker);
 
-%% Build WORLD k-space grid and map to the TWIST ordering
+
+%% Build 1D WORLD k-space grids
 k_spatFreq_freq = computeKspaceGrid1D(FOV_acquired(1), matrix_size_acquired(1));
 k_spatFreq_phase = computeKspaceGrid1D(FOV_acquired(2), matrix_size_acquired(2));
 k_spatFreq_slice = computeKspaceGrid1D(FOV_acquired(3), matrix_size_acquired(3));
-
-k_spatFreq_freq_pha_sli = [k_spatFreq_freq(k_idx_freq_pha_sli(:, 1)); 
-    k_spatFreq_phase(k_idx_freq_pha_sli(:, 2)); 
-    k_spatFreq_slice(k_idx_freq_pha_sli(:, 3))];
-[k_spatFreq_xyz, fps_to_xyz] = mapKspaceFpsToXyz(k_spatFreq_freq_pha_sli, freq_phase_slice);
-clear k_spatFreq_freq_pha_sli k_spatFreq_freq k_spatFreq_phase k_spatFreq_slice k_idx_freq_pha_sli
+fps_to_xyz = zeros(1, 3);
+fps_to_xyz(freq_phase_slice) = 1:3;
 
 %% Construct Breast Phantom
 
 % Update startInjectionTime_s to be relative to first frame ending
-endOfFirstFrame = max(Sampling_Table.Timing(Sampling_Table.Frame == 0));
+firstFrameMask = Sampling_Table.Frame == twistPlan.frameNumbers(1);
+endOfFirstFrame = max(Sampling_Table.Timing(firstFrameMask));
 
 % Injected contrast parameters
 breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfFirstFrame;
@@ -89,95 +90,23 @@ breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement(
 
 phantom = BreastPhantom(breastPhantomParams);
 
-%% Perform TWIST, calculating two time frames at a time to minimize memory overhead
+%% Streaming TWIST reconstruction
 maxChunkSize = 5000000;
-nTimes = Num_Measurements + 1;
-
-% Preallocate the final image array
+nTimes = twistPlan.nFrames;
+noiseSigma = 100;
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
-twistImage = zeros([matrix_size_complete(fps_to_xyz), nTimes]);
-
-% Initialize variable for view sharing 
-previousKspace = []; 
-
-for iTime = 1:nTimes
-    fprintf('Reconstructing TWIST time %d of %d (%.1f%% complete).\n', ...
-        iTime, nTimes, (iTime-1)/nTimes*100);
-    
-    % 1. Calculate current K-space Samples and put points in correct locations
-    currentMask = (Sampling_Table.Frame == (iTime - 1));
-    currentKspace = nan(matrix_size_acquired);
-    
-    currentIdx = sub2ind(matrix_size_acquired, ...
-        Sampling_Table.Frequency(currentMask), ...
-        Sampling_Table.("Row (phase)")(currentMask), ...
-        Sampling_Table.("Column (slice)")(currentMask));
-        
-    temp_kspace = phantom.kspaceAtTime(...
-        k_spatFreq_xyz(1, currentMask), ...
-        k_spatFreq_xyz(2, currentMask), ...
-        k_spatFreq_xyz(3, currentMask), ...
-        Sampling_Table.Timing(currentMask)', ...
-        maxChunkSize)';
-    
-    %Add noise
-    sigma = 100;
-
-    % Generate complex Gaussian noise
-    % randn generates normal distribution N(0,1)
-    noise = sigma * (randn(size(temp_kspace)) + 1i * randn(size(temp_kspace)));
-
-    % Add to noiseless data
-    temp_kspace = temp_kspace + noise; 
-    currentKspace(currentIdx) = temp_kspace;
-
-    % 2. Apply View Sharing (Fill in missing k-space points)
-    if  iTime > 1
-        missingKspaceData = isnan(currentKspace);
-        currentKspace(missingKspaceData) = previousKspace(missingKspaceData);
-    end
-    
-    % 3. Zero-fill unsampled periphery (Crucial for pB == 0)
-    currentKspace(isnan(currentKspace)) = 0; 
-    
-    % 4. Reconstruct Image (Permute, zero-pad, shift, and IFFT)
-    paddedKspace = padarray(permute(currentKspace, fps_to_xyz), 0.5 * padsize, 0);
-    twistImage(:,:,:,iTime) = fftshift(ifftn(ifftshift(paddedKspace)));
-    
-    % 5. Prepare for the next TWIST frame
-    previousKspace = currentKspace;
-    
-end
-clear k_spatFreq_xyz temp_kspace
-
-% Post-processing dimensions and intensity
-twistImage = permute(twistImage, [2, 1, 3, 4]);
-
-voxel_volume = prod(voxel_size_mm);
-twistImage = twistImage ./ voxel_volume;
 
 %% --- 8. Resolving Oversampling
 crop_amount = matrix_size_complete-IMmatrix_crop_size;
 margin = floor(crop_amount ./ 2); 
-
-final_IMspace = twistImage(...
+cropRanges = { ...
     margin(1)+1 : margin(1)+IMmatrix_crop_size(1), ...
     margin(2)+1 : margin(2)+IMmatrix_crop_size(2), ...
-    margin(3)+1 : margin(3)+IMmatrix_crop_size(3),...
-    :);
-
-%% Contrast dynamics calculation
-
+    margin(3)+1 : margin(3)+IMmatrix_crop_size(3)};
 
 %convert TWIST frames to actual time, time for a whole frame is defined as
 %   moment when center of k-space is sampled.
-
-kspace_center = floor(matrix_size_acquired/2)+1;
-
-TWIST_frame_times = (Sampling_Table.Timing((Sampling_Table.Frequency == kspace_center(1)) & ...
-       (Sampling_Table.("Row (phase)") == kspace_center(2)) & ...
-       (Sampling_Table.("Column (slice)") == kspace_center(3))))';
-
+TWIST_frame_times = twistPlan.frameCenterTimes_s;
 
 %TODO: build function to output lesion ROI
 lesion_center = [68,49,120]; %[freq,phase,slice] in final image
@@ -185,12 +114,141 @@ lesion_radius = 6;
 [X, Y, Z] = ndgrid(1:IMmatrix_crop_size(1), 1:IMmatrix_crop_size(2), 1:IMmatrix_crop_size(3));
 squared_dist = (X - lesion_center(1)).^2 + (Y - lesion_center(2)).^2 + (Z - lesion_center(3)).^2;
 sphere_roi = squared_dist <= lesion_radius^2;
+voxel_volume = prod(voxel_size_mm);
+contrast_values_measured = zeros(1, nTimes);
 
-data_reshaped = reshape(abs(final_IMspace), [], size(final_IMspace,4));
-roi_flattened = sphere_roi(:);
-roi_data = data_reshaped(roi_flattened, :);
-contrast_values_measured = mean(roi_data, 1);
+switch shareOptions.mode
+    case "forward"
+        sharedKspace = [];
+        for iTime = 1:nTimes
+            fprintf('Reconstructing TWIST frame %d of %d (%.1f%% complete).\n', ...
+                iTime, nTimes, (iTime - 1) / nTimes * 100);
 
+            frameSamples = sampleAnalyticalTWISTFrame( ...
+                phantom, Sampling_Table, twistPlan, iTime, ...
+                k_spatFreq_freq, k_spatFreq_phase, k_spatFreq_slice, ...
+                freq_phase_slice, noiseSigma, maxChunkSize);
+
+            if isempty(sharedKspace)
+                sharedKspace = zeros(matrix_size_acquired, 'like', frameSamples.aValues);
+            end
+
+            sharedKspace(twistPlan.aLinearIdx) = frameSamples.aValues;
+            if twistPlan.frameIsFull(iTime)
+                subsetsToUpdate = 1:twistPlan.nBSubsets;
+            elseif twistPlan.acquiredSubsetByFrame(iTime) > 0
+                subsetsToUpdate = twistPlan.acquiredSubsetByFrame(iTime);
+            else
+                subsetsToUpdate = [];
+            end
+
+            for iSubset = subsetsToUpdate
+                sharedKspace(twistPlan.bLinearIdxBySubset{iSubset}) = frameSamples.bValues{iSubset};
+            end
+
+            contrast_values_measured(iTime) = reconstructTwistRoiMean( ...
+                sharedKspace, fps_to_xyz, padsize, cropRanges, sphere_roi, voxel_volume);
+        end
+
+    case "reverse"
+        sharedKspace = [];
+        for iTime = nTimes:-1:1
+            fprintf('Reconstructing TWIST frame %d of %d (%.1f%% complete).\n', ...
+                iTime, nTimes, (nTimes - iTime) / nTimes * 100);
+
+            frameSamples = sampleAnalyticalTWISTFrame( ...
+                phantom, Sampling_Table, twistPlan, iTime, ...
+                k_spatFreq_freq, k_spatFreq_phase, k_spatFreq_slice, ...
+                freq_phase_slice, noiseSigma, maxChunkSize);
+
+            if isempty(sharedKspace)
+                sharedKspace = zeros(matrix_size_acquired, 'like', frameSamples.aValues);
+            end
+
+            sharedKspace(twistPlan.aLinearIdx) = frameSamples.aValues;
+            if twistPlan.frameIsFull(iTime)
+                subsetsToUpdate = 1:twistPlan.nBSubsets;
+            elseif twistPlan.acquiredSubsetByFrame(iTime) > 0
+                subsetsToUpdate = twistPlan.acquiredSubsetByFrame(iTime);
+            else
+                subsetsToUpdate = [];
+            end
+
+            for iSubset = subsetsToUpdate
+                sharedKspace(twistPlan.bLinearIdxBySubset{iSubset}) = frameSamples.bValues{iSubset};
+            end
+
+            contrast_values_measured(iTime) = reconstructTwistRoiMean( ...
+                sharedKspace, fps_to_xyz, padsize, cropRanges, sphere_roi, voxel_volume);
+        end
+
+    case "symmetric"
+        frameBuffer = cell(1, nTimes);
+        subsetReferenceCount = zeros(nTimes, twistPlan.nBSubsets);
+        for iFrame = 1:nTimes
+            for iSubset = 1:twistPlan.nBSubsets
+                sourceFrame = twistPlan.sourceFrameMap(iFrame, iSubset);
+                subsetReferenceCount(sourceFrame, iSubset) = subsetReferenceCount(sourceFrame, iSubset) + 1;
+            end
+        end
+
+        nextFrameToReconstruct = 1;
+        for iAcquire = 1:nTimes
+            fprintf('Sampling TWIST frame %d of %d (%.1f%% complete).\n', ...
+                iAcquire, nTimes, (iAcquire - 1) / nTimes * 100);
+
+            frameBuffer{iAcquire} = sampleAnalyticalTWISTFrame( ...
+                phantom, Sampling_Table, twistPlan, iAcquire, ...
+                k_spatFreq_freq, k_spatFreq_phase, k_spatFreq_slice, ...
+                freq_phase_slice, noiseSigma, maxChunkSize);
+
+            while nextFrameToReconstruct <= nTimes && ...
+                    twistPlan.readyFrameByFrame(nextFrameToReconstruct) <= iAcquire
+
+                fprintf('Reconstructing TWIST frame %d of %d (%.1f%% complete).\n', ...
+                    nextFrameToReconstruct, nTimes, ...
+                    (nextFrameToReconstruct - 1) / nTimes * 100);
+
+                currentSamples = frameBuffer{nextFrameToReconstruct};
+                currentKspace = zeros(matrix_size_acquired, 'like', currentSamples.aValues);
+                currentKspace(twistPlan.aLinearIdx) = currentSamples.aValues;
+
+                for iSubset = 1:twistPlan.nBSubsets
+                    sourceFrame = twistPlan.sourceFrameMap(nextFrameToReconstruct, iSubset);
+                    currentKspace(twistPlan.bLinearIdxBySubset{iSubset}) = ...
+                        frameBuffer{sourceFrame}.bValues{iSubset};
+
+                    subsetReferenceCount(sourceFrame, iSubset) = ...
+                        subsetReferenceCount(sourceFrame, iSubset) - 1;
+                    if subsetReferenceCount(sourceFrame, iSubset) == 0
+                        frameBuffer{sourceFrame}.bValues{iSubset} = [];
+                    end
+                end
+
+                contrast_values_measured(nextFrameToReconstruct) = reconstructTwistRoiMean( ...
+                    currentKspace, fps_to_xyz, padsize, cropRanges, sphere_roi, voxel_volume);
+
+                frameBuffer{nextFrameToReconstruct}.aValues = [];
+                if frameSamplesEmpty(frameBuffer{nextFrameToReconstruct})
+                    frameBuffer{nextFrameToReconstruct} = [];
+                end
+
+                for iSubset = 1:twistPlan.nBSubsets
+                    sourceFrame = twistPlan.sourceFrameMap(nextFrameToReconstruct, iSubset);
+                    if ~isempty(frameBuffer{sourceFrame}) && frameSamplesEmpty(frameBuffer{sourceFrame})
+                        frameBuffer{sourceFrame} = [];
+                    end
+                end
+
+                nextFrameToReconstruct = nextFrameToReconstruct + 1;
+            end
+        end
+
+        if nextFrameToReconstruct <= nTimes
+            error("Analytical_TWIST_Simulator:IncompleteSymmetricReconstruction", ...
+                "Symmetric TWIST reconstruction did not resolve all frame dependencies.");
+        end
+end
 
 output.measured.contrast = contrast_values_measured;
 
@@ -204,4 +262,33 @@ abs_time_vector = rel_time_vector + breastPhantomParams.startInjectionTime_s;
 output.simulated.contrast = breastPhantomParams.lesionIntensityFunction(abs_time_vector) + breastPhantomParams.breastIntensity;
 output.simulated.timepoints = rel_time_vector;
 toc
+end
+
+function roiMean = reconstructTwistRoiMean(currentKspace, fps_to_xyz, padsize, cropRanges, sphere_roi, voxel_volume)
+% reconstructTwistRoiMean  Reconstruct one TWIST frame and measure the ROI.
+
+paddedKspace = padarray(permute(currentKspace, fps_to_xyz), 0.5 * padsize, 0);
+currentImage = fftshift(ifftn(ifftshift(paddedKspace)));
+currentImage = permute(currentImage, [2, 1, 3]);
+currentImage = currentImage ./ voxel_volume;
+currentImage = currentImage(cropRanges{1}, cropRanges{2}, cropRanges{3});
+
+roiValues = abs(currentImage(sphere_roi));
+roiMean = mean(roiValues(:));
+end
+
+function isEmpty = frameSamplesEmpty(frameSamples)
+% frameSamplesEmpty  True when a buffered frame no longer stores raw data.
+
+if isempty(frameSamples)
+    isEmpty = true;
+    return
+end
+
+if ~isempty(frameSamples.aValues)
+    isEmpty = false;
+    return
+end
+
+isEmpty = all(cellfun(@isempty, frameSamples.bValues));
 end

@@ -39,6 +39,9 @@ SimulationParameters.MRIContrastParameters.TE = TE;
 SimulationParameters.TWIST.pA = pA;
 SimulationParameters.TWIST.pB = 1/Nb;
 SimulationParameters.TWIST.N_measurements = N_measurements;
+SimulationParameters.TWIST.shareMode = "forward";
+SimulationParameters.TWIST.shareMethod = "single_anchor";
+SimulationParameters.TWIST.shareTieBreaker = "future";
 
 SimulationParameters.ParallelImaging.GRAPPA_R = R;
 SimulationParameters.ParallelImaging.PF_Factor = PF_Factor;

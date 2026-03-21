@@ -1,4 +1,4 @@
-function [Complete_Sampling_Table,TWIST_Stats] = Ultrafast_Sampling(Matrix_Size_Acquired,FOV_acquired,pA,pB,N_Measurements,TR,R,PF_Factor)
+function [Complete_Sampling_Table,TWIST_Stats] = Ultrafast_Sampling(Matrix_Size_Acquired,FOV_acquired,pA,pB,N_Measurements,TR,R,PF_Factor,shareMode,shareMethod)
 %This function implements full sampling trajectory for Ultrafast MRI
 %Imaging using TWIST,GRAPPA, and Partial Fourier
 
@@ -59,9 +59,39 @@ arguments (Input)
     %Defaults to [1,1]
     PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor,1), mustBeGreaterThan(PF_Factor,.5)}
 
+    % View-sharing direction for TWIST reconstruction anchors
+    shareMode (1,1) string = "forward"
+
+    % Symmetric sharing currently supports Siemens-like dual anchors only
+    shareMethod (1,1) string = "single_anchor"
+
 end
 
-N = round(1/pB);
+shareMode = lower(shareMode);
+shareMethod = lower(shareMethod);
+
+validShareModes = ["forward", "reverse", "symmetric"];
+if ~ismember(shareMode, validShareModes)
+    error("Ultrafast_Sampling:InvalidShareMode", ...
+        "shareMode must be one of %s.", char(strjoin(validShareModes, ", ")));
+end
+
+validShareMethods = ["single_anchor", "dual_anchor"];
+if ~ismember(shareMethod, validShareMethods)
+    error("Ultrafast_Sampling:InvalidShareMethod", ...
+        "shareMethod must be one of %s.", char(strjoin(validShareMethods, ", ")));
+end
+
+if shareMode == "symmetric" && shareMethod ~= "dual_anchor"
+    error("Ultrafast_Sampling:UnsupportedSymmetricMethod", ...
+        "Symmetric TWIST sharing currently requires shareMethod = ""dual_anchor"".");
+end
+
+if pB == 0
+    N = 0;
+else
+    N = round(1/pB);
+end
 
 
 
@@ -93,32 +123,88 @@ Sampling_Table_B = Sampling_Table(Sampling_Table.Frame == 0 & Sampling_Table.Bj 
 
 
 
-Complete_Sampling_Table = Sampling_Table_initial;
+Complete_Sampling_Table = Sampling_Table([],:);
 
-frame_number = 1;
+partialFrameStart = 1;
+partialFrameEnd = N_Measurements;
 i_Bj = 1;
-while frame_number <= N_Measurements 
-    Frame_Sampling_Table = [Sampling_Table_A;Sampling_Table_B(Sampling_Table_B.Bj==i_Bj,:)];
-    Frame_Sampling_Table.Frame = frame_number * ones(height(Frame_Sampling_Table),1);
+switch shareMode
+    case "forward"
+        Sampling_Table_initial.Frame = zeros(height(Sampling_Table_initial),1);
+        Complete_Sampling_Table = Sampling_Table_initial;
+        partialFrameStart = 1;
+        partialFrameEnd = N_Measurements;
+
+    case "reverse"
+        % No baseline full anchor at the beginning. A terminal full anchor is
+        % appended after all partial frames.
+        partialFrameStart = 0;
+        partialFrameEnd = N_Measurements - 1;
+
+    case "symmetric"
+        Sampling_Table_initial.Frame = zeros(height(Sampling_Table_initial),1);
+        Complete_Sampling_Table = Sampling_Table_initial;
+        partialFrameStart = 1;
+        partialFrameEnd = N_Measurements;
+end
+
+for partialFrameNumber = partialFrameStart:partialFrameEnd
+    if N == 0
+        Frame_Sampling_Table = Sampling_Table_A;
+    else
+        Frame_Sampling_Table = [Sampling_Table_A;Sampling_Table_B(Sampling_Table_B.Bj==i_Bj,:)];
+    end
+    Frame_Sampling_Table.Frame = partialFrameNumber * ones(height(Frame_Sampling_Table),1);
 
     Complete_Sampling_Table = [Complete_Sampling_Table;Frame_Sampling_Table];
-    
-    frame_number = frame_number + 1;
-    i_Bj = i_Bj + 1;
-
-    if i_Bj > N
-        i_Bj = 1;
+    if N > 0
+        i_Bj = i_Bj + 1;
+        if i_Bj > N
+            i_Bj = 1;
+        end
     end
+end
+
+if shareMode == "reverse"
+    terminalFrameNumber = N_Measurements;
+    Sampling_Table_initial.Frame = terminalFrameNumber * ones(height(Sampling_Table_initial),1);
+    Complete_Sampling_Table = [Complete_Sampling_Table;Sampling_Table_initial];
+elseif shareMode == "symmetric"
+    terminalFrameNumber = N_Measurements + 1;
+    Sampling_Table_initial.Frame = terminalFrameNumber * ones(height(Sampling_Table_initial),1);
+    Complete_Sampling_Table = [Complete_Sampling_Table;Sampling_Table_initial];
 end
 
 
 %% --- Calculating Timing Stats
-Preparation_Scan_Time = TR*sum(Sampling_Table.Frame == 0);
-Measurement_Time = TR*sum(Complete_Sampling_Table.Frame ~= 0);
-Temporal_Resolution = Measurement_Time/N_Measurements;
+Preparation_Scan_Time = 0;
+Terminal_Anchor_Time = 0;
 
-TWIST_Stats = table(Preparation_Scan_Time,Temporal_Resolution,Measurement_Time);
-TWIST_Stats.Properties.VariableNames = {'Preparation Scan Time (s)','Average Temporal Resolution (s)','Measurement Time (s)'};
+if shareMode == "forward" || shareMode == "symmetric"
+    Preparation_Scan_Time = TR * sum(Complete_Sampling_Table.Frame == min(Complete_Sampling_Table.Frame));
+end
+
+if shareMode == "reverse" || shareMode == "symmetric"
+    Terminal_Anchor_Time = TR * sum(Complete_Sampling_Table.Frame == max(Complete_Sampling_Table.Frame));
+end
+
+partialFrameMask = true(height(Complete_Sampling_Table),1);
+if Preparation_Scan_Time > 0
+    partialFrameMask = partialFrameMask & (Complete_Sampling_Table.Frame ~= min(Complete_Sampling_Table.Frame));
+end
+if Terminal_Anchor_Time > 0
+    partialFrameMask = partialFrameMask & (Complete_Sampling_Table.Frame ~= max(Complete_Sampling_Table.Frame));
+end
+Measurement_Time = TR * sum(partialFrameMask);
+
+if N_Measurements > 0
+    Temporal_Resolution = Measurement_Time / N_Measurements;
+else
+    Temporal_Resolution = 0;
+end
+
+TWIST_Stats = table(Preparation_Scan_Time,Temporal_Resolution,Measurement_Time,Terminal_Anchor_Time);
+TWIST_Stats.Properties.VariableNames = {'Preparation Scan Time (s)','Average Temporal Resolution (s)','Measurement Time (s)','Terminal Anchor Time (s)'};
 
 %% --- Incorporate Frequency Encoding
 % This can take place at the very end as all we are doing is duplicating
@@ -141,7 +227,8 @@ Complete_Sampling_Table.Frequency = repmat((1:N_freqs)', original_height, 1);
 
 %Correct linear index column for addded dimension
 % Order: [Frequency, Phase, Slice, Frame]
-sz_4D = [Matrix_Size_Acquired(1), Matrix_Size_Acquired(2), Matrix_Size_Acquired(3), N_Measurements+1];
+numFrames = numel(unique(Complete_Sampling_Table.Frame));
+sz_4D = [Matrix_Size_Acquired(1), Matrix_Size_Acquired(2), Matrix_Size_Acquired(3), numFrames];
 
 Complete_Sampling_Table.("Linear Index") = sub2ind(sz_4D, ...
     Complete_Sampling_Table.Frequency, ...          % Dim 1
