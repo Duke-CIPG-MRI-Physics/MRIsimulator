@@ -9,8 +9,8 @@ disp(encodingFullStr)
 
 breastPhantomParams = createBreastPhantomParams();
 
-%load('fast_scan_parameters.mat')
-load('Breast_Ultrafast_scan_parameters.mat')
+load('fast_scan_parameters.mat')
+% load('Breast_Ultrafast_scan_parameters.mat')
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] =...
     convert_Siemens_parameters(scan_parameters);
 
@@ -29,8 +29,13 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = .15;
 pB = .1;
-shareMode = "forward";      % "forward" | "reverse" | "symmetric"
-shareMethod = "single_anchor"; % use "dual_anchor" for symmetric sharing
+shareMode = "symmetric";      % "forward" | "reverse" | "symmetric"
+if(strcmpi(shareMode,'symmetric'))
+    shareMethod = "dual_anchor"; % use "dual_anchor" for symmetric sharing
+else
+    shareMethod = "single_anchor";
+end
+
 shareTieBreaker = "future"; % symmetric tie-breaker: prefer later frame when equidistant
 twistShareOptions = getTWISTShareOptions(struct( ...
     'shareMode', shareMode, ...
