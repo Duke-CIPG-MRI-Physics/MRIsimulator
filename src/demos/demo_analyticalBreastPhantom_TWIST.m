@@ -9,8 +9,10 @@ disp(encodingFullStr)
 
 breastPhantomParams = createBreastPhantomParams();
 
+
 load('fast_scan_parameters.mat')
 % load('Breast_Ultrafast_scan_parameters.mat')
+
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] =...
     convert_Siemens_parameters(scan_parameters);
 
@@ -29,7 +31,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 pA = .15;
 pB = .1;
-shareMode = "symmetric";      % "forward" | "reverse" | "symmetric"
+shareMode = "forward";      % "forward" | "reverse" | "symmetric"
 if(strcmpi(shareMode,'symmetric'))
     shareMethod = "dual_anchor"; % use "dual_anchor" for symmetric sharing
 else
@@ -97,11 +99,8 @@ breastPhantomParams.lesionIntensityFunction = @(t_s) calculateLesionEnhancement(
     breastPhantomParams.lesionWashoutType, breastPhantomParams.lesionKineticOverrides);
 
 sharedLesionIntensityFunction = breastPhantomParams.lesionIntensityFunction;
-breastPhantomParams.lesions = [ ...
-    struct('center_mm', [-130*voxel_size_mm(1), 0, 0], 'radius_mm', 8, 'intensityFunction', sharedLesionIntensityFunction), ...
-    struct('center_mm', [18*voxel_size_mm(1), 30*voxel_size_mm(2), 16*voxel_size_mm(3)], 'radius_mm', 4, 'intensityFunction', sharedLesionIntensityFunction), ...
-    struct('center_mm', [-10*voxel_size_mm(1), -10*voxel_size_mm(2), -14*voxel_size_mm(3)], 'radius_mm', 2, 'intensityFunction', sharedLesionIntensityFunction), ...
-    struct('center_mm', [6*voxel_size_mm(1), -20*voxel_size_mm(2), 22]*voxel_size_mm(3), 'radius_mm', 1, 'intensityFunction', sharedLesionIntensityFunction)];
+lesionBorder_mm = 1;
+breastPhantomParams.lesions = createTwistLesionDefinitions(sharedLesionIntensityFunction);
 
 phantom = BreastPhantom(breastPhantomParams);
 
@@ -119,6 +118,12 @@ cropRanges = { ...
     margin(2)+1 : margin(2)+IMmatrix_crop_size(2), ...
     margin(3)+1 : margin(3)+IMmatrix_crop_size(3)};
 voxel_volume = prod(voxel_size_mm);
+roiGridSpec = struct( ...
+    'FOV_acquired_mm', FOV_acquired, ...
+    'matrix_size_complete', matrix_size_complete, ...
+    'IMmatrix_crop_size', IMmatrix_crop_size, ...
+    'freq_phase_slice', freq_phase_slice);
+[lesion_roi, roiInfo] = phantom.buildLesionRoiMasks(roiGridSpec, lesionBorder_mm);
 final_IMspace = zeros([IMmatrix_crop_size, nTimes]);
 
 switch twistShareOptions.mode
@@ -270,51 +275,20 @@ plot(Sampling_Table.Timing(1:1000:end),breastPhantomParams.lesionIntensityFuncti
 
 %convert TWIST frames to actual time, time for a whole frame is defined as
 %   moment when center of k-space is sampled.
-
-kspace_center = floor(matrix_size_acquired/2)+1;
-
-TWIST_frame_times = Sampling_Table.Timing((Sampling_Table.Frequency == kspace_center(1)) & ...
-       (Sampling_Table.("Row (phase)") == kspace_center(2)) & ...
-       (Sampling_Table.("Column (slice)") == kspace_center(3)));
-
-
-%TODO: build function to output lesion ROI
-lesion_centers = [68,179,121; 38,31,105; 78,59,135; 88,43,99]; %[freq,phase,slice] in final image
-lesion_radii = [5; 2.5; 1; 0];
-num_lesions = length(lesion_radii);
+TWIST_frame_times = twistPlan.frameCenterTimes_s;
+num_lesions = numel(roiInfo.linearIdxByLesion);
 num_volumes = size(phantom_magnitude, 4); % Assuming 4D data (e.g., multiple echoes/timepoints)
-
-% 2. Create coordinate grid
-[X, Y, Z] = ndgrid(1:IMmatrix_crop_size(1), 1:IMmatrix_crop_size(2), 1:IMmatrix_crop_size(3));
 
 % 3. Reshape the source data once: rows = voxels, columns = volumes
 data_reshaped = reshape(phantom_magnitude, [], num_volumes);
 
 % Pre-allocate outputs for speed and memory efficiency
-lesion_roi = false(IMmatrix_crop_size(1), IMmatrix_crop_size(2), IMmatrix_crop_size(3), num_lesions);
 contrast_values_measured = zeros(num_lesions, num_volumes);
 
 % 4. Loop through each lesion
 hold on
 for ii = 1:num_lesions
-    % Calculate distance from this specific center
-    squared_dists = (X - lesion_centers(ii,1)).^2 + ...
-                    (Y - lesion_centers(ii,2)).^2 + ...
-                    (Z - lesion_centers(ii,3)).^2;
-    
-    % Create the 3D mask for this specific lesion
-    current_mask = squared_dists <= lesion_radii(ii)^2;
-    
-    % Save it into your 4D stack in case you need to visualize it later
-    lesion_roi(:,:,:,ii) = current_mask;
-    
-    % Flatten the mask to 1D to match data_reshaped
-    roi_flattened = current_mask(:);
-    
-    % Extract the data just for this lesion mask
-    roi_data = data_reshaped(roi_flattened, :);
-    
-    % Calculate the mean across the ROI (dimension 1) and store it
+    roi_data = data_reshaped(roiInfo.linearIdxByLesion{ii}, :);
     contrast_values_measured(ii, :) = mean(roi_data, 1);
     plot(TWIST_frame_times,abs(contrast_values_measured(ii,:)),'.-','MarkerSize',15)
 
@@ -329,7 +303,7 @@ ylabel("Pixel Value")
 %%  Visualize ROI Overlay
 for ii = 1:num_lesions
 % 1. Select the slice to view (makes sense to use the lesion's Z-center)
-slice_to_view = lesion_centers(ii,3);
+slice_to_view = roiInfo.centerIndexByLesion(ii,3);
 
 % 2. Extract the final time frame for the background image
 final_time_idx = size(phantom_magnitude, 4);

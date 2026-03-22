@@ -4,7 +4,9 @@
 clear;clc;
 
 %parameters
-load("breast_ultrafast_scan_parameters.mat")
+scanParamPath = fullfile(fileparts(mfilename('fullpath')), '..', 'util', ...
+    'Breast_Ultrafast_scan_parameters.mat');
+load(scanParamPath)
 
 rBW_HzPerPix = 570;
 TR = (5.88E-3);  
