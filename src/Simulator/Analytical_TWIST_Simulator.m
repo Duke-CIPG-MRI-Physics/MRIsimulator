@@ -247,5 +247,7 @@ abs_time_vector = rel_time_vector + ...
 
 output.simulated.contrast = breastPhantomParams.lesionIntensityFunction(abs_time_vector) + breastPhantomParams.breastIntensity;
 output.simulated.timepoints = rel_time_vector;
+
+output.measured.nominal_temporal_resolution = output.measured.timepoints(3)-output.measured.timepoints(2);
 toc
 end
