@@ -2,7 +2,7 @@ clear; clc; close all;
 load("SimulationParameters.mat")
 
 pBs = [.1,.25];
-pAs = [.04:.1:.15];
+pAs = [.04:.01:.15];
 n_shifts = 5;
 
 num_pBs = length(pBs);
@@ -50,14 +50,13 @@ for i = 1:num_pBs
             resultsStruct(i, j, k).pB = pB_val;
             resultsStruct(i, j, k).pA = pA_val;
             resultsStruct(i, j, k).delay = localSimParams.LesionParameters.lesionArrivalDelay_s;
-            
-            % Corrected assignments
             resultsStruct(i, j, k).Measured_Contrast_L = Output.measured.contrast_L;
             resultsStruct(i, j, k).Measured_Contrast_M = Output.measured.contrast_M;
             resultsStruct(i, j, k).Measured_Contrast_S = Output.measured.contrast_S;
             resultsStruct(i, j, k).Measured_Contrast_XS = Output.measured.contrast_XS;
             resultsStruct(i, j, k).Timepoints = Output.measured.timepoints;
-                   
+            resultsStruct(i, j, k).nominal_temporal_resolution = Output.measured.nominal_temporal_resolution;
+
             % Capture the shifting simulated ground truth
             resultsStruct(i, j, k).Sim_Contrast = Output.simulated.contrast;
             resultsStruct(i, j, k).Sim_Timepoints = Output.simulated.timepoints;
@@ -104,8 +103,8 @@ combined_Measured_Contrast_XS = raw_Measured_Contrast_XS(sort_idx);
             resultsStruct2(i, j).Measured_Contrast_M = combined_Measured_Contrast_M;
             resultsStruct2(i, j).Measured_Contrast_S = combined_Measured_Contrast_S;
             resultsStruct2(i, j).Measured_Contrast_XS = combined_Measured_Contrast_XS;
-
             resultsStruct2(i, j).Timepoints = combined_Timepoints;
+            resultsStruct(i,j).nominal_temporal_resolution = resultsStruct(i,j).nominal_temporal_resolution;
                    
     end
 end
@@ -117,5 +116,5 @@ resultsStruct_flat = resultsStruct(:);
 resultsStruct2_flat = resultsStruct2(:);
 Simulated.contrast = Output.simulated.contrast;
 Simulated.timepoints = Output.simulated.timepoints;
-save("Results_test", "resultsStruct2_flat","Simulated")
+save("Results_forward", "resultsStruct2_flat","Simulated")
 
