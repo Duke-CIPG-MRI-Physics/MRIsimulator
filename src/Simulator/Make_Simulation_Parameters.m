@@ -4,7 +4,9 @@
 clear;clc;
 
 %parameters
-load("breast_ultrafast_scan_parameters.mat")
+scanParamPath = fullfile(fileparts(mfilename('fullpath')), '..', 'util', ...
+    'Breast_Ultrafast_scan_parameters.mat');
+load(scanParamPath)
 
 rBW_HzPerPix = 570;
 TR = (5.88E-3);  
@@ -39,6 +41,9 @@ SimulationParameters.MRIContrastParameters.TE = TE;
 SimulationParameters.TWIST.pA = pA;
 SimulationParameters.TWIST.pB = 1/Nb;
 SimulationParameters.TWIST.N_measurements = N_measurements;
+SimulationParameters.TWIST.shareMode = "forward";
+SimulationParameters.TWIST.shareMethod = "single_anchor";
+SimulationParameters.TWIST.shareTieBreaker = "future";
 
 SimulationParameters.ParallelImaging.GRAPPA_R = R;
 SimulationParameters.ParallelImaging.PF_Factor = PF_Factor;
