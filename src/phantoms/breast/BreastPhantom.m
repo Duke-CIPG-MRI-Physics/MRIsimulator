@@ -170,6 +170,11 @@ classdef BreastPhantom < MultipleMaterialPhantom
             %   [roiMasks, roiInfo] = obj.buildLesionRoiMasks(gridSpec, lesionBorder_mm)
             %   returns one spherical ROI mask per lesion on the final
             %   cropped image grid used by the TWIST reconstruction.
+            %   The reconstructed TWIST image is stored in raw
+            %   [freq phase slice] order. With the current centered k-space
+            %   and IFFT convention, those stored image coordinates are the
+            %   negated WORLD coordinates after permuting into
+            %   [freq phase slice] order.
 
             arguments
                 obj
@@ -222,7 +227,8 @@ classdef BreastPhantom < MultipleMaterialPhantom
                 [centerWorld_mm, ~] = BreastPhantom.composePoseChain( ...
                     [rightBreastPose, lesionPose]);
                 centerWorld_mm = centerWorld_mm(:)';
-                centerImage_mm = centerWorld_mm(gridSpec.freq_phase_slice);
+                centerImage_mm = BreastPhantom.worldToRawImageCoordinates( ...
+                    centerWorld_mm, gridSpec.freq_phase_slice);
 
                 lesionRadius_mm = obj.phantomParams.lesions(lesionIdx).radius_mm;
                 roiRadius_mm = lesionRadius_mm - lesionBorder_mm;
@@ -419,6 +425,14 @@ classdef BreastPhantom < MultipleMaterialPhantom
 
         function axisIndex = findNearestAxisIndex(axisValues_mm, target_mm)
             [~, axisIndex] = min(abs(axisValues_mm - target_mm));
+        end
+
+        function centerImage_mm = worldToRawImageCoordinates(centerWorld_mm, freqPhaseSlice)
+            % worldToRawImageCoordinates  Map WORLD mm to raw TWIST image mm.
+            %   The centered k-space grid paired with
+            %   fftshift(ifftn(ifftshift(K))) stores positive WORLD
+            %   displacements at decreasing raw image indices.
+            centerImage_mm = -centerWorld_mm(freqPhaseSlice);
         end
 
         function params = normalizeLesionParams(params)

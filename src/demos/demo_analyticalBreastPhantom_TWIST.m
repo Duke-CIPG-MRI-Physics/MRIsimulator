@@ -10,8 +10,8 @@ disp(encodingFullStr)
 breastPhantomParams = createBreastPhantomParams();
 
 
-load('fast_scan_parameters.mat')
-% load('Breast_Ultrafast_scan_parameters.mat')
+% load('fast_scan_parameters.mat')
+load('Breast_Ultrafast_scan_parameters.mat')
 
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] =...
     convert_Siemens_parameters(scan_parameters);
@@ -111,7 +111,7 @@ noiseSigma = 100;
 
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
 %% --- 8. Resolving Oversampling
-crop_amount = matrix_size_complete-IMmatrix_crop_size;
+crop_amount = matrix_size_complete - IMmatrix_crop_size;
 margin = floor(crop_amount ./ 2);
 cropRanges = { ...
     margin(1)+1 : margin(1)+IMmatrix_crop_size(1), ...
@@ -124,6 +124,7 @@ roiGridSpec = struct( ...
     'IMmatrix_crop_size', IMmatrix_crop_size, ...
     'freq_phase_slice', freq_phase_slice);
 [lesion_roi, roiInfo] = phantom.buildLesionRoiMasks(roiGridSpec, lesionBorder_mm);
+[lesion_display_roi, roiDisplayInfo] = phantom.buildLesionRoiMasks(roiGridSpec, 0);
 final_IMspace = zeros([IMmatrix_crop_size, nTimes]);
 
 switch twistShareOptions.mode
@@ -264,6 +265,7 @@ end
 
 phantom_magnitude = abs(final_IMspace);
 imslice(squeeze(phantom_magnitude(:,:,:,:)));
+final_time_idx = size(phantom_magnitude, 4);
 
 
 %% Contrast dynamics calculation
@@ -302,16 +304,15 @@ ylabel("Pixel Value")
 
 %%  Visualize ROI Overlay
 for ii = 1:num_lesions
-% 1. Select the slice to view (makes sense to use the lesion's Z-center)
-slice_to_view = roiInfo.centerIndexByLesion(ii,3);
+% 1. Select the slice passing through the lesion center.
+slice_to_view = roiDisplayInfo.centerIndexByLesion(ii, 3);
 
 % 2. Extract the final time frame for the background image
-final_time_idx = size(phantom_magnitude, 4);
 % Note: phantom_magnitude is 4D (freq, phase, slice, time)
 background_slice = phantom_magnitude(:, :, slice_to_view, final_time_idx);
 
-% 3. Extract the exact same slice from your 3D logical ROI mask
-roi_slice = lesion_roi(:, :, slice_to_view,ii);
+% 3. Extract the exact same slice from the full lesion mask.
+roi_slice = lesion_display_roi(:, :, slice_to_view, ii);
 
 % 4. Plotting
 figure;
@@ -328,6 +329,7 @@ hold on;
 contour(roi_slice, [0.5 0.5], 'r', 'LineWidth', 2);
 hold off;
 end
+
 %
 % %% Saving output
 % save_ask = input('Save output?: (y/n)','s');
@@ -383,6 +385,7 @@ end
 
 function croppedImage = reconstructTwistFrameImage(currentKspace, fps_to_xyz, padsize, cropRanges, voxel_volume)
 % reconstructTwistFrameImage  Reconstruct and crop one TWIST image frame.
+%   Returns the cropped image in raw [freq phase slice] storage order.
 
 paddedKspace = padarray(permute(currentKspace, fps_to_xyz), 0.5 * padsize, 0);
 currentImage = fftshift(ifftn(ifftshift(paddedKspace)));

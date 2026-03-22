@@ -274,6 +274,7 @@ end
 function roiMeans = reconstructTwistRoiMeans( ...
     currentKspace, fps_to_xyz, padsize, cropRanges, roiLinearIdxByLesion, voxel_volume)
 % reconstructTwistRoiMeans  Reconstruct one TWIST frame and measure lesion ROIs.
+%   Uses the raw [freq phase slice] storage order returned by the TWIST IFFT.
 
 paddedKspace = padarray(permute(currentKspace, fps_to_xyz), 0.5 * padsize, 0);
 currentImage = fftshift(ifftn(ifftshift(paddedKspace)));
