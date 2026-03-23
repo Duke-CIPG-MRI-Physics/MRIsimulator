@@ -112,8 +112,9 @@ if Nb > 0
     bj_sequence = mod(0:(numRegionB_points - 1), Nb) + 1;
     sortedData.Bj(regionB_rows) = bj_sequence';
 else
-    % Edge Case (pB = 0): Assign -1 to Region B so it is NOT confused with Region A (Bj=0)
-    sortedData.Bj(regionB_rows) = -1; 
+    % Edge Case (pB = 0): Assign 1 to Region B. 
+    % This creates exactly 1 subset so the view-sharing planner can track it!
+    sortedData.Bj(regionB_rows) = 1; 
 end
 
 sortedData_regionA = sortedData(sortedData.("Region A?"),:);
