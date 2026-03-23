@@ -248,7 +248,7 @@ output.measured.contrast_XS = contrast_values_measured(4, :);
 output.measured.timepoints = TWIST_frame_times - ...
     (breastPhantomParams.startInjectionTime_s + breastPhantomParams.lesionArrivalDelay_s);
 
-rel_time_vector = -2:0.1:60;
+rel_time_vector = -2:0.01:60;
 abs_time_vector = rel_time_vector + ...
     (breastPhantomParams.startInjectionTime_s + breastPhantomParams.lesionArrivalDelay_s);
 
