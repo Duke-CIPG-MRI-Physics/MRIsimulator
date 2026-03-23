@@ -102,25 +102,23 @@ sortedData.("Region A?")(sortedData.Frequency == min_freq) = true;
 sortedData.Bj = zeros(height(sortedData), 1);
 
 % Identify the rows that belong to Region B (where 'Region A?' is false).
-% These are the rows where 'Bj' needs to count up sequentially.
 regionB_rows = find(~sortedData.('Region A?'));
 
 % Calculate the total number of points in Region B.
 numRegionB_points = length(regionB_rows);
 
-% Create a repeating sequence from 1 to N for Region B points.
-% The 'mod' function, combined with adding 1, creates a sequence that
-% cycles from 1 to N.
-bj_sequence = mod(0:(numRegionB_points - 1), Nb) + 1;
-
-% Assign the generated 'bj_sequence' to the 'Bj' column for the
-% identified Region B rows.
-sortedData.Bj(regionB_rows) = bj_sequence';
+if Nb > 0
+    % Standard TWIST: assign interleaves 1 through N
+    bj_sequence = mod(0:(numRegionB_points - 1), Nb) + 1;
+    sortedData.Bj(regionB_rows) = bj_sequence';
+else
+    % Edge Case (pB = 0): Assign 1 to Region B. 
+    % This creates exactly 1 subset so the view-sharing planner can track it!
+    sortedData.Bj(regionB_rows) = 1; 
+end
 
 sortedData_regionA = sortedData(sortedData.("Region A?"),:);
 sortedData_regionB = sortedData(~sortedData.("Region A?"),:);
-
-
 %% --- Creating Sampling Order
 
 %Sampling of k-space starts at the outer edge of A and proceeds 

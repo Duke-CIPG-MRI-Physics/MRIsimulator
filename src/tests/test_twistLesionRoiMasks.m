@@ -1,0 +1,63 @@
+function test_twistLesionRoiMasks()
+% test_twistLesionRoiMasks  Validate fixed TWIST lesion placement and ROI masks.
+%
+%   test_twistLesionRoiMasks() checks that the TWIST lesion definitions use
+%   fixed millimeter shifts derived from the clinical ultrafast protocol
+%   and that BreastPhantom builds non-empty cropped-image ROI masks with
+%   the expected radius shrink and one-voxel fallback behavior.
+
+    defaultParams = createBreastPhantomParams();
+    lesions = createTwistLesionDefinitions(defaultParams.lesionIntensityFunction);
+
+    expectedCenters_mm = [ ...
+        -40, 0, 0; ...
+        39.375, 15.625, 16; ...
+        -21.875, -21.875, -14; ...
+        13.125, -43.75, 22];
+    expectedRadii_mm = [8; 4; 2; 6];
+
+    assert(isequal(size(lesions), [4, 1]), ...
+        'Expected four TWIST lesion definitions.');
+    assert(max(abs(cat(1, lesions.center_mm) - expectedCenters_mm), [], 'all') < 1e-12, ...
+        'Expected fixed TWIST lesion centers in millimeters.');
+    assert(max(abs([lesions.radius_mm]' - expectedRadii_mm)) < 1e-12, ...
+        'Expected fixed TWIST lesion radii.');
+
+    defaultParams.lesions = lesions;
+    phantom = BreastPhantom(defaultParams);
+
+    scanParamPath = fullfile(fileparts(mfilename('fullpath')), '..', 'util', ...
+        'Breast_Ultrafast_scan_parameters.mat');
+    scanData = load(scanParamPath);
+    [FOV_acquired, matrix_size_complete, ~, ~, ~, IMmatrix_crop_size] = ...
+        convert_Siemens_parameters(scanData.scan_parameters);
+
+    freq_phase_slice = [2 1 3];
+    gridSpec = struct( ...
+        'FOV_acquired_mm', FOV_acquired, ...
+        'matrix_size_complete', matrix_size_complete, ...
+        'IMmatrix_crop_size', IMmatrix_crop_size, ...
+        'freq_phase_slice', freq_phase_slice);
+    lesionBorder_mm = 1;
+
+    [roiMasks, roiInfo] = phantom.buildLesionRoiMasks(gridSpec, lesionBorder_mm);
+
+    assert(isequal(size(roiMasks), [IMmatrix_crop_size, 4]), ...
+        'Expected one cropped-image ROI mask per lesion.');
+    assert(all(cellfun(@(idx) ~isempty(idx), roiInfo.linearIdxByLesion)), ...
+        'Expected every lesion ROI to contain at least one voxel.');
+
+    expectedCenterWorld_mm = expectedCenters_mm + repmat([100, 70, 0], 4, 1);
+    assert(max(abs(roiInfo.centerWorld_mm - expectedCenterWorld_mm), [], 'all') < 1e-12, ...
+        'Expected lesion WORLD centers to include the right-breast parent translation.');
+
+    expectedCenterImage_mm = -expectedCenterWorld_mm(:, freq_phase_slice);
+    assert(max(abs(roiInfo.centerImage_mm - expectedCenterImage_mm), [], 'all') < 1e-12, ...
+        'Expected lesion image centers to follow the mirrored raw TWIST image coordinates.');
+
+    expectedRoiRadii_mm = [7; 3; 1; 5];
+    assert(max(abs(roiInfo.roiRadius_mm - expectedRoiRadii_mm)) < 1e-12, ...
+        'Expected ROI radii to shrink by lesionBorder_mm.');
+    assert(~any(roiInfo.usedSingleVoxelFallback), ...
+        'Expected the current TWIST lesion ROIs to intersect the cropped image grid.');
+end
