@@ -302,6 +302,9 @@ title("Contrast Wash-in")
 xlabel("Time (s)")
 ylabel("Pixel Value")
 
+nominal_temporal_resolution = TWIST_frame_times(3)-TWIST_frame_times(2);
+fprintf("Nominal Temporal Resolution = %g s\n",nominal_temporal_resolution)
+
 %%  Visualize ROI Overlay
 for ii = 1:num_lesions
 % 1. Select the slice passing through the lesion center.
@@ -330,58 +333,7 @@ contour(roi_slice, [0.5 0.5], 'r', 'LineWidth', 2);
 hold off;
 end
 
-%
-% %% Saving output
-% save_ask = input('Save output?: (y/n)','s');
-%
-% if strcmpi(save_ask, 'y')
-%
-%     %measuring phantom size
-%     output_bytes = whos("phantom_magnitude");
-%     output_bytes = output_bytes.bytes;
-%
-%     %creating structure with all phantom information
-%
-%     % Outputs
-%     phantom_simulated.outputs.phantom_magnitude = phantom_magnitude;
-%     phantom_simulated.outputs.timing            = TWIST_frame_times;
-%
-%     % Inputs (Consolidating everything under .inputs)
-%     phantom_simulated.inputs.breastPhantomParams = breastPhantomParams;
-%     phantom_simulated.inputs.scan_parameters     = scan_parameters;
-%     phantom_simulated.inputs.TR                  = TR;
-%     phantom_simulated.inputs.TE                  = TE;
-%     phantom_simulated.inputs.rBW_HzPerPix        = rBW_HzPerPix;
-%
-%     % Nested TWIST parameters
-%     phantom_simulated.inputs.TWIST.pA            = pA;
-%     phantom_simulated.inputs.TWIST.pB            = 1/Nb;
-%     phantom_simulated.inputs.TWIST.Time_Measured = Time_Measured;
-%
-%     % Nested Undersampling parameters
-%     phantom_simulated.inputs.Undersampling.GRAPPA_R  = R;
-%     phantom_simulated.inputs.Undersampling.PF_Factor = PF_Factor;
-%
-%
-%     fprintf('Input desired filename, file will be saved as <filename>.mat\n')
-%     filename = input(':','s');
-%
-%     if output_bytes >= 1.99e9
-%         fprintf('Saving using v7.3...\n')
-%         save(filename,'phantom_simulated','-v7.3')
-%         fprintf('File saved as %s.mat\n, ', filename);
-%
-%     else
-%         fprintf('Saving using v7...\n')
-%         save(filename,'phantom_simulated','-v7')
-%         fprintf('File saved as %s.mat\n', filename);
-%
-%     end
-%
-% else
-%     fprintf('Output not saved')
-%
-% end
+
 
 function croppedImage = reconstructTwistFrameImage(currentKspace, fps_to_xyz, padsize, cropRanges, voxel_volume)
 % reconstructTwistFrameImage  Reconstruct and crop one TWIST image frame.
