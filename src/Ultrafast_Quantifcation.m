@@ -1,5 +1,5 @@
 clear; clc; close all;
-load("SimulationParameters.mat")
+load("Ultrafast_Sim_Param_forward.mat")
 
 pBs = [.1,.25];
 pAs = [.04:.01:.15];
@@ -104,7 +104,7 @@ combined_Measured_Contrast_XS = raw_Measured_Contrast_XS(sort_idx);
             resultsStruct2(i, j).Measured_Contrast_S = combined_Measured_Contrast_S;
             resultsStruct2(i, j).Measured_Contrast_XS = combined_Measured_Contrast_XS;
             resultsStruct2(i, j).Timepoints = combined_Timepoints;
-            resultsStruct(i,j).nominal_temporal_resolution = resultsStruct(i,j).nominal_temporal_resolution;
+            resultsStruct2(i,j).nominal_temporal_resolution = resultsStruct(i,j).nominal_temporal_resolution;
                    
     end
 end
