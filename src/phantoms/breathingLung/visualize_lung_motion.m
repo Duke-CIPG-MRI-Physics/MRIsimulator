@@ -1,7 +1,7 @@
-function displayBreathingMotion(t_s, leftEllipsoidParams, rightEllipsoidParams, visOpts)
-%DISPLAYBREATHINGMOTION  Animate simple lung ellipsoids + circles + V(t).
+function visualize_lung_motion(t_s, leftEllipsoidParams, rightEllipsoidParams, visOpts)
+%VISUALIZE_LUNG_MOTION  Animate simple lung ellipsoids + circles + V(t).
 %
-%   displayBreathingMotion(t_s, leftEllipsoidParams, rightEllipsoidParams, visOpts)
+%   visualize_lung_motion(t_s, leftEllipsoidParams, rightEllipsoidParams, visOpts)
 %
 %   Inputs:
 %       t_s     - time [s], 1xN

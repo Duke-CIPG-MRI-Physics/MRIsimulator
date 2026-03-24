@@ -1,7 +1,7 @@
 function [R_mm, H_mm] = lung_ellipsoid_waveform(t_s, lungParameters)
 %LUNG_ELLIPSOID_WAVEFORM  Lung ellipsoid geometry vs time.
 %
-%   [leftEllipsoidParams, rightEllipsoidParams] = lung_ellipsoid_waveform(t_s, lungParameters)
+%   [R_mm, H_mm] = lung_ellipsoid_waveform(t_s, lungParameters)
 %
 %   Inputs:
 %       t_s     - time [s], strictly increasing 1xN vector
@@ -12,14 +12,11 @@ function [R_mm, H_mm] = lung_ellipsoid_waveform(t_s, lungParameters)
 %           Vbase_L          - baseline lung volume [L] (e.g. FRC)
 %           bellyFrac        - belly-breathing fraction in [0,1]
 %           inspFrac         - inspiratory fraction of cycle in (0,1)
-%           lungSeparation_mm- spacing added to the lung radius [mm]
+%           lungSeparation_mm- optional spacing term used by higher-level
+%                              helpers when positioning left/right lungs [mm]
 %
 %   Outputs:
-%       leftEllipsoidParams, rightEllipsoidParams - struct with fields:
-%           .a_mm, .b_mm, .c_mm  - ellipsoid semi-axes [mm]
-%           .pose               - pose struct with center and orientation
-%         Additional convenience fields include the underlying waveform
-%         values (.R_mm, .H_mm, .lungPosition_mm).
+%       R_mm, H_mm - shared lung radius and height waveforms [mm]
 %
 %   Model details:
 %       - Breathing phase is built from instantaneous f_bpm(t), integrated
@@ -29,7 +26,7 @@ function [R_mm, H_mm] = lung_ellipsoid_waveform(t_s, lungParameters)
 %       - Within-cycle phase φ in [0,1) is mapped to a half-cosine insp/exp
 %         waveform using local inspFrac(k).
 %       - Volume: V_L(t) = Vbase_L(t) + VT_L(t) * g(φ, inspFrac).
-%       - Geometry: two identical rotational ellipsoids:
+%       - Geometry: simplified rotational ellipsoid waveform:
 %             V_total = (4/3) * pi * R^2 * H
 %         Chest component (1-bellyFrac) changes R only, belly component
 %         changes H only, applied sequentially so that V_total(t) is exact.

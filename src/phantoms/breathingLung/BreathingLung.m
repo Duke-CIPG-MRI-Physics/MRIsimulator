@@ -4,7 +4,7 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     %   geometry follows lung_ellipsoid_waveform.
     %
     %   Constructor:
-    %       obj = BreathingLung(t_s, pulmonaryOpts, lungSeparation_mm, intensity, shapeParameters)
+    %       obj = BreathingLung(t_s, pulmonaryOpts, intensity, shapeParameters)
     %
     %   Inputs:
     %       t_s           - time [s]
@@ -14,7 +14,8 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     %       Vbase_L       - baseline lung volume [L]
     %       bellyFrac     - belly-breathing fraction [0,1]
     %       inspFrac      - inspiratory fraction of cycle (0,1)
-    %       lungSeparation_mm - additional spacing beyond lung radius [mm]
+    %       pulmonaryOpts.lungSeparation_mm - optional spacing beyond the
+    %                      lung radius [mm]
     %       intensity     - shape intensity (handled by parent)
     %       shapeParameters - optional pose struct for the composite
     %
@@ -30,17 +31,17 @@ classdef BreathingLung < CompositeAnalyticalShape3D
 
     methods
         function obj = BreathingLung(t_s, pulmonaryOpts, intensity, shapeParameters)
-            if nargin < 4 || isempty(intensity)
+            if nargin < 3 || isempty(intensity)
                 intensity = 1;
             end
 
-            if nargin < 5 || isempty(shapeParameters)
+            if nargin < 4 || isempty(shapeParameters)
                 shapeParameters = BreathingLung.defaultLungParameters();
             else
                 shapeParameters = AnalyticalShape3D.ensurePoseFields(shapeParameters);
             end
 
-            waveformHandle = @() lung_ellipsoid_waveform(t_s, pulmonaryOpts);
+            waveformHandle = @() BreathingLung.buildLungWaveformParameters(t_s, pulmonaryOpts);
             rightParamsHandle = @() BreathingLung.extractLungParameters(waveformHandle, 'right');
             leftParamsHandle = @() BreathingLung.extractLungParameters(waveformHandle, 'left');
 
@@ -64,6 +65,45 @@ classdef BreathingLung < CompositeAnalyticalShape3D
     end
 
     methods (Static, Access = private)
+        function [leftParams, rightParams] = buildLungWaveformParameters(t_s, pulmonaryOpts)
+            [lungRadius_mm, lungHeight_mm] = lung_ellipsoid_waveform(t_s, pulmonaryOpts);
+
+            if isfield(pulmonaryOpts, 'lungSeparation_mm') && ...
+                    ~isempty(pulmonaryOpts.lungSeparation_mm)
+                lungSeparation_mm = pulmonaryOpts.lungSeparation_mm;
+            else
+                lungSeparation_mm = 0;
+            end
+
+            if isscalar(lungSeparation_mm)
+                lungSeparation_mm = repmat(lungSeparation_mm, size(lungRadius_mm));
+            elseif ~isequal(size(lungSeparation_mm), size(lungRadius_mm))
+                error('BreathingLung:SeparationSizeMismatch', ...
+                    ['pulmonaryOpts.lungSeparation_mm must be scalar or have ' ...
+                    'the same size as the lung waveform.']);
+            end
+
+            lungPosition_mm = lungRadius_mm + lungSeparation_mm;
+            lungParams = struct('a_mm', lungRadius_mm, ...
+                'b_mm', lungRadius_mm, ...
+                'c_mm', lungHeight_mm, ...
+                'R_mm', lungRadius_mm, ...
+                'H_mm', lungHeight_mm, ...
+                'lungPosition_mm', lungPosition_mm);
+
+            rightParams = lungParams;
+            rightParams.pose = struct('center', struct('x_mm', lungPosition_mm(:), ...
+                'y_mm', zeros(numel(lungPosition_mm), 1), ...
+                'z_mm', zeros(numel(lungPosition_mm), 1)), ...
+                'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
+
+            leftParams = lungParams;
+            leftParams.pose = struct('center', struct('x_mm', -lungPosition_mm(:), ...
+                'y_mm', zeros(numel(lungPosition_mm), 1), ...
+                'z_mm', zeros(numel(lungPosition_mm), 1)), ...
+                'roll_deg', 0, 'pitch_deg', 0, 'yaw_deg', 0);
+        end
+
         function params = extractLungParameters(waveformHandle, side)
             [leftParams, rightParams] = waveformHandle();
             switch lower(side)

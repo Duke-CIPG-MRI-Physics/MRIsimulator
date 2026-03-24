@@ -10,8 +10,8 @@ disp(encodingFullStr)
 breastPhantomParams = createBreastPhantomParams();
 
 
-% load('fast_scan_parameters.mat')
-load('Breast_Ultrafast_scan_parameters.mat')
+load('fast_scan_parameters.mat')
+% load('Breast_Ultrafast_scan_parameters.mat')
 
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] =...
     convert_Siemens_parameters(scan_parameters);
