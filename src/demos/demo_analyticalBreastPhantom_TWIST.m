@@ -29,9 +29,9 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 %% Configure acquisition ordering and timing
 
-pA = .15;
-pB = .1;
-shareMode = "forward";      % "forward" | "reverse" | "symmetric"
+pA = .04;
+pB = 0;
+shareMode = "reverse";      % "forward" | "reverse" | "symmetric"
 if(strcmpi(shareMode,'symmetric'))
     shareMethod = "dual_anchor"; % use "dual_anchor" for symmetric sharing
 else
@@ -273,7 +273,7 @@ final_time_idx = size(phantom_magnitude, 4);
 %Ground truth
 figure;
 plot(Sampling_Table.Timing(1:1000:end),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(1:1000:end)) ...
-    + breastPhantomParams.breastIntensity);
+    + breastPhantomParams.breastIntensity,"LineWidth",2);
 
 %convert TWIST frames to actual time, time for a whole frame is defined as
 %   moment when center of k-space is sampled.
@@ -295,7 +295,7 @@ for ii = 1:num_lesions
     plot(TWIST_frame_times,abs(contrast_values_measured(ii,:)),'.-','MarkerSize',15)
 
 end
-legend("Ground Truth","TWIST Measured L","M","S","XS")
+legend("Ground Truth","2 cm","1 cm","5 mm","2.5 mm")
 hold off
 
 title("Contrast Wash-in")
