@@ -1,6 +1,6 @@
 % Plotting and Analyzing Simulation Results for All Lesion Sizes
 clear; clc; close all;
-load("Results_test.mat")
+load("results_keyhole.mat")
 
 % --- Define the lesion sizes to iterate through ---
 lesion_fields = {'Measured_Contrast_L', 'Measured_Contrast_M', 'Measured_Contrast_S', 'Measured_Contrast_XS'};
@@ -20,34 +20,34 @@ all_tp = zeros(num_results, 4);
 all_cmax = zeros(num_results, 4);
 all_dev = zeros(num_results, 4);
 
-%% --- 1. Plot Kinetics for All 4 Sizes ---
-fig1 = figure('Name', 'TWIST Kinetics', 'Position', [100, 100, 1200, 800]);
-t_kinetics = tiledlayout(2, 2, 'TileSpacing', 'compact');
-title(t_kinetics, 'TWIST Kinetics: Reconstructed vs. True Enhancement', 'FontWeight', 'bold', 'FontSize', 14);
-
-for s = 1:4
-    ax = nexttile(t_kinetics);
-    hold(ax, 'on');
-    
-    % Plot Ground Truth
-    plot(ax, Simulated.timepoints, Simulated.contrast, 'k--', 'LineWidth', 2, 'DisplayName', 'Analytical GT');
-    
-    % Loop through and overlay the measured TWIST data
-    for ii = 1:num_to_plot
-        meas_name = sprintf('pA=%.2f, pB=%.2f', resultsStruct2_flat(ii).pA, resultsStruct2_flat(ii).pB);
-        plot(ax, resultsStruct2_flat(ii).Timepoints, resultsStruct2_flat(ii).(lesion_fields{s}), ...
-            '-o', 'Color', colors(ii,:), 'LineWidth', 0.5, 'MarkerSize', 3, 'DisplayName', meas_name);
-    end
-    
-    grid(ax, 'on');
-    title(ax, lesion_names{s});
-    xlabel(ax, 'Time Since Injection (s)');
-    ylabel(ax, 'ROI Contrast Intensity');
-    if s == 2 % Only put the legend on the top right tile to save space
-        legend(ax, 'Location', 'bestoutside');
-    end
-    hold(ax, 'off');
-end
+% %% --- 1. Plot Kinetics for All 4 Sizes ---
+% fig1 = figure('Name', 'TWIST Kinetics', 'Position', [100, 100, 1200, 800]);
+% t_kinetics = tiledlayout(2, 2, 'TileSpacing', 'compact');
+% title(t_kinetics, 'TWIST Kinetics: Reconstructed vs. True Enhancement', 'FontWeight', 'bold', 'FontSize', 14);
+% 
+% for s = 1:4
+%     ax = nexttile(t_kinetics);
+%     hold(ax, 'on');
+% 
+%     % Plot Ground Truth
+%     plot(ax, Simulated.timepoints, Simulated.contrast, 'k--', 'LineWidth', 2, 'DisplayName', 'Analytical GT');
+% 
+%     % Loop through and overlay the measured TWIST data
+%     for ii = 1:num_to_plot
+%         meas_name = sprintf('pA=%.2f, pB=%.2f', resultsStruct2_flat(ii).pA, resultsStruct2_flat(ii).pB);
+%         plot(ax, resultsStruct2_flat(ii).Timepoints, resultsStruct2_flat(ii).(lesion_fields{s}), ...
+%             '-o', 'Color', colors(ii,:), 'LineWidth', 0.5, 'MarkerSize', 3, 'DisplayName', meas_name);
+%     end
+% 
+%     grid(ax, 'on');
+%     title(ax, lesion_names{s});
+%     xlabel(ax, 'Time Since Injection (s)');
+%     ylabel(ax, 'ROI Contrast Intensity');
+%     if s == 2 % Only put the legend on the top right tile to save space
+%         legend(ax, 'Location', 'bestoutside');
+%     end
+%     hold(ax, 'off');
+% end
 
 %% --- 2. Calculate Metrics Across All Sizes ---
 for ii = 1:num_results
@@ -99,24 +99,67 @@ for s = 1:4
     hold(ax, 'off');
 end
 
-%% --- 4. Plot Deviation from Ground Truth ---
-% We sort the x-axis index by the Time-to-Peak of the LARGE lesion 
-% so all 4 subplots share a consistent, meaningful X-axis progression.
-[~, sort_idx] = sort(all_tp(:, 1), 'ascend');
+%% --- 3. Plot Peak Enhancement vs Time-to-Peak ---
+fig2 = figure('Name', 'Enhancement vs Time-to-Peak', 'Position', [150, 150, 1200, 800]);
+t_peak = tiledlayout(2, 2, 'TileSpacing', 'compact');
+title(t_peak, 'Peak Enhancement vs Time-to-Peak by Lesion Size', 'FontWeight', 'bold', 'FontSize', 14);
 
-fig3 = figure('Name', 'Deviation from Ground Truth', 'Position', [200, 200, 1200, 800]);
-t_dev = tiledlayout(2, 2, 'TileSpacing', 'compact');
-title(t_dev, 'Euclidean Distance from Ground Truth Kinetics', 'FontWeight', 'bold', 'FontSize', 14);
+% --- 3.1 Define Global Axis Limits ---
+% Calculate dynamic limits across all sizes (adding 10% padding for visual clarity)
+% Alternatively, you can hardcode these, e.g.: global_xlim = [0, 150];
+global_xlim = [0, max([all_tp(:); gt_tp]) * 1.1]; 
+global_ylim = [0, max([all_cmax(:); gt_max]) * 1.1];
+
+% Pre-allocate an array to store the axis handles for linking later
+ax_array = gobjects(1, 4); 
 
 for s = 1:4
-    ax = nexttile(t_dev);
+    ax = nexttile(t_peak);
+    ax_array(s) = ax; % Store the current axis handle
     hold(ax, 'on');
     
-    plot(ax, all_dev(sort_idx, s), '-o', 'LineWidth', 1.5, 'Color', '#D95319');
+    scatter(ax, all_tp(:, s), all_cmax(:, s), 30, 'filled', 'MarkerFaceColor', '#0072BD', 'DisplayName', 'Simulations');
+    
+    % Reference lines for ground truth
+    yline(ax, gt_max, 'k--', 'LineWidth', 1.5, 'DisplayName', 'GT Max Enhancement');
+    xline(ax, gt_tp, 'r--', 'LineWidth', 1.5, 'DisplayName', 'GT Time-to-Peak');
     
     grid(ax, 'on');
     title(ax, lesion_names{s});
-    xlabel(ax, 'Simulation Index (Sorted by Large Lesion Wash-in)');
-    ylabel(ax, 'Euclidean Distance');
+    xlabel(ax, 'Time of Peak Enhancement (s)');
+    ylabel(ax, 'Peak Enhancement Value');
+    
+    % --- 3.2 Apply the Global Limits to this specific axis ---
+    xlim(ax, global_xlim);
+    ylim(ax, global_ylim);
+
+    if s == 2
+        legend(ax, 'Location', 'bestoutside');
+    end
     hold(ax, 'off');
 end
+
+% --- 3.3 Link axes together (Highly Recommended) ---
+% Now, if you zoom or pan on one subplot interactively, the others will follow suit.
+linkaxes(ax_array, 'xy');
+% %% --- 4. Plot Deviation from Ground Truth ---
+% % We sort the x-axis index by the Time-to-Peak of the LARGE lesion 
+% % so all 4 subplots share a consistent, meaningful X-axis progression.
+% [~, sort_idx] = sort(all_tp(:, 1), 'ascend');
+% 
+% fig3 = figure('Name', 'Deviation from Ground Truth', 'Position', [200, 200, 1200, 800]);
+% t_dev = tiledlayout(2, 2, 'TileSpacing', 'compact');
+% title(t_dev, 'Euclidean Distance from Ground Truth Kinetics', 'FontWeight', 'bold', 'FontSize', 14);
+% 
+% for s = 1:4
+%     ax = nexttile(t_dev);
+%     hold(ax, 'on');
+% 
+%     plot(ax, all_dev(sort_idx, s), '-o', 'LineWidth', 1.5, 'Color', '#D95319');
+% 
+%     grid(ax, 'on');
+%     title(ax, lesion_names{s});
+%     xlabel(ax, 'Simulation Index (Sorted by Large Lesion Wash-in)');
+%     ylabel(ax, 'Euclidean Distance');
+%     hold(ax, 'off');
+% end
