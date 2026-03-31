@@ -16,8 +16,8 @@ pA = 0.05;
 Nb = 10;
 N_measurements = 20; %sec
 
-R = 1; %[2 3]
-PF_Factor = 1; %[6/8 6/8]
+R = [1, 1]; %[2 3]
+PF_Factor = [1, 1]; %[6/8 6/8]
 
 
 
@@ -44,6 +44,8 @@ SimulationParameters.TWIST.N_measurements = N_measurements;
 SimulationParameters.TWIST.shareMode = "forward";
 SimulationParameters.TWIST.shareMethod = "single_anchor";
 SimulationParameters.TWIST.shareTieBreaker = "future";
+SimulationParameters.TWIST.radialBinWidthMode = "max";
+SimulationParameters.TWIST.bSubsetAssignment = "contiguous";
 
 SimulationParameters.ParallelImaging.GRAPPA_R = R;
 SimulationParameters.ParallelImaging.PF_Factor = PF_Factor;

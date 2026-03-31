@@ -39,7 +39,7 @@ end
 % 1. Define the rows and columns to keep (no change needed)
 Partial_Fourier_Number = [round(Complete_Matrix_Size(2) * PF_Factor(1)), round(Complete_Matrix_Size(3) * PF_Factor(2))];
 Rows_to_keep = 1:Partial_Fourier_Number(1);
-Columns_to_keep = (Complete_Matrix_Size(3) - Partial_Fourier_Number(2)):Complete_Matrix_Size(3);
+Columns_to_keep = (Complete_Matrix_Size(3) - Partial_Fourier_Number(2) + 1):Complete_Matrix_Size(3);
 
 % 2. Use ismember() to find all rows that match the criteria in a single step
 is_row_kept = ismember(Sampling_Table.("Row (phase)"), Rows_to_keep);

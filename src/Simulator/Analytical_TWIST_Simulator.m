@@ -42,9 +42,16 @@ pA = SimulationParameters.TWIST.pA;
 pB = SimulationParameters.TWIST.pB;
 Num_Measurements = SimulationParameters.TWIST.N_measurements;
 shareOptions = getTWISTShareOptions(SimulationParameters.TWIST);
+orderingOptions = getTWISTOrderingOptions(SimulationParameters.TWIST);
 
 R = SimulationParameters.ParallelImaging.GRAPPA_R;
 PF_Factor = SimulationParameters.ParallelImaging.PF_Factor;
+if isscalar(R)
+    R = [R, R];
+end
+if isscalar(PF_Factor)
+    PF_Factor = [PF_Factor, PF_Factor];
+end
 
 %% FOV and matrix size
 freq_phase_slice = [2 1 3]; % 1 = R/L, 2 = A/P, 3 = S/I
@@ -58,7 +65,7 @@ dt_s = 1 / rBW_Hz;
 %% Configure acquisition ordering and timing
 [Sampling_Table, ~] = Ultrafast_Sampling( ...
     matrix_size_acquired, FOV_acquired, pA, pB, Num_Measurements, TR, R, PF_Factor, ...
-    shareOptions.mode, shareOptions.method);
+    shareOptions.mode, shareOptions.method, orderingOptions);
 
 TR_before_readout = TR - (matrix_size_acquired(1) * dt_s);
 dwell_time_timepoints_within_TR = TR_before_readout + dt_s:dt_s:TR;

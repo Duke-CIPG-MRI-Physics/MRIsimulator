@@ -1,4 +1,6 @@
-function [Complete_Sampling_Table,TWIST_Stats] = Ultrafast_Sampling(Matrix_Size_Acquired,FOV_acquired,pA,pB,N_Measurements,TR,R,PF_Factor,shareMode,shareMethod)
+function [Complete_Sampling_Table,TWIST_Stats] = Ultrafast_Sampling( ...
+    Matrix_Size_Acquired, FOV_acquired, pA, pB, N_Measurements, TR, R, PF_Factor, ...
+    shareMode, shareMethod, orderingOptions)
 %This function implements full sampling trajectory for Ultrafast MRI
 %Imaging using TWIST,GRAPPA, and Partial Fourier
 
@@ -65,6 +67,8 @@ arguments (Input)
     % Symmetric sharing currently supports Siemens-like dual anchors only
     shareMethod (1,1) string = "single_anchor"
 
+    orderingOptions (1,1) struct = struct()
+
 end
 
 shareMode = lower(shareMode);
@@ -97,7 +101,8 @@ end
 
 %% --- TWIST
 
-Sampling_Table = TWIST(pA,pB,Matrix_Size_Acquired,FOV_acquired,R,PF_Factor);
+Sampling_Table = TWIST( ...
+    pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor, orderingOptions);
 
 %% --- Undersampling
 % Strategy is to simply remove entries which correspond with the 2

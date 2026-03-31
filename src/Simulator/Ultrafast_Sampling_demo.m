@@ -7,11 +7,19 @@ pA = 0.05;
 pB = .1; 
 N_Measurements = 10; 
 TR = 5e-3;
-R = 1;
-PF_Factor = 1; 
+R = [1, 1];
+PF_Factor = [1, 1]; 
+orderingOptions = getTWISTOrderingOptions(struct( ...
+    'radialBinWidthMode', "max", ...
+    'bSubsetAssignment', "contiguous"));
 
 [Complete_Sampling_Table, TWIST_Stats] = ...
-    Ultrafast_Sampling(Matrix_Size_Acquired, FOV_acquired, pA, pB, N_Measurements, TR, R, PF_Factor);
+    Ultrafast_Sampling( ...
+        Matrix_Size_Acquired, FOV_acquired, pA, pB, N_Measurements, TR, R, PF_Factor, ...
+        "forward", "single_anchor", orderingOptions);
+
+[regionA, phaseEncodeTable] = getRegionA( ...
+    Matrix_Size_Acquired, FOV_acquired, pA, PF_Factor, R, orderingOptions);
 
 sz_4D = [Matrix_Size_Acquired, N_Measurements + 1];
 
@@ -23,6 +31,33 @@ sampled_mask(Complete_Sampling_Table.("Linear Index")) = true;
 visualization_matrix = squeeze(sampled_mask(1, :, :, :));
 
 imshow3D(visualization_matrix);
+
+radialBinGrid = zeros(Matrix_Size_Acquired(2), Matrix_Size_Acquired(3));
+radialBinGrid(phaseEncodeTable.LinearIndex) = phaseEncodeTable.RadialBin;
+
+figure('Name', 'Ultrafast Sampling Diagnostics', 'Color', 'w');
+tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+nexttile;
+imagesc(regionA');
+axis image;
+set(gca, 'YDir', 'normal');
+title('Region A');
+xlabel('Phase Encode');
+ylabel('Slice Encode');
+
+nexttile;
+imagesc(radialBinGrid');
+axis image;
+set(gca, 'YDir', 'normal');
+title(sprintf('Radial Bins (%s dk)', orderingOptions.radialBinWidthMode));
+xlabel('Phase Encode');
+ylabel('Slice Encode');
+colorbar;
+
+plotTWISTFrameOrdering( ...
+    Complete_Sampling_Table, Matrix_Size_Acquired, regionA, ...
+    "Ultrafast B-Frame Ordering", 9);
 
 %% --- Multi-Color Trajectory Animation (Fixed Speed)
 % 1. Filter: Use only unique Phase-Slice events

@@ -7,27 +7,53 @@ Matrix_Size_Acquired = [1,100,100];
 FOV_acquired = [1,200,100];
 R = [1,1];
 PF_Factor = [1,1]; 
+orderingOptions = getTWISTOrderingOptions(struct( ...
+    'radialBinWidthMode', "max", ...
+    'bSubsetAssignment', "contiguous"));
 
 % --- Run TWIST ---
-[TWIST_sampling_order] = TWIST(pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor);
+[TWIST_sampling_order] = TWIST( ...
+    pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor, orderingOptions);
+[regionA, phaseEncodeTable] = getRegionA( ...
+    Matrix_Size_Acquired, FOV_acquired, pA, PF_Factor, R, orderingOptions);
 
-% --- Correct Visualization Setup ---
-nRows = Matrix_Size_Acquired(2);
-nCols = Matrix_Size_Acquired(3);
-nFrames = max(TWIST_sampling_order.Frame) + 1; % +1 because frames start at 0
+% Toggle this to "min" if you want shells quantized using the smaller
+% phase/slice k-space pixel size.
+disp(orderingOptions)
 
-% Initialize 3D mask: [Phase, Slice, Time]
-sampled_mask = false(nRows, nCols, nFrames);
+radialBinGrid = zeros(Matrix_Size_Acquired(2), Matrix_Size_Acquired(3));
+radialBinGrid(phaseEncodeTable.LinearIndex) = phaseEncodeTable.RadialBin;
+retainedMask = false(Matrix_Size_Acquired(2), Matrix_Size_Acquired(3));
+retainedMask(phaseEncodeTable.LinearIndex) = phaseEncodeTable.IsKeptAfterAcceleration;
 
-% Loop through each row of the table to place points in the correct "Time" slice
-for i = 1:height(TWIST_sampling_order)
-    r = TWIST_sampling_order.("Row (phase)")(i);
-    c = TWIST_sampling_order.("Column (slice)")(i);
-    f = TWIST_sampling_order.Frame(i) + 1; % Shift 0-index to 1-index for MATLAB
-    
-    sampled_mask(r, c, f) = true;
-end
+figure('Name', 'TWIST Ordering Diagnostics', 'Color', 'w');
+tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
 
+nexttile;
+imagesc(regionA');
+axis image;
+set(gca, 'YDir', 'normal');
+title('Region A');
+xlabel('Phase Encode');
+ylabel('Slice Encode');
 
-sliceViewer(double(sampled_mask)); 
-title('TWIST Sampling Mask (Scroll through Frames)');
+nexttile;
+imagesc(radialBinGrid');
+axis image;
+set(gca, 'YDir', 'normal');
+title(sprintf('Radial Bins (%s dk)', orderingOptions.radialBinWidthMode));
+xlabel('Phase Encode');
+ylabel('Slice Encode');
+colorbar;
+
+nexttile;
+imagesc(retainedMask');
+axis image;
+set(gca, 'YDir', 'normal');
+title('Predicted PF / GRAPPA Mask');
+xlabel('Phase Encode');
+ylabel('Slice Encode');
+
+plotTWISTFrameOrdering( ...
+    TWIST_sampling_order, Matrix_Size_Acquired, regionA, ...
+    "TWIST B-Frame Ordering", 9);
