@@ -1,5 +1,5 @@
 function [Sampling_Table,PF_ask,GRAPPA_ask] = Ultrafast_Sampling_Timing_Demo( ...
-    Matrix_Size_Acquired, FOV_acquired, pA, pB, Time_Measured, TR, R, PF_Factor, orderingOptions)
+    Matrix_Size_Acquired, FOV_acquired, pA, pB, Time_Measured, TR, R, PF_Factor)
 %This function implements full sampling trajectory for Ultrafast MRI
 %Imaging using TWIST,GRAPPA, and Partial Fourier
 %   GRAPPA and PF are optional input. Due to MATLAB limitations, the way to
@@ -32,8 +32,6 @@ arguments (Input)
     %Defaults to [1,1]
     PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor,1), mustBeGreaterThan(PF_Factor,.5)}
 
-    orderingOptions (1,1) struct = struct()
-
 end
 
 N = round(1/pB);
@@ -41,7 +39,7 @@ N = round(1/pB);
 %% --- TWIST
 
 Sampling_Table = TWIST( ...
-    pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor, orderingOptions);
+    pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor);
 
 %% --- Timing Setup and Estimate
 

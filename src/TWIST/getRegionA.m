@@ -1,8 +1,8 @@
 function [regionA, frequency_table] = getRegionA( ...
-    Matrix_Size_Acquired, FOV_acquired, pA, PF_Factor, R, orderingOptions)
+    Matrix_Size_Acquired, FOV_acquired, pA, PF_Factor, R, radialBinWidthMode)
 % getRegionA  Calculate the TWIST region-A mask on the phase/slice plane.
 %   [regionA, frequency_table] = getRegionA(Matrix_Size_Acquired, ...
-%       FOV_acquired, pA, PF_Factor, R, orderingOptions) returns a logical
+%       FOV_acquired, pA, PF_Factor, R, radialBinWidthMode) returns a logical
 %   mask for region A and the underlying phase/slice ordering table.
 %
 %   Region A is selected from the lowest-radius entries on the physical
@@ -16,11 +16,11 @@ function [regionA, frequency_table] = getRegionA( ...
         pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0), mustBeLessThanOrEqual(pA, 1)}
         PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor, 1), mustBeGreaterThan(PF_Factor, 0.5)}
         R (1,2) {mustBeNumeric, mustBePositive, mustBeInteger}
-        orderingOptions (1,1) struct = struct()
+        radialBinWidthMode (1,1) string = "max"
     end
 
     [frequency_table, ~] = buildTWISTPhaseEncodeTable( ...
-        Matrix_Size_Acquired, FOV_acquired, PF_Factor, R, orderingOptions);
+        Matrix_Size_Acquired, FOV_acquired, PF_Factor, R, radialBinWidthMode);
 
     retainedRows = find(frequency_table.IsKeptAfterAcceleration);
     n_pixels_acquired = numel(retainedRows);

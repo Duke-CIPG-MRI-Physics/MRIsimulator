@@ -1,8 +1,8 @@
 function [phaseEncodeTable, orderingInfo] = buildTWISTPhaseEncodeTable( ...
-    Matrix_Size_Acquired, FOV_acquired, PF_Factor, R, orderingOptions)
+    Matrix_Size_Acquired, FOV_acquired, PF_Factor, R, radialBinWidthMode)
 % buildTWISTPhaseEncodeTable  Build physical phase/slice k-space ordering data.
 %   [phaseEncodeTable, orderingInfo] = buildTWISTPhaseEncodeTable( ...
-%       Matrix_Size_Acquired, FOV_acquired, PF_Factor, R, orderingOptions)
+%       Matrix_Size_Acquired, FOV_acquired, PF_Factor, R, radialBinWidthMode)
 %   returns the phase/slice encode plane as a table sorted by quantized
 %   radial distance to DC and then by angular position.
 %
@@ -16,8 +16,8 @@ function [phaseEncodeTable, orderingInfo] = buildTWISTPhaseEncodeTable( ...
 %       Partial Fourier factors in [phase, slice].
 %   R : [1x2] integer
 %       GRAPPA acceleration in [phase, slice].
-%   orderingOptions : struct
-%       Normalized TWIST ordering options from getTWISTOrderingOptions().
+%   radialBinWidthMode : string
+%       Shell width mode, either "max" or "min".
 %
 %   Outputs
 %   -------
@@ -40,10 +40,16 @@ function [phaseEncodeTable, orderingInfo] = buildTWISTPhaseEncodeTable( ...
         FOV_acquired (1,3) {mustBeNumeric, mustBePositive}
         PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor, 1), mustBeGreaterThan(PF_Factor, 0.5)}
         R (1,2) {mustBeNumeric, mustBePositive, mustBeInteger}
-        orderingOptions (1,1) struct = struct()
+        radialBinWidthMode (1,1) string = "max"
     end
 
-    orderingOptions = getTWISTOrderingOptions(orderingOptions);
+    radialBinWidthMode = lower(radialBinWidthMode);
+    validBinModes = ["max", "min"];
+    if ~ismember(radialBinWidthMode, validBinModes)
+        error("TWIST:InvalidRadialBinWidthMode", ...
+            "radialBinWidthMode must be one of %s.", ...
+            char(strjoin(validBinModes, ", ")));
+    end
 
     phaseAxis = computeKspaceGrid1D(FOV_acquired(2), Matrix_Size_Acquired(2));
     sliceAxis = computeKspaceGrid1D(FOV_acquired(3), Matrix_Size_Acquired(3));
@@ -54,13 +60,14 @@ function [phaseEncodeTable, orderingInfo] = buildTWISTPhaseEncodeTable( ...
     else
         dkPhase = abs(phaseAxis(2) - phaseAxis(1));
     end
+
     if numel(sliceAxis) == 1
         dkSlice = 1 / FOV_acquired(3);
     else
         dkSlice = abs(sliceAxis(2) - sliceAxis(1));
     end
 
-    switch orderingOptions.radialBinWidthMode
+    switch radialBinWidthMode
         case "max"
             radialBinWidth = max(dkPhase, dkSlice);
         case "min"
@@ -106,8 +113,7 @@ function [phaseEncodeTable, orderingInfo] = buildTWISTPhaseEncodeTable( ...
     orderingInfo.dkPhase = dkPhase;
     orderingInfo.dkSlice = dkSlice;
     orderingInfo.radialBinWidth = radialBinWidth;
-    orderingInfo.radialBinWidthMode = orderingOptions.radialBinWidthMode;
-    orderingInfo.bSubsetAssignment = orderingOptions.bSubsetAssignment;
+    orderingInfo.radialBinWidthMode = radialBinWidthMode;
 end
 
 function accelerationMask = buildAccelerationMask(Matrix_Size_Acquired, PF_Factor, R)

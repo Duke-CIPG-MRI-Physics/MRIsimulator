@@ -1,4 +1,5 @@
 clear; clc; close all;
+% Dedicated TWIST ordering diagnostic demo.
 
 % --- Inputs ---
 pA = 0.05; 
@@ -7,19 +8,17 @@ Matrix_Size_Acquired = [1,100,100];
 FOV_acquired = [1,200,100];
 R = [1,1];
 PF_Factor = [1,1]; 
-orderingOptions = getTWISTOrderingOptions(struct( ...
-    'radialBinWidthMode', "max", ...
-    'bSubsetAssignment', "contiguous"));
+radialBinWidthMode = "max";
 
 % --- Run TWIST ---
 [TWIST_sampling_order] = TWIST( ...
-    pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor, orderingOptions);
+    pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor, radialBinWidthMode);
 [regionA, phaseEncodeTable] = getRegionA( ...
-    Matrix_Size_Acquired, FOV_acquired, pA, PF_Factor, R, orderingOptions);
+    Matrix_Size_Acquired, FOV_acquired, pA, PF_Factor, R, radialBinWidthMode);
 
 % Toggle this to "min" if you want shells quantized using the smaller
 % phase/slice k-space pixel size.
-disp(orderingOptions)
+disp("radialBinWidthMode = " + radialBinWidthMode)
 
 radialBinGrid = zeros(Matrix_Size_Acquired(2), Matrix_Size_Acquired(3));
 radialBinGrid(phaseEncodeTable.LinearIndex) = phaseEncodeTable.RadialBin;
@@ -41,7 +40,7 @@ nexttile;
 imagesc(radialBinGrid');
 axis image;
 set(gca, 'YDir', 'normal');
-title(sprintf('Radial Bins (%s dk)', orderingOptions.radialBinWidthMode));
+title(sprintf('Radial Bins (%s dk)', radialBinWidthMode));
 xlabel('Phase Encode');
 ylabel('Slice Encode');
 colorbar;

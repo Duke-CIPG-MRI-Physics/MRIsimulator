@@ -43,9 +43,6 @@ twistShareOptions = getTWISTShareOptions(struct( ...
     'shareMode', shareMode, ...
     'shareMethod', shareMethod, ...
     'shareTieBreaker', shareTieBreaker));
-twistOrderingOptions = getTWISTOrderingOptions(struct( ...
-    'radialBinWidthMode', "max", ...
-    'bSubsetAssignment', "contiguous"));
 
 Num_Measurements = 20;
 R = [1, 1]; %[2 3] 
@@ -53,11 +50,11 @@ PF_Factor = [1, 1]; %[6/8 6/8]
 
 [Sampling_Table,TWIST_Timing] = Ultrafast_Sampling( ...
     matrix_size_acquired, FOV_acquired, pA, pB, Num_Measurements, TR, R, PF_Factor, ...
-    twistShareOptions.mode, twistShareOptions.method, twistOrderingOptions);
+    twistShareOptions.mode, twistShareOptions.method);
 
 %displaying region A
 figure
-regionA = getRegionA(matrix_size_acquired, FOV_acquired, pA, PF_Factor, R, twistOrderingOptions);
+regionA = getRegionA(matrix_size_acquired, FOV_acquired, pA, PF_Factor, R);
 imshow(regionA)
 title('Region A within Acquired Matrix')
 

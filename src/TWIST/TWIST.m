@@ -1,15 +1,41 @@
 function [TWIST_sampling_order] = TWIST( ...
-    pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor, orderingOptions)
-% TWIST  Generate phase/slice TWIST sampling order on the physical k-space grid.
-%   TWIST_sampling_order = TWIST(pA, pB, Matrix_Size_Acquired, FOV_acquired,
-%       R, PF_Factor, orderingOptions) returns the phase/slice sampling table
-%   for one complete TWIST cycle: an initial full acquisition followed by
-%   interleaved A + Bj partial frames.
+    pA, pB, Matrix_Size_Acquired, FOV_acquired, R, PF_Factor, radialBinWidthMode)
+%Roberto Carrascosa, Duke University, June 2025
+% This function implements the TWIST sampling scheme for MRI
 %
-%   The phase/slice encodes are ordered using physical spatial frequencies
-%   [cycles / distance], not raw pixel offsets. Radii are quantized into
-%   integer shells before angular sorting so anisotropic FOV and matrix size
-%   affect the ordering correctly.
+%This function outputs a table of points, in the order they should be
+%sampled for TWIST. Note that TWIST operates only on 3D acquisitions.
+%Therefore, actual use of this function will require further implemenetation
+%of frequency encoding, based on the user's needs.
+%
+%The inputs of this function are:
+% pA --- defines the size of the central region that is sampled for
+%   every measurement
+%
+% pB --- where pB defines the fraction of the exteriorvof k-space which is
+%   sampled every measurement. There is a limited set of allowed inputs
+%
+% Matrix_Size_Acquired --- vector of form: [#frequency, #phase (rows), #slice (columns)]
+%
+% FOV_acquired --- vector of form: [freq FOV, phase FOV, slice FOV]
+%   units do not matter
+%
+% R --- GRAPPA acceleration factor of form [phase, slice]
+%   can be skipped with value of 1
+%
+% PF_Factor --- Partial Fourier acceleration factor of form [phase fraction, slice fraction]
+%   can be skipped with value of 1
+%
+% radialBinWidthMode --- optional string, either "max" or "min", used to
+%   set the radial shell width in physical k-space units
+%
+%---------------------------------------
+%
+%The output of this function is a table of form:
+% Linear Index, Bj, Frame, Row(phase), Column(slice)
+%
+% It is one complete TWIST sequence: full k-space, followed by interleaved
+% A and B region in correct order.
 
     arguments
         pA (1,1) {mustBeNumeric, mustBeGreaterThanOrEqual(pA, 0), mustBeLessThanOrEqual(pA, 1)}
@@ -18,7 +44,7 @@ function [TWIST_sampling_order] = TWIST( ...
         FOV_acquired (1,3) {mustBeNumeric, mustBePositive}
         R (1,2) {mustBeNumeric, mustBeInteger, mustBePositive}
         PF_Factor (1,2) {mustBeNumeric, mustBePositive, mustBeLessThanOrEqual(PF_Factor, 1), mustBeGreaterThan(PF_Factor, .5)}
-        orderingOptions (1,1) struct = struct()
+        radialBinWidthMode (1,1) string = "max"
     end
 
     if pB == 0
@@ -27,11 +53,9 @@ function [TWIST_sampling_order] = TWIST( ...
         Nb = round(1 / pB);
     end
 
-    orderingOptions = getTWISTOrderingOptions(orderingOptions);
-
     %% Build the physical phase/slice ordering table
     [regionA, frequency_table] = getRegionA( ...
-        Matrix_Size_Acquired, FOV_acquired, pA, PF_Factor, R, orderingOptions);
+        Matrix_Size_Acquired, FOV_acquired, pA, PF_Factor, R, radialBinWidthMode);
 
     sortedData = frequency_table(:, ...
         {'LinearIndex', 'SpatialFrequencyRadius', 'RadialBin', 'Theta', 'PhaseRow', 'SliceColumn'});
@@ -45,12 +69,11 @@ function [TWIST_sampling_order] = TWIST( ...
     sortedData.("Region A?") = regionA(sortedData.("Linear Index"));
     sortedData.Bj = zeros(height(sortedData), 1);
 
-    sortedData_regionA = sortedData(sortedData.("Region A?"), :);
-    sortedData_regionB = sortedData(~sortedData.("Region A?"), :);
+    sortedData_regionA = sortedData(sortedData.("Region A?"),:);
+    sortedData_regionB = sortedData(~sortedData.("Region A?"),:);
 
     if Nb > 0 && ~isempty(sortedData_regionB)
-        sortedData_regionB.Bj = assignBSubsets( ...
-            height(sortedData_regionB), Nb, orderingOptions.bSubsetAssignment);
+        sortedData_regionB.Bj = assignBSubsets(height(sortedData_regionB), Nb);
         sortedData.Bj(~sortedData.("Region A?")) = sortedData_regionB.Bj;
     end
 
@@ -90,8 +113,8 @@ function [TWIST_sampling_order] = TWIST( ...
     TWIST_sampling_order.("Column (slice)") = col;
 end
 
-function bjSequence = assignBSubsets(numRegionBPoints, nBSubsets, assignmentMode)
-% assignBSubsets  Split the sorted B list into Bj subsets.
+function bjSequence = assignBSubsets(numRegionBPoints, nBSubsets)
+% assignBSubsets  Split the sorted B list into interleaved Bj subsets.
 
     if numRegionBPoints < nBSubsets
         error("TWIST:InsufficientBPoints", ...
@@ -99,21 +122,7 @@ function bjSequence = assignBSubsets(numRegionBPoints, nBSubsets, assignmentMode
             numRegionBPoints, nBSubsets);
     end
 
-    switch assignmentMode
-        case "contiguous"
-            bjSequence = zeros(numRegionBPoints, 1);
-            subsetEdges = round(linspace(0, numRegionBPoints, nBSubsets + 1));
-            for iSubset = 1:nBSubsets
-                firstIdx = subsetEdges(iSubset) + 1;
-                lastIdx = subsetEdges(iSubset + 1);
-                if firstIdx <= lastIdx
-                    bjSequence(firstIdx:lastIdx) = iSubset;
-                end
-            end
-
-        case "interleaved"
-            bjSequence = mod((0:numRegionBPoints - 1)', nBSubsets) + 1;
-    end
+    bjSequence = mod((0:numRegionBPoints - 1)', nBSubsets) + 1;
 end
 
 function trajectoryTable = buildBidirectionalTrajectory(sortedRows, traversalMode)
