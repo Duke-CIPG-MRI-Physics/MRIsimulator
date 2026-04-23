@@ -1,9 +1,9 @@
 clear; clc; close all;
 load("Ultrafast_Sim_Param_forward.mat")
 
-pBs = [.1,.25];
-pAs = [.04:.01:.15];
-n_shifts = 5;
+pBs = [.1];
+pAs = [.04];
+n_shifts = 10;
 
 num_pBs = length(pBs);
 num_pAs = length(pAs);
@@ -116,5 +116,5 @@ resultsStruct_flat = resultsStruct(:);
 resultsStruct2_flat = resultsStruct2(:);
 Simulated.contrast = Output.simulated.contrast;
 Simulated.timepoints = Output.simulated.timepoints;
-save("Results_forward", "resultsStruct2_flat","Simulated")
+save("Results_test", "resultsStruct2_flat","Simulated")
 
