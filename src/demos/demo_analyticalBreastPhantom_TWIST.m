@@ -10,8 +10,7 @@ disp(encodingFullStr)
 breastPhantomParams = createBreastPhantomParams();
 
 
-load('fast_scan_parameters.mat')
-% load('Breast_Ultrafast_scan_parameters.mat')
+load("Breast_Ultrafast_scan_parameters.mat")
 
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] =...
     convert_Siemens_parameters(scan_parameters);
@@ -29,7 +28,7 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 %% Configure acquisition ordering and timing
 
-pA = .04;
+pA = .07;
 pB = 0;
 shareMode = "reverse";      % "forward" | "reverse" | "symmetric"
 if(strcmpi(shareMode,'symmetric'))
@@ -44,7 +43,7 @@ twistShareOptions = getTWISTShareOptions(struct( ...
     'shareMethod', shareMethod, ...
     'shareTieBreaker', shareTieBreaker));
 
-Num_Measurements = 20;
+Num_Measurements = 80;
 R = 1; %[2 3] 
 PF_Factor = 1; %[6/8 6/8]
 
@@ -89,7 +88,7 @@ endOfFirstFrame = max(Sampling_Table.Timing(firstFrameMask));
 
 % Injected contrast parameters
 breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfFirstFrame;
-breastPhantomParams.lesionArrivalDelay_s = 1;
+breastPhantomParams.lesionArrivalDelay_s = 2;
 breastPhantomParams.lesionWashinType = "instant";
 breastPhantomParams.lesionWashoutType = "washout";
 breastPhantomParams.lesionPeakEnhancement = 1.6;
@@ -107,7 +106,7 @@ phantom = BreastPhantom(breastPhantomParams);
 %% Perform TWIST with streaming/bounded-buffer view sharing
 maxChunkSize = 5000000;
 nTimes = twistPlan.nFrames;
-noiseSigma = 100;
+noiseSigma = 1;
 
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
 %% --- 8. Resolving Oversampling
@@ -298,9 +297,9 @@ end
 legend("Ground Truth","2 cm","1 cm","5 mm","2.5 mm")
 hold off
 
-title("Contrast Wash-in")
+title("Contrast Measurments vs. Ground Truth")
 xlabel("Time (s)")
-ylabel("Pixel Value")
+ylabel("Intensity Value")
 
 nominal_temporal_resolution = TWIST_frame_times(3)-TWIST_frame_times(2);
 fprintf("Nominal Temporal Resolution = %g s\n",nominal_temporal_resolution)
