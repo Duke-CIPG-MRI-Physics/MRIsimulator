@@ -3,7 +3,7 @@ clc;clear;%close all
 %% Input Data
 %theFileName = 'C:\Users\Roberto\My Drive\Grad School\Research\RobbieTWIST\No Partial Fourier, Minimized GRAPPA\meas_MID00988_FID84788_t1_twist_R3_R2_NOPF_A4_B10.dat';
 
-FileName = 'meas_MID06574_FID41421_UF_GRAPPA_[2_1],_pA_04_pB_1_no_PF.dat';
+FileName = 'meas_MID06573_FID41420_UF_GRAPPA_[1_1],_pA_04_pB_1_no_PF.dat';
 
 % Read the TWIX data
 twix_objs = mapVBVD(FileName);
@@ -19,6 +19,15 @@ end
 
 kspace_all = squeeze(twix_objs{1,1}.image(1,1,:,:,1,1,1,1,:,1,1,1,1,1,1,1));
 kspace_all_binary = (kspace_all~=0);
+
+sampled_mask_swirl = zeros(size(kspace_all_binary(:,:,1)));
+
+for i = 2:size(kspace_all_binary,3)
+    sampled_mask_swirl = sampled_mask_swirl + (double(kspace_all_binary(:,:,i)) * (i-1));
+end
+
+%sampled_mask_swirl(sampled_mask_swirl == max(sampled_mask_swirl)) = 0;
+imshow(sampled_mask_swirl,[])
 
 regionA = sum(kspace_all_binary,3);
 regionA = (regionA == 10);

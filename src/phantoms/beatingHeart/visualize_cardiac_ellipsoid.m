@@ -137,7 +137,7 @@ function visualize_cardiac_ellipsoid(t_s, V_ml, a_mm, b_mm, c_mm, eps_L, eps_C, 
     hStrC = plot(axStr, t_s, eps_C*100, 'LineWidth',1.5);
     xlabel(axStr,'Time [s]');
     ylabel(axStr,'Strain [%]');
-    legend(axStr, {'GLS','GCS'}, 'Location','best');
+    legend(axStr, {'Global Longitudinal Strain','Global Circumferential Strain'}, 'Location','best');
     title(axStr,'Global strains vs time');
     grid(axStr,'on');
     ylStr = ylim(axStr); %#ok<NASGU>

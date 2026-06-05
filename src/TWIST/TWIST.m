@@ -143,7 +143,110 @@ function trajectoryTable = buildBidirectionalTrajectory(sortedRows, traversalMod
                 "Unknown traversal mode '%s'.", traversalMode);
     end
 
+<<<<<<< HEAD
     firstLeg = orderedRows(1:2:end, :);
     secondLeg = flipud(orderedRows(2:2:end, :));
     trajectoryTable = [firstLeg; secondLeg];
+=======
+centerPixel = floor(Matrix_Size_Acquired/2)+1;  % Use full kspaceSize as per your request
+ky = kyi - centerPixel(3);  % col offset (slice)
+kz = kzi - centerPixel(2);  % row offset (phase)
+[kyM, kzM] = meshgrid(ky, kz);  % rows, cols
+
+theta_matrix = cart2pol(kyM, kzM);
+
+%Fix theta range, direction, and 0
+theta_matrix(theta_matrix>0) = 2*pi-(theta_matrix(theta_matrix>0)); 
+theta_matrix = round(abs(theta_matrix),2);
+
+
+%% --- Get Region A---
+[regionA,frequency_table] = getRegionA(Matrix_Size_Acquired,FOV_acquired,pA,PF_Factor,R);
+frequency_table.Frequency = round(frequency_table.Frequency,3);
+
+
+%% --- Define Region B
+regionB = ~regionA;
+
+%% --- Radial and Angular Sorting ---
+% sort by increasing frequency 1st, angle 2nd
+columnNames = ["Linear Index","Frequency","Theta","Region A?"];
+unsortedData = table(frequency_table{:,1}, frequency_table{:,2}, theta_matrix(frequency_table{:,1}), regionA(frequency_table{:,1}),'VariableNames', columnNames);
+sortedData = sortrows(unsortedData, [2 3], 'ascend');
+
+%% --- Ensure that center point is always in region A
+min_freq = min(sortedData.Frequency);
+sortedData.("Region A?")(sortedData.Frequency == min_freq) = true;
+
+%% --- Add Bj Column to Sorted Data ---
+% Initialize the 'Bj' column with zeros for all rows.
+sortedData.Bj = zeros(height(sortedData), 1);
+
+% Identify the rows that belong to Region B (where 'Region A?' is false).
+regionB_rows = find(~sortedData.('Region A?'));
+
+% Calculate the total number of points in Region B.
+numRegionB_points = length(regionB_rows);
+
+if Nb > 0
+    % Standard TWIST: assign interleaves 1 through N
+    bj_sequence = mod(0:(numRegionB_points - 1), Nb) + 1;
+    sortedData.Bj(regionB_rows) = bj_sequence';
+else
+    % Edge Case (pB = 0): Assign 1 to Region B. 
+    % This creates exactly 1 subset so the view-sharing planner can track it!
+    sortedData.Bj(regionB_rows) = 1; 
+end
+
+sortedData_regionA = sortedData(sortedData.("Region A?"),:);
+sortedData_regionB = sortedData(~sortedData.("Region A?"),:);
+%% --- Creating Sampling Order
+
+%Sampling of k-space starts at the outer edge of A and proceeds 
+% toward the origin...
+sortedData_regionA_descend = flipud(sortedData_regionA);
+
+%...via all the odd points from the sorted list.
+A_to_origin = sortedData_regionA_descend(1:2:end,:);
+
+%Upon reaching the center, the sampling direction is reversed 
+% and every even point is acquired until the edge of A is reached.
+A_outward = flipud(sortedData_regionA_descend(2:2:end,:));
+
+%Start building a new table which is sorted by sampling order
+kspaceSamplingOrder_A = [A_to_origin;A_outward];
+
+kspaceSamplingOrder_all_frames = [];
+kspaceSamplingOrder_B = [];
+
+if Nb == 0
+
+    B_outward = sortedData_regionB(1:2:end,:);
+    B_inward = flipud(sortedData_regionB(2:2:end,:));
+    kspaceSamplingOrder_B =[B_outward ; B_inward];
+else
+
+for ii = 1:Nb
+    B_current_Bj = sortedData_regionB(sortedData_regionB.Bj == ii,:);
+
+    %Then in region B the trajectory Bj is sampled by first acquiring 
+    % every odd point on the way outwards
+    B_outward_current_Bj = B_current_Bj(1:2:end,:);
+   
+    %and then every even point on the way back in 
+    B_inward_current_Bj = flipud(B_current_Bj(2:2:end,:));
+
+    kspaceSamplingOrder_B_current_Bj = [B_outward_current_Bj ; B_inward_current_Bj];
+    
+    %Define sampling order for only B region, as is used only in initial
+    %acqusition
+    kspaceSamplingOrder_B = [kspaceSamplingOrder_B;kspaceSamplingOrder_B_current_Bj];
+
+
+    %Create the sampling order for the frames
+    kspaceSamplingOrder_current_frame = [kspaceSamplingOrder_A;kspaceSamplingOrder_B_current_Bj];
+    kspaceSamplingOrder_current_frame.("Frame") = ii * ones(height(kspaceSamplingOrder_current_frame),1);
+    kspaceSamplingOrder_all_frames = [kspaceSamplingOrder_all_frames;kspaceSamplingOrder_current_frame];
+    
+>>>>>>> Robbie-dev
 end

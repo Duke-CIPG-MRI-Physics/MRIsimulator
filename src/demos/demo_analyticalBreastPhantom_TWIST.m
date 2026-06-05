@@ -10,8 +10,7 @@ disp(encodingFullStr)
 breastPhantomParams = createBreastPhantomParams();
 
 
-load('fast_scan_parameters.mat')
-% load('Breast_Ultrafast_scan_parameters.mat')
+load("Breast_Ultrafast_scan_parameters.mat")
 
 [FOV_acquired,matrix_size_complete,matrix_size_acquired,voxel_size_mm,nyquist_resolution_mm,IMmatrix_crop_size] =...
     convert_Siemens_parameters(scan_parameters);
@@ -29,9 +28,9 @@ dt_s = 1/rBW_Hz;   % dwell time between frequency-encode samples [s]
 
 %% Configure acquisition ordering and timing
 
-pA = .15;
-pB = .1;
-shareMode = "forward";      % "forward" | "reverse" | "symmetric"
+pA = .07;
+pB = 0;
+shareMode = "reverse";      % "forward" | "reverse" | "symmetric"
 if(strcmpi(shareMode,'symmetric'))
     shareMethod = "dual_anchor"; % use "dual_anchor" for symmetric sharing
 else
@@ -44,9 +43,15 @@ twistShareOptions = getTWISTShareOptions(struct( ...
     'shareMethod', shareMethod, ...
     'shareTieBreaker', shareTieBreaker));
 
+<<<<<<< HEAD
 Num_Measurements = 20;
 R = [1, 1]; %[2 3] 
 PF_Factor = [1, 1]; %[6/8 6/8]
+=======
+Num_Measurements = 80;
+R = 1; %[2 3] 
+PF_Factor = 1; %[6/8 6/8]
+>>>>>>> Robbie-dev
 
 [Sampling_Table,TWIST_Timing] = Ultrafast_Sampling( ...
     matrix_size_acquired, FOV_acquired, pA, pB, Num_Measurements, TR, R, PF_Factor, ...
@@ -89,7 +94,7 @@ endOfFirstFrame = max(Sampling_Table.Timing(firstFrameMask));
 
 % Injected contrast parameters
 breastPhantomParams.startInjectionTime_s = breastPhantomParams.startInjectionTime_s + endOfFirstFrame;
-breastPhantomParams.lesionArrivalDelay_s = 1;
+breastPhantomParams.lesionArrivalDelay_s = 2;
 breastPhantomParams.lesionWashinType = "instant";
 breastPhantomParams.lesionWashoutType = "washout";
 breastPhantomParams.lesionPeakEnhancement = 1.6;
@@ -107,7 +112,7 @@ phantom = BreastPhantom(breastPhantomParams);
 %% Perform TWIST with streaming/bounded-buffer view sharing
 maxChunkSize = 5000000;
 nTimes = twistPlan.nFrames;
-noiseSigma = 100;
+noiseSigma = 1;
 
 padsize = matrix_size_complete(fps_to_xyz) - matrix_size_acquired(fps_to_xyz);
 %% --- 8. Resolving Oversampling
@@ -273,7 +278,7 @@ final_time_idx = size(phantom_magnitude, 4);
 %Ground truth
 figure;
 plot(Sampling_Table.Timing(1:1000:end),breastPhantomParams.lesionIntensityFunction(Sampling_Table.Timing(1:1000:end)) ...
-    + breastPhantomParams.breastIntensity);
+    + breastPhantomParams.breastIntensity,"LineWidth",2);
 
 %convert TWIST frames to actual time, time for a whole frame is defined as
 %   moment when center of k-space is sampled.
@@ -295,12 +300,15 @@ for ii = 1:num_lesions
     plot(TWIST_frame_times,abs(contrast_values_measured(ii,:)),'.-','MarkerSize',15)
 
 end
-legend("Ground Truth","TWIST Measured L","M","S","XS")
+legend("Ground Truth","2 cm","1 cm","5 mm","2.5 mm")
 hold off
 
-title("Contrast Wash-in")
+title("Contrast Measurments vs. Ground Truth")
 xlabel("Time (s)")
-ylabel("Pixel Value")
+ylabel("Intensity Value")
+
+nominal_temporal_resolution = TWIST_frame_times(3)-TWIST_frame_times(2);
+fprintf("Nominal Temporal Resolution = %g s\n",nominal_temporal_resolution)
 
 %%  Visualize ROI Overlay
 for ii = 1:num_lesions
@@ -330,58 +338,7 @@ contour(roi_slice, [0.5 0.5], 'r', 'LineWidth', 2);
 hold off;
 end
 
-%
-% %% Saving output
-% save_ask = input('Save output?: (y/n)','s');
-%
-% if strcmpi(save_ask, 'y')
-%
-%     %measuring phantom size
-%     output_bytes = whos("phantom_magnitude");
-%     output_bytes = output_bytes.bytes;
-%
-%     %creating structure with all phantom information
-%
-%     % Outputs
-%     phantom_simulated.outputs.phantom_magnitude = phantom_magnitude;
-%     phantom_simulated.outputs.timing            = TWIST_frame_times;
-%
-%     % Inputs (Consolidating everything under .inputs)
-%     phantom_simulated.inputs.breastPhantomParams = breastPhantomParams;
-%     phantom_simulated.inputs.scan_parameters     = scan_parameters;
-%     phantom_simulated.inputs.TR                  = TR;
-%     phantom_simulated.inputs.TE                  = TE;
-%     phantom_simulated.inputs.rBW_HzPerPix        = rBW_HzPerPix;
-%
-%     % Nested TWIST parameters
-%     phantom_simulated.inputs.TWIST.pA            = pA;
-%     phantom_simulated.inputs.TWIST.pB            = 1/Nb;
-%     phantom_simulated.inputs.TWIST.Time_Measured = Time_Measured;
-%
-%     % Nested Undersampling parameters
-%     phantom_simulated.inputs.Undersampling.GRAPPA_R  = R;
-%     phantom_simulated.inputs.Undersampling.PF_Factor = PF_Factor;
-%
-%
-%     fprintf('Input desired filename, file will be saved as <filename>.mat\n')
-%     filename = input(':','s');
-%
-%     if output_bytes >= 1.99e9
-%         fprintf('Saving using v7.3...\n')
-%         save(filename,'phantom_simulated','-v7.3')
-%         fprintf('File saved as %s.mat\n, ', filename);
-%
-%     else
-%         fprintf('Saving using v7...\n')
-%         save(filename,'phantom_simulated','-v7')
-%         fprintf('File saved as %s.mat\n', filename);
-%
-%     end
-%
-% else
-%     fprintf('Output not saved')
-%
-% end
+
 
 function croppedImage = reconstructTwistFrameImage(currentKspace, fps_to_xyz, padsize, cropRanges, voxel_volume)
 % reconstructTwistFrameImage  Reconstruct and crop one TWIST image frame.
